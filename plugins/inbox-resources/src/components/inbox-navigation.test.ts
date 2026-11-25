@@ -293,9 +293,10 @@ describe('NavigationRemovalQueue', () => {
       }
     })
     const states: RemovalState[] = []
-    const queue = new NavigationRemovalQueue(remove, (removing, queued) => {
+    const onChange = (removing: NavigationItem | undefined, queued: NavigationItem[]): void => {
       states.push({ removing, queued })
-    })
+    }
+    const queue = new NavigationRemovalQueue(remove, onChange, () => items)
 
     const first = queue.enqueue(items[0], false)
     const second = queue.enqueue(items[1], false)
@@ -316,7 +317,11 @@ describe('NavigationRemovalQueue', () => {
         complete = resolve
       })
     })
-    const queue = new NavigationRemovalQueue(remove, () => {})
+    const queue = new NavigationRemovalQueue(
+      remove,
+      () => {},
+      () => [item]
+    )
     const first = queue.enqueue(item, false)
     const duplicate = queue.enqueue(item, true)
     expect(remove).toHaveBeenCalledTimes(1)
@@ -337,9 +342,10 @@ describe('NavigationRemovalQueue', () => {
       }
     })
     const states: RemovalState[] = []
-    const queue = new NavigationRemovalQueue(remove, (removing, queued) => {
+    const onChange = (removing: NavigationItem | undefined, queued: NavigationItem[]): void => {
       states.push({ removing, queued })
-    })
+    }
+    const queue = new NavigationRemovalQueue(remove, onChange, () => items)
 
     const removals = items.map(async (item) => {
       await queue.enqueue(item, false)
@@ -365,12 +371,49 @@ describe('NavigationRemovalQueue', () => {
         })
       }
     })
-    const queue = new NavigationRemovalQueue(remove, () => {})
+    const queue = new NavigationRemovalQueue(
+      remove,
+      () => {},
+      () => items
+    )
     const first = queue.enqueue(items[0], false)
     const second = queue.enqueue(items[1], true)
     completeFirst()
     await Promise.all([first, second])
     expect(remove.mock.calls[1]).toEqual([items[1], true])
+  })
+
+  test.each([true, false])('skips a queued legacy row that vanishes (Backspace: %s)', async (fromKeyboard) => {
+    const first = modern('first')
+    const vanished = legacy('shared', 'removed-context')
+    const opened = legacy('shared', 'opened-context')
+    const last = modern('last')
+    let items: NavigationItem[] = [first, vanished, opened, last]
+    let completeFirst: () => void = () => {}
+    const firstRemoval = new Promise<void>((resolve) => {
+      completeFirst = resolve
+    })
+    const remove = jest.fn<Promise<void>, [NavigationItem, boolean]>(async (item) => {
+      if (item === first) await firstRemoval
+    })
+    const onChange = jest.fn(() => {})
+    const queue = new NavigationRemovalQueue(remove, onChange, () => items)
+
+    const draining = queue.enqueue(first, false)
+    await queue.enqueue(vanished, fromKeyboard)
+    await queue.enqueue(last, false)
+    expect(onChange).toHaveBeenLastCalledWith(first, [vanished, last])
+
+    const refreshedLast = modern('last')
+    items = [opened, refreshedLast]
+    completeFirst()
+    await draining
+
+    expect(remove.mock.calls).toHaveLength(2)
+    expect(remove.mock.calls[0]).toEqual([first, false])
+    expect(remove.mock.calls[1][0]).toBe(refreshedLast)
+    expect(onChange).not.toHaveBeenCalledWith(vanished, expect.anything())
+    expect(onChange).toHaveBeenLastCalledWith(undefined, [])
   })
 })
 

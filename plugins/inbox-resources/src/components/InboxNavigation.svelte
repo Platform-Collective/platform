@@ -14,7 +14,7 @@
 <script lang="ts">
   import { Label, ListView, Loading, Scroller } from '@hcengineering/ui'
   import { Doc, Ref } from '@hcengineering/core'
-  import { createEventDispatcher, tick } from 'svelte'
+  import { createEventDispatcher, onDestroy, tick } from 'svelte'
   import { Analytics } from '@hcengineering/analytics'
   import notification, {
     ActivityNotificationViewlet,
@@ -33,7 +33,6 @@
   import {
     getRemovalSelection,
     isNavigationItemRemovalPending,
-    isSameNavigationItem,
     NavigationRemovalQueue,
     shouldReselectNavigationItem
   } from './inbox-navigation'
@@ -57,7 +56,12 @@
 
   let navItems: NavigationItem[] = []
 
-  $: navItems = $navigationItemsStore
+  // The removal queue can start its next request before Svelte flushes reactive assignments.
+  onDestroy(
+    navigationItemsStore.subscribe((items) => {
+      navItems = items
+    })
+  )
 
   let divScroll: HTMLElement | undefined | null = undefined
   let contentDiv: HTMLElement | undefined | null = undefined
@@ -127,16 +131,15 @@
     }
   }
 
-  const removalQueue = new NavigationRemovalQueue(removeNavigationItem, (removing, queued) => {
-    removingItem = removing
-    queuedRemovals = queued
-    if (removing == null && queued.length === 0) selectedByRemoval = undefined
-  })
-
-  async function handleRemove(navItem: NavigationItem, fromKeyboard = false): Promise<void> {
-    if (!navItems.some((item) => isSameNavigationItem(item, navItem))) return
-    await removalQueue.enqueue(navItem, fromKeyboard)
-  }
+  const removalQueue = new NavigationRemovalQueue(
+    removeNavigationItem,
+    (removing, queued) => {
+      removingItem = removing
+      queuedRemovals = queued
+      if (removing == null && queued.length === 0) selectedByRemoval = undefined
+    },
+    () => navItems
+  )
 
   async function onKeydown(key: KeyboardEvent): Promise<void> {
     if (key.code === 'ArrowUp') {
@@ -154,7 +157,7 @@
       key.stopPropagation()
       const navItem = navItems[listSelection]
       if (navItem != null) {
-        await handleRemove(navItem, true)
+        await removalQueue.enqueue(navItem, true)
       }
     }
     if (key.code === 'Enter') {
@@ -217,7 +220,7 @@
               {viewlets}
               isRemoving={isNavigationItemRemovalPending(navItem, removingItem, queuedRemovals)}
               selected={navItem._id === legacyContext?.objectId || navItem._id === doc?._id}
-              on:remove={() => handleRemove(navItem)}
+              on:remove={() => removalQueue.enqueue(navItem, false)}
               on:doc={(e) => {
                 const d = e.detail
                 if (d == null) return

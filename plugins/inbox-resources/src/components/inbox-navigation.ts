@@ -104,11 +104,13 @@ export class NavigationRemovalQueue {
 
   constructor (
     private readonly remove: (item: NavigationItem, fromKeyboard: boolean) => Promise<void>,
-    private readonly onChange: (removing: NavigationItem | undefined, queued: NavigationItem[]) => void
+    private readonly onChange: (removing: NavigationItem | undefined, queued: NavigationItem[]) => void,
+    private readonly getItems: () => NavigationItem[]
   ) {}
 
   async enqueue (item: NavigationItem, fromKeyboard: boolean): Promise<void> {
     if (
+      !this.getItems().some((current) => isSameNavigationItem(current, item)) ||
       (this.active != null && isSameNavigationItem(this.active.item, item)) ||
       this.pending.some((request) => isSameNavigationItem(request.item, item))
     ) {
@@ -122,10 +124,16 @@ export class NavigationRemovalQueue {
     while (this.pending.length > 0) {
       const request = this.pending.shift()
       if (request == null) break
-      this.active = request
+      const current = this.getItems().find((item) => isSameNavigationItem(item, request.item))
+      if (current == null) {
+        this.notify()
+        continue
+      }
+
+      this.active = { item: current, fromKeyboard: request.fromKeyboard }
       this.notify()
       try {
-        await this.remove(request.item, request.fromKeyboard)
+        await this.remove(current, request.fromKeyboard)
       } finally {
         this.active = undefined
         this.notify()
