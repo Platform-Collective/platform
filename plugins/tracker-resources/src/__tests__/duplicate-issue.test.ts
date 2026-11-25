@@ -6,7 +6,7 @@ import { permissionsStore } from '@hcengineering/contact-resources'
 import core, { type Account, AccountRole, setCurrentAccount, type Status } from '@hcengineering/core'
 import { getClient } from '@hcengineering/presentation'
 import task, { type TaskType } from '@hcengineering/task'
-import { activeProjects, taskTypeStore } from '@hcengineering/task-resources'
+import { taskTypeStore } from '@hcengineering/task-resources'
 import { type Issue, type Project } from '@hcengineering/tracker'
 import { canChangeDoc, statusStore } from '@hcengineering/view-resources'
 import { get } from 'svelte/store'
@@ -18,7 +18,7 @@ import {
 } from '../duplicate-issue'
 import { updateIssueRelation } from '../issues'
 import tracker from '../plugin'
-import { canEditIssue } from '../utils'
+import { activeProjects, canEditIssue } from '../utils'
 
 function mockWritable<T> (value: T): { value: T, set: (next: T) => void } {
   return {
@@ -32,7 +32,6 @@ function mockWritable<T> (value: T): { value: T, set: (next: T) => void } {
 jest.mock('@hcengineering/contact-resources', () => ({ permissionsStore: mockWritable({}) }))
 jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
 jest.mock('@hcengineering/task-resources', () => ({
-  activeProjects: mockWritable(new Map()),
   taskTypeStore: mockWritable(new Map())
 }))
 jest.mock('@hcengineering/view-resources', () => ({
@@ -40,7 +39,7 @@ jest.mock('@hcengineering/view-resources', () => ({
   statusStore: mockWritable({ byId: new Map(), array: [] })
 }))
 jest.mock('svelte/store', () => ({ get: (store: { value: unknown }) => store.value }))
-jest.mock('../utils', () => ({ canEditIssue: jest.fn() }))
+jest.mock('../utils', () => ({ activeProjects: mockWritable(new Map()), canEditIssue: jest.fn() }))
 jest.mock('../issues', () => ({ updateIssueRelation: jest.fn() }))
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual('@hcengineering/platform'),

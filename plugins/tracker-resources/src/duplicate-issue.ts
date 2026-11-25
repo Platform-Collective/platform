@@ -7,14 +7,14 @@ import core, { AccountRole, getCurrentAccount, type Doc, type Ref, type Status }
 import { translate } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import task from '@hcengineering/task'
-import { activeProjects, taskTypeStore } from '@hcengineering/task-resources'
+import { taskTypeStore } from '@hcengineering/task-resources'
 import { type Issue, type Project } from '@hcengineering/tracker'
 import { canChangeDoc, statusStore } from '@hcengineering/view-resources'
 import { get } from 'svelte/store'
 import { createDuplicateReference, selectCanceledStatus } from './duplicate-issue-utils'
 import { updateIssueRelation } from './issues'
 import tracker from './plugin'
-import { canEditIssue } from './utils'
+import { activeProjects, canEditIssue } from './utils'
 
 /** Return projects in which the current user can edit duplicate target issues. */
 export function getEditableDuplicateProjectIds (

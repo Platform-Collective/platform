@@ -12,13 +12,13 @@
   import { setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { createQuery, getClient, ObjectPopup } from '@hcengineering/presentation'
   import task from '@hcengineering/task'
-  import { activeProjects } from '@hcengineering/task-resources'
   import { type Issue } from '@hcengineering/tracker'
   import { statusStore } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import { getEditableDuplicateProjectIds, markIssueDuplicate } from '../duplicate-issue'
   import { createDuplicatePickerQuery, createDuplicateTargetFilter } from '../duplicate-issue-utils'
   import tracker from '../plugin'
+  import { activeProjects } from '../utils'
   import IssueStatusIcon from './issues/IssueStatusIcon.svelte'
 
   export let value: Issue
