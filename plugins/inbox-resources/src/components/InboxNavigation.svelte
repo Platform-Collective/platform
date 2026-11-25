@@ -30,6 +30,7 @@
   import { NavigationItem } from '../type'
   import { NavigationClient } from '../client'
   import InboxCard from './InboxCard.svelte'
+  import { getRemovalSelection, isOpenedNavigationItem, NavigationRemovalQueue } from './inbox-navigation'
 
   export let doc: Doc | undefined = undefined
   export let legacyContext: DocNotifyContext | undefined = undefined
@@ -81,46 +82,27 @@
   const docById = new Map<Ref<Doc>, Doc>()
 
   let removingItem: NavigationItem | undefined = undefined
+  let queuedRemovals: NavigationItem[] = []
+  let selectedByRemoval: NavigationItem | undefined = undefined
 
-  function getContextId(item: NavigationItem): string {
-    return item.type === 'modern' ? item.context.id : item.context._id
-  }
-
-  async function handleRemove(navItem: NavigationItem, fromKeyboard = false): Promise<void> {
-    if (removingItem != null) return
-    const index = navItems.indexOf(navItem)
-    if (index < 0) return
-
+  async function removeNavigationItem(navItem: NavigationItem, fromKeyboard: boolean): Promise<void> {
+    const originalItems = navItems
     const shouldReselect =
-      fromKeyboard ||
-      (navItem.type === 'legacy' && legacyContext != null
-        ? navItem.context._id === legacyContext._id
-        : navItem._id === doc?._id)
-    const adjacentItem = navItems[index + 1] ?? navItems[index - 1]
+      fromKeyboard || selectedByRemoval === navItem || isOpenedNavigationItem(navItem, doc, legacyContext)
 
-    removingItem = navItem
     try {
       await navClient.remove(navItem)
 
       // Live queries may report the removal before or after the request completes.
-      const contextId = getContextId(navItem)
-      navItems = navItems.filter((item) => item.type !== navItem.type || getContextId(item) !== contextId)
-      if (!shouldReselect) {
-        if (index < listSelection) listSelection--
-        listSelection = Math.max(0, Math.min(listSelection, navItems.length - 1))
-        return
-      }
-      const adjacentIndex =
-        adjacentItem == null
-          ? -1
-          : navItems.findIndex(
-              (item) => item.type === adjacentItem.type && getContextId(item) === getContextId(adjacentItem)
-            )
-      listSelection = Math.max(0, Math.min(adjacentIndex < 0 ? index : adjacentIndex, navItems.length - 1))
-      const nextItem = navItems[listSelection]
+      const removal = getRemovalSelection(originalItems, navItems, navItem, listSelection, shouldReselect)
+      navItems = removal.items
+      listSelection = removal.selection
+      if (!shouldReselect) return
+      const nextItem = removal.nextItem
 
       await tick()
       if (nextItem == null) {
+        selectedByRemoval = undefined
         dispatch('clear')
         return
       }
@@ -128,16 +110,27 @@
       list.select(listSelection)
       const nextDoc = docById.get(nextItem._id) ?? (await client.findOne(nextItem._class, { _id: nextItem._id }))
       if (nextDoc != null) {
+        selectedByRemoval = nextItem
         dispatch('select', { navItem: nextItem, doc: nextDoc })
       } else {
+        selectedByRemoval = undefined
         dispatch('clear')
       }
       contentDiv?.focus()
     } catch (err) {
       Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
-    } finally {
-      removingItem = undefined
     }
+  }
+
+  const removalQueue = new NavigationRemovalQueue(removeNavigationItem, (removing, queued) => {
+    removingItem = removing
+    queuedRemovals = queued
+    if (removing == null && queued.length === 0) selectedByRemoval = undefined
+  })
+
+  async function handleRemove(navItem: NavigationItem, fromKeyboard = false): Promise<void> {
+    if (!navItems.includes(navItem)) return
+    await removalQueue.enqueue(navItem, fromKeyboard)
   }
 
   async function onKeydown(key: KeyboardEvent): Promise<void> {
@@ -217,7 +210,7 @@
             <InboxCard
               {navItem}
               {viewlets}
-              isRemoving={removingItem === navItem}
+              isRemoving={removingItem === navItem || queuedRemovals.includes(navItem)}
               selected={navItem._id === legacyContext?.objectId || navItem._id === doc?._id}
               on:remove={() => handleRemove(navItem)}
               on:doc={(e) => {
@@ -226,6 +219,7 @@
                 docById.set(d._id, d)
               }}
               on:select={(e) => {
+                selectedByRemoval = undefined
                 dispatch('select', { navItem, doc: e.detail.doc, notification: e.detail.notification })
                 listSelection = itemIndex
               }}

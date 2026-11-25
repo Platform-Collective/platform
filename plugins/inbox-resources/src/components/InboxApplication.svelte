@@ -43,6 +43,7 @@
   import { closeDoc, getDocInfoFromLocation, getMessageInfoFromLocation, navigateToDoc } from '../location'
   import InboxHeader from './InboxHeader.svelte'
   import { NavigationItem } from '../type'
+  import { shouldLookupLegacyContext } from './inbox-navigation'
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
@@ -96,12 +97,14 @@
       const ctx =
         $contextByIdStore.get(queryContext) ?? $contextByDocStore.get(thread) ?? $contextByDocStore.get(urlObjectId)
 
-      legacyContext =
-        ctx ??
-        (await client.findOne(notification.class.DocNotifyContext, {
+      if (ctx != null) {
+        legacyContext = ctx
+      } else if (shouldLookupLegacyContext(doc._id, queryContext, legacyContext)) {
+        legacyContext = await client.findOne(notification.class.DocNotifyContext, {
           objectId: doc._id,
           user: getCurrentAccount().uuid
-        }))
+        })
+      }
     }
 
     const messageInfo = getMessageInfoFromLocation(loc)

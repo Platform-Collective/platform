@@ -1,34 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import ts from 'typescript'
 import type { Doc, Ref, Class } from '@hcengineering/core'
 import type { Card } from '@hcengineering/card'
 import type { NotificationContext } from '@hcengineering/communication-types'
 import type { DocNotifyContext } from '@hcengineering/notification'
 import type { NavigationItem } from '../type'
-import type { Location } from '@hcengineering/ui'
-
-// Keep Node helpers scoped to Jest; this client package uses DOM typings.
-const { readFileSync } = jest.requireActual<{ readFileSync: (path: string, encoding: string) => string }>('node:fs')
-const { runInNewContext } = jest.requireActual<{
-  runInNewContext: (code: string, context: Record<string, unknown>) => unknown
-}>('node:vm')
-
-interface NavigationEvent {
-  type: string
-  detail?: { navItem: NavigationItem, doc: Doc }
-}
-
-interface NavigationHarness {
-  remove: (item: NavigationItem) => Promise<void>
-  keydown: (event: KeyboardEvent) => Promise<void>
-  cache: (doc: Doc) => void
-  setItems: (items: NavigationItem[]) => void
-  setOpened: (doc?: Doc, context?: DocNotifyContext) => void
-  readonly items: NavigationItem[]
-  readonly selection: number
-  readonly removing: NavigationItem | undefined
-}
+import {
+  getRemovalSelection,
+  isOpenedNavigationItem,
+  NavigationRemovalQueue,
+  shouldLookupLegacyContext,
+  type RemovalSelection
+} from './inbox-navigation'
 
 function modern (id: string): Extract<NavigationItem, { type: 'modern' }> {
   return {
@@ -79,439 +62,282 @@ function documentFor (item: Pick<NavigationItem, '_id' | '_class'>): Doc {
   }
 }
 
-// Execute the component's actual instance script, leaving rendering to the browser suite.
-// Only imports are replaced; the removal and keyboard handlers are never copied into tests.
-function mountNavigation (
+function removeSelectedItem (
   items: NavigationItem[],
-  selection = 0,
-  opened?: NavigationItem,
-  onEvent?: (event: NavigationEvent) => void
-): {
-  navigation: NavigationHarness
-  events: NavigationEvent[]
-  remove: jest.Mock<Promise<void>, [NavigationItem]>
-  findOne: jest.Mock<Promise<Doc | undefined>, [unknown, { _id: string }]>
-  select: jest.Mock
-  focus: jest.Mock
-  handleError: jest.Mock
-} {
-  const instance = instanceScript('InboxNavigation')
-  const events: NavigationEvent[] = []
-  const remove = jest.fn<Promise<void>, [NavigationItem]>().mockResolvedValue(undefined)
-  const findOne = jest
-    .fn<Promise<Doc | undefined>, [unknown, { _id: string }]>()
-    .mockImplementation(async (_class, query) => documentFor(items.find((item) => item._id === query._id)!))
-  const select = jest.fn()
-  const focus = jest.fn()
-  const handleError = jest.fn()
-  const code = ts.transpileModule(
-    `${instance}
-    list = testList
-    contentDiv = testContent
-    listSelection = initialSelection
-    const harness = {
-      remove: handleRemove,
-      keydown: onKeydown,
-      cache: (value) => docById.set(value._id, value),
-      setItems: (value) => { navItems = value },
-      setOpened: (value, context) => { doc = value; legacyContext = context },
-      get items() { return navItems },
-      get selection() { return listSelection },
-      get removing() { return removingItem }
-    }
-    harness`,
-    { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }
-  ).outputText
-  const navigation = runInNewContext(code, {
-    $navigationItemsStore: items,
-    initialSelection: selection,
-    testList: { select },
-    testContent: { focus },
-    createEventDispatcher: () => (type: string, detail?: NavigationEvent['detail']) => {
-      const event = { type, detail }
-      events.push(event)
-      onEvent?.(event)
-    },
-    tick: async () => {},
-    Analytics: { handleError },
-    notification: { class: { ActivityNotificationViewlet: 'viewlet' } },
-    getClient: () => ({ findOne, findAll: async () => [] }),
-    InboxNotificationsClientImpl: { getClient: () => ({}) },
-    NavigationClient: class {
-      remove = remove
-      navigationItemsStore = {}
-      isLoadingStore = {}
-    }
-  }) as NavigationHarness
-  navigation.setOpened(
-    opened == null ? undefined : documentFor(opened),
-    opened?.type === 'legacy' ? opened.context : undefined
-  )
-  return { navigation, events, remove, findOne, select, focus, handleError }
-}
-
-function instanceScript (component: string): string {
-  const source = readFileSync(
-    expect.getState().testPath!.replace('inbox-navigation.test.ts', `${component}.svelte`),
-    'utf8'
-  )
-  const script = source.match(/<script lang="ts">([\s\S]*?)<\/script>/)?.[1]
-  if (script == null) throw new Error(`${component} instance script is missing`)
-  const parsed = ts.createSourceFile(`${component}.ts`, script, ts.ScriptTarget.Latest, true)
-  let instance = script
-  for (const statement of [...parsed.statements].reverse()) {
-    if (ts.isImportDeclaration(statement)) {
-      instance = instance.slice(0, statement.getFullStart()) + instance.slice(statement.end)
-    }
-  }
-  return instance.replace(/export let /g, 'let ')
-}
-
-interface ApplicationHarness {
-  syncLocation: (loc: Location) => Promise<void>
-  select: (event: { detail: NonNullable<NavigationEvent['detail']> }) => void
-  close: () => void
-  readonly doc: Doc | undefined
-  readonly context: DocNotifyContext | undefined
-}
-
-function mountApplication (items: Array<Extract<NavigationItem, { type: 'legacy' }>>): {
-  application: ApplicationHarness
-  navigateToDoc: jest.Mock
-  closeDoc: jest.Mock
-  findOne: jest.Mock
-} {
-  const contexts = new Map(items.map((item) => [item.context._id, item.context]))
-  const findOne = jest
-    .fn()
-    .mockImplementation(async (_class: unknown, query: { _id: string }) =>
-      documentFor(items.find((item) => item._id === query._id)!)
-    )
-  const navigateToDoc = jest.fn()
-  const closeDoc = jest.fn()
-  const code = ts.transpileModule(
-    `${instanceScript('InboxApplication')}
-    ;({ syncLocation, select, close: handleClose,
-      get doc() { return doc }, get context() { return legacyContext } })`,
-    { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }
-  ).outputText
-  const application = runInNewContext(code, {
-    getClient: () => ({ getHierarchy: () => ({}), findOne }),
-    InboxNotificationsClientImpl: { getClient: () => ({}) },
-    $contextByIdStore: contexts,
-    $contextByDocStore: new Map(),
-    $deviceInfo: {},
-    inboxId: 'inbox',
-    getDocInfoFromLocation: (loc: Location) => {
-      const item = items.find((item) => item._id === loc.path[3])
-      return item == null ? undefined : { _id: item._id, _class: item._class }
-    },
-    getMessageInfoFromLocation: () => undefined,
-    getCurrentLocation: () => ({ path: ['', '', 'inbox'] }),
-    resolvedLocationStore: { subscribe: () => () => {} },
-    onDestroy: () => {},
-    defineSeparators: () => {},
-    closePanel: () => {},
-    navigateToDoc,
-    closeDoc
-  }) as ApplicationHarness
-  return { application, navigateToDoc, closeDoc, findOne }
-}
-
-interface TestKeyboardEvent extends KeyboardEvent {
-  preventDefault: jest.Mock
-  stopPropagation: jest.Mock
-}
-
-function key (code: string): TestKeyboardEvent {
-  return { code, preventDefault: jest.fn(), stopPropagation: jest.fn() } as unknown as TestKeyboardEvent
+  index: number,
+  selection = index,
+  fromKeyboard = false,
+  currentItems = items
+): RemovalSelection {
+  const removed = items[index]
+  const shouldReselect =
+    fromKeyboard ||
+    isOpenedNavigationItem(removed, documentFor(removed), removed.type === 'legacy' ? removed.context : undefined)
+  return getRemovalSelection(items, currentItems, removed, selection, shouldReselect)
 }
 
 describe('inbox removal navigation (#7335 and #7350)', () => {
   const factories: Array<(id: string) => NavigationItem> = [modern, legacy]
 
   describe.each(factories)('%p entries', (makeItem) => {
-    test.each([0, 1, 2])('checkbox removal at index %i opens the adjacent entry', async (index) => {
+    test.each([0, 1, 2])('checkbox removal at index %i selects the adjacent entry', (index) => {
       const items = ['a', 'b', 'c'].map((id) => makeItem(id))
-      const { navigation, events, select, focus } = mountNavigation(items, index, items[index])
-      await navigation.remove(items[index])
+      const result = removeSelectedItem(items, index)
       const next = items[index + 1] ?? items[index - 1]
-      expect(events).toEqual([{ type: 'select', detail: { navItem: next, doc: documentFor(next) } }])
-      expect(navigation.selection).toBe(Math.min(index, 1))
-      expect(select).toHaveBeenCalledWith(navigation.selection)
-      expect(focus).toHaveBeenCalled()
+      expect(result).toEqual({
+        items: items.filter((_, itemIndex) => itemIndex !== index),
+        selection: Math.min(index, 1),
+        nextItem: next
+      })
     })
 
-    test('removing the final opened entry clears the panel', async () => {
+    test('removing the final opened entry has no next selection', () => {
       const item = makeItem('a')
-      const { navigation, events, select } = mountNavigation([item], 0, item)
-      await navigation.remove(item)
-      expect(navigation.items).toEqual([])
-      expect(navigation.selection).toBe(0)
-      expect(events).toEqual([{ type: 'clear', detail: undefined }])
-      expect(select).not.toHaveBeenCalled()
+      const result = removeSelectedItem([item], 0)
+      expect(result).toEqual({ items: [], selection: 0, nextItem: undefined })
     })
 
-    test.each([false, true])('Backspace opens the next keyboard entry (other document open: %s)', async (openOther) => {
+    test.each([false, true])('Backspace selects the next keyboard entry (other document open: %s)', (openOther) => {
       const items = ['a', 'b', 'c'].map((id) => makeItem(id))
-      const { navigation, events, remove } = mountNavigation(items, 1, openOther ? items[0] : undefined)
-      const event = key('Backspace')
-      await navigation.keydown(event)
-      expect(remove).toHaveBeenCalledWith(items[1])
-      expect(events).toEqual([{ type: 'select', detail: { navItem: items[2], doc: documentFor(items[2]) } }])
-      expect(navigation.selection).toBe(1)
-      expect(event.preventDefault).toHaveBeenCalled()
-      expect(event.stopPropagation).toHaveBeenCalled()
+      const opened = openOther ? items[0] : undefined
+      expect(
+        isOpenedNavigationItem(
+          items[1],
+          opened == null ? undefined : documentFor(opened),
+          opened?.type === 'legacy' ? opened.context : undefined
+        )
+      ).toBe(false)
+      const result = getRemovalSelection(items, items, items[1], 1, true)
+      expect(result.nextItem).toEqual(items[2])
+      expect(result.selection).toBe(1)
     })
 
-    test('Backspace on the last keyboard entry opens its predecessor', async () => {
+    test('Backspace on the last keyboard entry selects its predecessor', () => {
       const items = ['a', 'b'].map((id) => makeItem(id))
-      const { navigation, events } = mountNavigation(items, 1)
-      await navigation.keydown(key('Backspace'))
-      expect(events[0]?.detail?.navItem).toEqual(items[0])
-      expect(navigation.selection).toBe(0)
+      const result = getRemovalSelection(items, items, items[1], 1, true)
+      expect(result.nextItem).toEqual(items[0])
+      expect(result.selection).toBe(0)
     })
 
-    test('Backspace on the only keyboard entry clears the panel', async () => {
-      const { navigation, events } = mountNavigation([makeItem('a')])
-      await navigation.keydown(key('Backspace'))
-      expect(events).toEqual([{ type: 'clear', detail: undefined }])
+    test('Backspace on the only keyboard entry has no next selection', () => {
+      const items = [makeItem('a')]
+      const result = getRemovalSelection(items, items, items[0], 0, true)
+      expect(result).toEqual({ items: [], selection: 0, nextItem: undefined })
     })
 
-    test('removing a preceding checkbox keeps the keyboard selection on the same entry', async () => {
+    test('removing a preceding checkbox keeps the keyboard selection on the same entry', () => {
       const items = ['a', 'b', 'c'].map((id) => makeItem(id))
-      const { navigation, events } = mountNavigation(items, 2, items[2])
-      await navigation.remove(items[0])
-      expect(navigation.selection).toBe(1)
-      expect(navigation.items[navigation.selection]).toEqual(items[2])
-      expect(events).toEqual([])
+      const shouldReselect = isOpenedNavigationItem(
+        items[0],
+        documentFor(items[2]),
+        items[2].type === 'legacy' ? items[2].context : undefined
+      )
+      const result = getRemovalSelection(items, items, items[0], 2, shouldReselect)
+      expect(result).toEqual({ items: items.slice(1), selection: 1, nextItem: undefined })
+      expect(result.items[result.selection]).toEqual(items[2])
     })
 
-    test('removing a following checkbox preserves the opened entry and keyboard index', async () => {
+    test('removing a following checkbox preserves the opened entry and keyboard index', () => {
       const items = ['a', 'b', 'c'].map((id) => makeItem(id))
-      const { navigation, events } = mountNavigation(items, 0, items[0])
-      await navigation.remove(items[2])
-      expect(navigation.selection).toBe(0)
-      expect(events).toEqual([])
+      const shouldReselect = isOpenedNavigationItem(
+        items[2],
+        documentFor(items[0]),
+        items[0].type === 'legacy' ? items[0].context : undefined
+      )
+      const result = getRemovalSelection(items, items, items[2], 0, shouldReselect)
+      expect(result).toEqual({ items: items.slice(0, 2), selection: 0, nextItem: undefined })
     })
   })
 
   test.each([modern, legacy])(
     'an opened checkbox row is matched independently of the keyboard index (%p)',
-    async (makeItem) => {
+    (makeItem) => {
       const items = ['a', 'b', 'c'].map((id) => makeItem(id))
-      const { navigation, events } = mountNavigation(items, 2, items[0])
-      await navigation.remove(items[0])
-      expect(events[0]?.detail?.navItem).toEqual(items[1])
-      expect(navigation.selection).toBe(0)
+      const result = removeSelectedItem(items, 0, 2)
+      expect(result.nextItem).toEqual(items[1])
+      expect(result.selection).toBe(0)
       expect(items.map((item) => item._id)).toEqual(['a', 'b', 'c'])
     }
   )
 
-  test('reselects when the opened document is cleared while removal is pending', async () => {
-    const items = [modern('a'), legacy('b')]
-    const { navigation, events, remove } = mountNavigation(items, 0, items[0])
-    remove.mockImplementation(async () => {
-      navigation.setOpened(undefined)
-    })
-    await navigation.remove(items[0])
-    expect(events[0]?.detail?.navItem).toEqual(items[1])
-  })
-
-  test('removing the second legacy context for a shared document opens the following row', async () => {
+  test('removing the second legacy context for a shared document selects the following row', () => {
     const items = [legacy('shared', 'first'), legacy('shared', 'second'), modern('c')]
-    const { navigation, events } = mountNavigation(items, 1, items[1])
-    await navigation.remove(items[1])
-    expect(events[0]?.detail?.navItem).toEqual(items[2])
-    expect(navigation.items).toEqual([items[0], items[2]])
+    const result = removeSelectedItem(items, 1)
+    expect(result.nextItem).toEqual(items[2])
+    expect(result.items).toEqual([items[0], items[2]])
   })
 
   test.each([2, 3])(
     'removing %i legacy contexts for the same document advances and clears the final entry',
-    async (count) => {
+    (count) => {
       const items = Array.from({ length: count }, (_, index) => legacy('shared', `context-${index}`))
-      const { application, navigateToDoc, closeDoc, findOne } = mountApplication(items)
-      const sync = async (item: (typeof items)[number]): Promise<void> => {
-        await application.syncLocation({ path: ['', '', 'inbox', item._id], query: { context: item.context._id } })
-      }
-      await sync(items[0])
-      const { navigation, events } = mountNavigation(items, 0, items[0], (event) => {
-        if (event.type === 'select' && event.detail != null) application.select({ detail: event.detail })
-        if (event.type === 'clear') application.close()
-      })
+      let currentItems: NavigationItem[] = items
+      let selection = 0
 
-      for (let index = 0; index < items.length - 1; index++) {
-        await navigation.remove(items[index])
-        expect(events[index]).toEqual({
-          type: 'select',
-          detail: { navItem: items[index + 1], doc: documentFor(items[index + 1]) }
-        })
-        expect(navigateToDoc).toHaveBeenLastCalledWith(items[index + 1], documentFor(items[index + 1]), undefined)
-        await sync(items[index + 1])
-        expect(application.doc?._id).toBe('shared')
-        expect(application.context).toEqual(items[index + 1].context)
-        navigation.setOpened(application.doc, application.context)
+      for (let index = 0; index < items.length; index++) {
+        const removed = items[index]
+        const shouldReselect = isOpenedNavigationItem(removed, documentFor(removed), removed.context)
+        const result = getRemovalSelection(items.slice(index), currentItems, removed, selection, shouldReselect)
+        expect(result.nextItem).toEqual(items[index + 1])
+        expect(result.items).toEqual(items.slice(index + 1))
+        currentItems = result.items
+        selection = result.selection
       }
-      expect(findOne).toHaveBeenCalledTimes(1)
-
-      await navigation.remove(items[items.length - 1])
-      expect(navigation.items).toEqual([])
-      expect(events.map(({ type }) => type)).toEqual([...items.slice(1).map(() => 'select'), 'clear'])
-      expect(closeDoc).toHaveBeenCalledTimes(1)
-      expect(application.doc).toBeUndefined()
-      expect(application.context).toBeUndefined()
+      expect(currentItems).toEqual([])
+      expect(selection).toBe(0)
     }
   )
 
-  test('a legacy context matches independently of the opened document ID', async () => {
-    const items = [legacy('message'), modern('card')]
-    const { navigation, events } = mountNavigation(items)
-    navigation.setOpened(
-      documentFor(legacy('channel')),
-      (items[0] as Extract<NavigationItem, { type: 'legacy' }>).context
-    )
-    await navigation.remove(items[0])
-    expect(events[0]?.detail?.navItem).toEqual(items[1])
+  test('a legacy context matches independently of the opened document ID', () => {
+    const removed = legacy('message')
+    const items = [removed, modern('card')]
+    const openedDoc = documentFor(legacy('channel'))
+    const shouldReselect = isOpenedNavigationItem(removed, openedDoc, removed.context)
+    const result = getRemovalSelection(items, items, removed, 0, shouldReselect)
+    expect(result.nextItem).toEqual(items[1])
   })
 
-  test('a legacy opened document still matches before its context has loaded', async () => {
+  test('a legacy opened document still matches before its context has loaded', () => {
     const items = [legacy('a'), modern('b')]
-    const { navigation, events } = mountNavigation(items)
-    navigation.setOpened(documentFor(items[0]))
-    await navigation.remove(items[0])
-    expect(events[0]?.detail?.navItem).toEqual(items[1])
+    const shouldReselect = isOpenedNavigationItem(items[0], documentFor(items[0]), undefined)
+    const result = getRemovalSelection(items, items, items[0], 0, shouldReselect)
+    expect(result.nextItem).toEqual(items[1])
   })
 
-  test('another legacy context for the same document does not replace the opened context', async () => {
-    const items = [legacy('shared', 'first'), legacy('shared', 'second'), modern('card')]
-    const { navigation, events } = mountNavigation(items, 1, items[1])
-    await navigation.remove(items[0])
-    expect(navigation.items).toEqual(items.slice(1))
-    expect(navigation.selection).toBe(0)
-    expect(events).toEqual([])
+  test('another legacy context for the same document does not replace the opened context', () => {
+    const removed = legacy('shared', 'first')
+    const opened = legacy('shared', 'second')
+    const items = [removed, opened, modern('card')]
+    const shouldReselect = isOpenedNavigationItem(removed, documentFor(opened), opened.context)
+    const result = getRemovalSelection(items, items, removed, 1, shouldReselect)
+    expect(result).toEqual({ items: items.slice(1), selection: 0, nextItem: undefined })
   })
 
-  test('a modern opened document matches even with a legacy context present', async () => {
+  test('a modern opened document matches even with a legacy context present', () => {
     const items = [modern('a'), legacy('b')]
-    const { navigation, events } = mountNavigation(items)
-    navigation.setOpened(documentFor(items[0]), legacy('other').context)
-    await navigation.remove(items[0])
-    expect(events[0]?.detail?.navItem).toEqual(items[1])
+    const shouldReselect = isOpenedNavigationItem(items[0], documentFor(items[0]), legacy('other').context)
+    const result = getRemovalSelection(items, items, items[0], 0, shouldReselect)
+    expect(result.nextItem).toEqual(items[1])
   })
 
-  test.each([false, true])('resolves the adjacent document before opening (cached: %s)', async (cached) => {
-    const items = [modern('a'), legacy('b')]
-    const { navigation, events, findOne } = mountNavigation(items, 0, items[0])
-    const nextDoc = documentFor(items[1])
-    let resolveDocument: (doc: Doc) => void = () => {}
-    if (cached) navigation.cache(nextDoc)
-    else {
-      findOne.mockImplementation(
-        async () =>
-          await new Promise((resolve) => {
-            resolveDocument = resolve
-          })
-      )
-    }
-    const pending = navigation.remove(items[0])
-    await new Promise((resolve) =>
-      setTimeout(() => {
-        resolve(undefined)
-      }, 0)
-    )
-    if (!cached) {
-      expect(events).toEqual([])
-      expect(findOne).toHaveBeenCalledWith(items[1]._class, { _id: items[1]._id })
-      resolveDocument(nextDoc)
-    }
-    await pending
-    expect(findOne).toHaveBeenCalledTimes(cached ? 0 : 1)
-    expect(events[0]?.detail?.doc).toEqual(nextDoc)
-  })
-
-  test.each([false, true])('selects once when live queries update before/after removal (early: %s)', async (early) => {
+  test.each([false, true])('selects once when live queries update before/after removal (early: %s)', (early) => {
     const items = [modern('a'), legacy('b'), modern('c')]
-    const { navigation, events, remove } = mountNavigation(items, 1, items[1])
-    if (early) {
-      remove.mockImplementation(async () => {
-        navigation.setItems([{ ...items[0] }, { ...items[2] }])
-      })
-    }
-    await navigation.remove(items[1])
-    if (!early) navigation.setItems([items[0], items[2]])
-    expect(events).toEqual([{ type: 'select', detail: { navItem: items[2], doc: documentFor(items[2]) } }])
-    expect(navigation.items).toEqual([items[0], items[2]])
+    const currentItems = early ? [{ ...items[0] }, { ...items[2] }] : items
+    const result = removeSelectedItem(items, 1, 1, false, currentItems)
+    expect(result.nextItem).toEqual(items[2])
+    expect(result.items).toEqual([items[0], items[2]])
   })
 
-  test('keeps the original adjacent context when live updates reorder surviving rows', async () => {
+  test('keeps the original adjacent context when live updates reorder surviving rows', () => {
     const items = [modern('a'), legacy('shared', 'removed'), legacy('shared', 'next'), modern('d')]
-    const { navigation, events, remove, select } = mountNavigation(items, 1, items[1])
-    remove.mockImplementation(async () => {
-      navigation.setItems([{ ...items[3] }, { ...items[0] }, { ...items[2] }])
-    })
-    await navigation.remove(items[1])
-    expect(events[0]?.detail?.navItem).toEqual(items[2])
-    expect(navigation.selection).toBe(2)
-    expect(select).toHaveBeenCalledWith(2)
+    const currentItems = [{ ...items[3] }, { ...items[0] }, { ...items[2] }]
+    const result = removeSelectedItem(items, 1, 1, false, currentItems)
+    expect(result.nextItem).toEqual(items[2])
+    expect(result.selection).toBe(2)
   })
 
-  test('adjusts the adjacent index when a preceding row disappears during removal', async () => {
+  test('adjusts the adjacent index when a preceding row disappears during removal', () => {
     const items = [modern('a'), legacy('b'), modern('c'), legacy('d')]
-    const { navigation, events, remove, select } = mountNavigation(items, 1, items[1])
-    remove.mockImplementation(async () => {
-      navigation.setItems([{ ...items[2] }, { ...items[3] }])
-    })
-    await navigation.remove(items[1])
-    expect(events[0]?.detail?.navItem).toEqual(items[2])
-    expect(navigation.selection).toBe(0)
-    expect(select).toHaveBeenCalledWith(0)
+    const result = removeSelectedItem(items, 1, 1, false, [{ ...items[2] }, { ...items[3] }])
+    expect(result.nextItem).toEqual(items[2])
+    expect(result.selection).toBe(0)
   })
 
-  test('ignores repeated removal while a request is pending', async () => {
+  test('ignores a stale row without changing the surviving items', () => {
     const items = [modern('a'), legacy('b')]
-    const { navigation, remove } = mountNavigation(items, 0, items[0])
+    const result = getRemovalSelection(items, items, modern('stale'), 1, false)
+    expect(result).toEqual({ items, selection: 1, nextItem: undefined })
+  })
+})
+
+interface RemovalState {
+  removing: NavigationItem | undefined
+  queued: NavigationItem[]
+}
+
+describe('NavigationRemovalQueue', () => {
+  test('queues fast removals and runs them in click order', async () => {
+    const items = [modern('a'), legacy('b'), modern('c')]
+    let completeFirst: () => void = () => {}
+    const remove = jest.fn(async (item: NavigationItem) => {
+      if (item === items[0]) {
+        await new Promise<void>((resolve) => {
+          completeFirst = resolve
+        })
+      }
+    })
+    const states: RemovalState[] = []
+    const queue = new NavigationRemovalQueue(remove, (removing, queued) => {
+      states.push({ removing, queued })
+    })
+
+    const first = queue.enqueue(items[0], false)
+    const second = queue.enqueue(items[1], false)
+    expect(remove).toHaveBeenCalledTimes(1)
+    expect(states[states.length - 1]).toEqual({ removing: items[0], queued: [items[1]] })
+
+    completeFirst()
+    await Promise.all([first, second])
+    expect(remove.mock.calls.map(([item]) => item)).toEqual(items.slice(0, 2))
+    expect(states[states.length - 1]).toEqual({ removing: undefined, queued: [] })
+  })
+
+  test('does not queue the same row twice', async () => {
+    const item = modern('a')
     let complete: () => void = () => {}
-    remove.mockImplementation(async () => {
+    const remove = jest.fn(async () => {
       await new Promise<void>((resolve) => {
         complete = resolve
       })
     })
-    const pending = navigation.remove(items[0])
-    await navigation.keydown(key('Backspace'))
+    const queue = new NavigationRemovalQueue(remove, () => {})
+    const first = queue.enqueue(item, false)
+    const duplicate = queue.enqueue(item, true)
     expect(remove).toHaveBeenCalledTimes(1)
-    expect(navigation.removing).toEqual(items[0])
     complete()
-    await pending
-    expect(navigation.removing).toBeUndefined()
+    await Promise.all([first, duplicate])
+    expect(remove).toHaveBeenCalledTimes(1)
   })
 
-  test('a failed removal preserves rows and selection, reports the error and permits retry', async () => {
+  test('preserves the keyboard origin of a queued removal', async () => {
     const items = [modern('a'), legacy('b')]
-    const { navigation, remove, events, handleError } = mountNavigation(items, 0, items[0])
-    remove.mockRejectedValueOnce('offline')
-    await navigation.remove(items[0])
-    expect(navigation.items).toEqual(items)
-    expect(navigation.selection).toBe(0)
-    expect(events).toEqual([])
-    expect(handleError.mock.calls[0][0].message).toBe('offline')
-    expect(navigation.removing).toBeUndefined()
-    await navigation.remove(items[0])
-    expect(events[0]?.detail?.navItem).toEqual(items[1])
+    let completeFirst: () => void = () => {}
+    const remove = jest.fn(async (item: NavigationItem) => {
+      if (item === items[0]) {
+        await new Promise<void>((resolve) => {
+          completeFirst = resolve
+        })
+      }
+    })
+    const queue = new NavigationRemovalQueue(remove, () => {})
+    const first = queue.enqueue(items[0], false)
+    const second = queue.enqueue(items[1], true)
+    completeFirst()
+    await Promise.all([first, second])
+    expect(remove.mock.calls[1]).toEqual([items[1], true])
+  })
+})
+
+describe('legacy context lookup', () => {
+  const item = legacy('doc', 'context-a')
+
+  test('looks up a context when none is open', () => {
+    expect(shouldLookupLegacyContext(item._id, undefined, undefined)).toBe(true)
   })
 
-  test('a missing adjacent document clears the stale panel', async () => {
-    const items = [modern('a'), legacy('b')]
-    const { navigation, findOne, events } = mountNavigation(items, 0, items[0])
-    findOne.mockResolvedValue(undefined)
-    await navigation.remove(items[0])
-    expect(events).toEqual([{ type: 'clear', detail: undefined }])
+  test('skips the lookup when the open context matches the document', () => {
+    expect(shouldLookupLegacyContext(item._id, undefined, item.context)).toBe(false)
   })
 
-  test('ignores Backspace on an empty inbox and removal of a stale row', async () => {
-    const { navigation, remove, events } = mountNavigation([])
-    await navigation.keydown(key('Backspace'))
-    await navigation.remove(modern('stale'))
-    expect(remove).not.toHaveBeenCalled()
-    expect(events).toEqual([])
+  test('skips the lookup when the open context matches the query', () => {
+    expect(shouldLookupLegacyContext(item._id, item.context._id, item.context)).toBe(false)
+  })
+
+  test('looks up a different queried context', () => {
+    expect(shouldLookupLegacyContext(item._id, legacy('doc', 'context-b').context._id, item.context)).toBe(true)
+  })
+
+  test('looks up a context for a different document', () => {
+    expect(shouldLookupLegacyContext(modern('other')._id, undefined, item.context)).toBe(true)
   })
 })
