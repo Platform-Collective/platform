@@ -29,7 +29,7 @@
   } from '@hcengineering/ui'
   import { ToDo, WorkSlot } from '@hcengineering/time'
   import tracker, { type Issue } from '@hcengineering/tracker'
-  import { getFutureWorkslotsDuration, getIssueSlotDuration } from '../issue-planning'
+  import { getDragDropDuration, getFutureWorkslotsDuration, getIssueSlotDuration } from '../issue-planning'
   import time from '../plugin'
   import { filterVisibleWorkSlots } from '../to-do-query'
   import IconSun from './icons/Sun.svelte'
@@ -190,9 +190,10 @@
   // Create the slot with the same duration the preview shows, without another round trip.
   function dragDrop(e: CustomEvent<{ day: Date, hour: number, date: Date }>): void {
     const start = e.detail.date.getTime()
+    const preview = raw.find((p) => p._id === dragItemId)
     const duration =
       dragIssueLoaded && dragWorkslotsLoaded
-        ? getIssueSlotDuration(dragIssue, start, getFutureWorkslotsDuration(dragWorkslots, Date.now()))
+        ? getDragDropDuration(dragIssue, dragWorkslots, preview, start, Date.now())
         : undefined
     dispatch('dragDrop', { ...e.detail, duration })
   }

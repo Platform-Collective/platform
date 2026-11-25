@@ -19,8 +19,7 @@ export function getFutureWorkslotsDuration (
   now: number
 ): number {
   return workslots.reduce(
-    (duration, slot) =>
-      slot.date >= now && slot.dueDate > slot.date ? duration + slot.dueDate - slot.date : duration,
+    (duration, slot) => (slot.date >= now && slot.dueDate > slot.date ? duration + slot.dueDate - slot.date : duration),
     0
   )
 }
@@ -47,6 +46,18 @@ export function getIssueSlotDuration (
   const untilMidnight = endOfDay - start
   if (!Number.isFinite(remaining) || remaining <= 0) return Math.min(fallback, untilMidnight)
   return Math.min(remaining * HOUR, MAX_SLOT_HOURS * HOUR, untilMidnight)
+}
+
+/** Preserve the visible preview duration when dropping at the same start. */
+export function getDragDropDuration (
+  issue: Pick<Issue, 'estimation' | 'reportedTime'> | undefined,
+  workslots: ReadonlyArray<Pick<WorkSlot, 'date' | 'dueDate'>>,
+  preview: Pick<WorkSlot, 'date' | 'dueDate'> | undefined,
+  start: number,
+  now: number
+): number {
+  if (preview?.date === start) return preview.dueDate - preview.date
+  return getIssueSlotDuration(issue, start, getFutureWorkslotsDuration(workslots, now))
 }
 
 /** Unique ids of all issues that block any of the given issues. */

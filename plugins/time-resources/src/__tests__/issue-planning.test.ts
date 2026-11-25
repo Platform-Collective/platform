@@ -5,6 +5,7 @@ import type { ToDo } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 import {
   getBlockerIds,
+  getDragDropDuration,
   getFutureWorkslotsDuration,
   getPlanningIssueIds,
   getIssuePlanningConstraints,
@@ -102,6 +103,21 @@ describe('future workslot duration', () => {
     ]
     expect(getFutureWorkslotsDuration(slots, NOW)).toBe(3.5 * HOUR)
     expect(getFutureWorkslotsDuration(slots, NOW + 3 * HOUR)).toBe(0)
+  })
+})
+
+describe('drag drop duration', () => {
+  it('reuses the preview when an existing workslot starts before the drop', () => {
+    const issue = { estimation: 8, reportedTime: 1 }
+    const existing = { date: NOW + HOUR, dueDate: NOW + 2 * HOUR }
+    const previewDuration = getIssueSlotDuration(issue, MORNING, getFutureWorkslotsDuration([existing], NOW))
+    const preview = { date: MORNING, dueDate: MORNING + previewDuration }
+    const dropNow = existing.date + 1
+
+    expect(getIssueSlotDuration(issue, MORNING, getFutureWorkslotsDuration([existing], dropNow))).toBe(
+      previewDuration + HOUR
+    )
+    expect(getDragDropDuration(issue, [existing], preview, MORNING, dropNow)).toBe(previewDuration)
   })
 })
 
