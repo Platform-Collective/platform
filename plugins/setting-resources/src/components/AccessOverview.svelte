@@ -145,7 +145,7 @@
 
 <div class="hulyComponent">
   <Header adaptive="disabled">
-    <Breadcrumb icon={setting.icon.Members} label={setting.string.AccessOverview} size="large" isCurrent />
+    <Breadcrumb icon={setting.icon.Views} label={setting.string.AccessOverview} size="large" isCurrent />
     <svelte:fragment slot="search">
       <SearchInput bind:value={search} collapsed />
     </svelte:fragment>

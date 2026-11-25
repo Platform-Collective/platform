@@ -321,7 +321,7 @@ export function createModel (builder: Builder): void {
     {
       name: 'accessOverview',
       label: setting.string.AccessOverview,
-      icon: setting.icon.Members,
+      icon: setting.icon.Views,
       component: setting.component.AccessOverview,
       order: 1025,
       role: AccountRole.Owner
