@@ -362,6 +362,7 @@ export const notificationActionTemplates = template({
   },
   setNotifyLevel: {
     action: notification.actionImpl.SetDocNotifyLevel,
+    actionPopup: notification.component.DocNotifyLevelSelector,
     label: notification.string.Notifications,
     icon: notification.icon.Notifications,
     input: 'focus',

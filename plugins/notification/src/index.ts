@@ -293,7 +293,8 @@ export type DisplayInboxNotification = DisplayActivityInboxNotification | InboxN
 /**
  * Per user, per document notification level.
  * 'all' (default) - notify about every message,
- * 'mentions' - notify only when the user is mentioned,
+ * 'mentions' - notify only when the user is mentioned; @here counts only
+ * when the user is online at the time the message triggers the notification,
  * 'none' - do not notify at all.
  *
  * @public
@@ -415,6 +416,7 @@ const notification = plugin(notificationId, {
     NotificationPresenter: '' as AnyComponent,
     CollaboratorsChanged: '' as AnyComponent,
     DocNotifyContextPresenter: '' as AnyComponent,
+    DocNotifyLevelSelector: '' as AnyComponent,
     NotificationCollaboratorsChanged: '' as AnyComponent,
     GeneralPreferencesGroup: '' as AnyComponent,
     CollaboratorEditor: '' as AnyComponent,

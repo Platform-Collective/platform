@@ -51,7 +51,7 @@ import notification, {
   type NotificationTypeSetting,
   type ReactionInboxNotification
 } from '@hcengineering/notification'
-import { getMetadata, getResource, type IntlString } from '@hcengineering/platform'
+import { getMetadata, getResource } from '@hcengineering/platform'
 import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
 import {
   getCurrentLocation,
@@ -62,7 +62,6 @@ import {
   parseLocation,
   type ResolvedLocation,
   SelectPopup,
-  type SelectPopupValueType,
   showPopup
 } from '@hcengineering/ui'
 import view, { decodeObjectURI, encodeObjectURI, type LinkIdProvider } from '@hcengineering/view'
@@ -72,6 +71,7 @@ import { get, writable } from 'svelte/store'
 
 import { isDesktopClient } from './desktop'
 import { InboxNotificationsClientImpl } from './inboxNotificationsClient'
+import { getDocNotifyLevelValues } from './notifyLevelOptions'
 import { type InboxData, type InboxNotificationsFilter } from './types'
 
 export const providersSettings = writable<NotificationProviderSetting[]>([])
@@ -312,24 +312,19 @@ export async function unpinDocNotifyContext (object: DocNotifyContext): Promise<
   })
 }
 
-const docNotifyLevels: Array<{ level: DocNotifyLevel, label: IntlString }> = [
-  { level: 'all', label: notification.string.NotifyLevelAll },
-  { level: 'mentions', label: notification.string.NotifyLevelMentions },
-  { level: 'none', label: notification.string.NotifyLevelNone }
-]
+export async function updateDocNotifyLevel (object: DocNotifyContext, level: DocNotifyLevel): Promise<void> {
+  if (level === (object.notifyLevel ?? 'all')) return
+
+  const client = getClient()
+  await client.updateDoc(object._class, object.space, object._id, { notifyLevel: level })
+}
 
 export async function setDocNotifyLevel (object: DocNotifyContext): Promise<void> {
-  const current = object.notifyLevel ?? 'all'
-  const value: SelectPopupValueType[] = docNotifyLevels.map(({ level, label }) => ({
-    id: level,
-    label,
-    isSelected: level === current
-  }))
+  const value = getDocNotifyLevelValues(object)
 
   showPopup(SelectPopup, { value }, undefined, async (result?: DocNotifyLevel) => {
-    if (result === undefined || result === current) return
-    const client = getClient()
-    await client.updateDoc(object._class, object.space, object._id, { notifyLevel: result })
+    if (result === undefined) return
+    await updateDocNotifyLevel(object, result)
   })
 }
 

@@ -109,6 +109,8 @@
         icon: action.icon ?? IconEdit,
         label: action.label,
         group: action.context.group,
+        component: action.actionPopup,
+        props: { ...action.actionProps, value: context, object },
         action: async (_: any, evt: Event) => {
           const impl = await getResource(action.action)
           await impl(context, evt, { ...action.actionProps, object })
@@ -127,6 +129,7 @@
   {isSelected}
   iconProps={{ ...item.iconProps, value: item.object }}
   {count}
+  notifyLevel={context?.notifyLevel}
   title={item.title}
   description={item.description}
   secondaryNotifyMarker={context === undefined || context.notifyLevel === 'none'

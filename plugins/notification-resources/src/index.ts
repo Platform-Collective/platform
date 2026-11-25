@@ -20,6 +20,7 @@ import Inbox from './components/inbox/Inbox.svelte'
 import NotificationSettings from './components/settings/NotificationSettings.svelte'
 import NotificationPresenter from './components/NotificationPresenter.svelte'
 import DocNotifyContextPresenter from './components/DocNotifyContextPresenter.svelte'
+import DocNotifyLevelSelector from './components/DocNotifyLevelSelector.svelte'
 import CollaboratorsChanged from './components/activity/CollaboratorsChanged.svelte'
 import ActivityInboxNotificationPresenter from './components/inbox/ActivityInboxNotificationPresenter.svelte'
 import CommonInboxNotificationPresenter from './components/inbox/CommonInboxNotificationPresenter.svelte'
@@ -66,6 +67,7 @@ export default async (): Promise<Resources> => ({
     NotificationSettings,
     CollaboratorsChanged,
     DocNotifyContextPresenter,
+    DocNotifyLevelSelector,
     ActivityInboxNotificationPresenter,
     CommonInboxNotificationPresenter,
     MentionInboxNotificationPresenter,

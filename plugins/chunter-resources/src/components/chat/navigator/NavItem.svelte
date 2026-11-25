@@ -22,8 +22,10 @@
     IconSize,
     Menu,
     showPopup,
-    NavItem
+    NavItem,
+    tooltip
   } from '@hcengineering/ui'
+  import notification, { type DocNotifyLevel } from '@hcengineering/notification'
   import { NotifyMarker } from '@hcengineering/notification-resources'
   import { Asset, IntlString } from '@hcengineering/platform'
 
@@ -36,6 +38,7 @@
   export let isSecondary: boolean = false
   export let count: number | null = null
   export let secondaryNotifyMarker: boolean = false
+  export let notifyLevel: DocNotifyLevel | undefined = undefined
   export let title: string | undefined = undefined
   export let intlTitle: IntlString | undefined = undefined
   export let description: string | undefined = undefined
@@ -49,6 +52,8 @@
 
   $: inlineActions = actions.filter(({ inline }) => inline === true)
   $: menuActions = actions.filter(({ inline }) => inline !== true)
+  $: notifyLevelLabel =
+    notifyLevel === 'mentions' ? notification.string.NotifyLevelMentions : notification.string.NotifyLevelNone
 
   function handleMenuClicked(ev: MouseEvent): void {
     showPopup(Menu, { actions: menuActions, ctx: _id }, ev.target as HTMLElement, () => {
@@ -95,6 +100,12 @@
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="notify">
+    {#if notifyLevel === 'mentions' || notifyLevel === 'none'}
+      <div class="antiHSpacer" />
+      <div class="notify" use:tooltip={{ label: notifyLevelLabel }}>
+        <Icon icon={notification.icon.BellCrossed} size="x-small" />
+      </div>
+    {/if}
     {#if count != null && count > 0}
       <div class="antiHSpacer" />
       <div class="notify">
