@@ -5,6 +5,7 @@ import type { ToDo } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 import {
   getBlockerIds,
+  getFutureWorkslotsDuration,
   getPlanningIssueIds,
   getIssuePlanningConstraints,
   getIssueSlotDuration,
@@ -57,7 +58,13 @@ describe('issue slot duration', () => {
     { estimation: 2, reportedTime: NaN }
   ])('preserves the existing default for missing or non-positive remaining time: %p', (issue) => {
     expect(getIssueSlotDuration(issue, MORNING)).toBe(HOUR / 2)
-    expect(getIssueSlotDuration(issue, MORNING, HOUR)).toBe(HOUR)
+    expect(getIssueSlotDuration(issue, MORNING, 0, HOUR)).toBe(HOUR)
+  })
+
+  it('subtracts work already reserved in future slots from the remaining estimate', () => {
+    const issue = { estimation: 8, reportedTime: 1 }
+    expect(getIssueSlotDuration(issue, MORNING, 2.5 * HOUR)).toBe(4.5 * HOUR)
+    expect(getIssueSlotDuration(issue, MORNING, 7 * HOUR)).toBe(HOUR / 2)
   })
 
   it('caps the default slot at one working day', () => {
@@ -65,12 +72,16 @@ describe('issue slot duration', () => {
     expect(getIssueSlotDuration({ estimation: 40, reportedTime: 1 }, MORNING)).toBe(8 * HOUR)
   })
 
-  it('caps positive estimates at midnight of the start day', () => {
+  it('caps estimates and fallbacks at midnight of the start day', () => {
     const evening = new Date(2026, 9, 23, 18).getTime()
     const midnight = new Date(2026, 9, 24).getTime()
     expect(evening + getIssueSlotDuration({ estimation: 8, reportedTime: 0 }, evening)).toBe(midnight)
     const late = new Date(2026, 9, 23, 23, 30).getTime()
     expect(getIssueSlotDuration({ estimation: 2, reportedTime: 0 }, late)).toBe(HOUR / 2)
+    expect(getIssueSlotDuration(undefined, late)).toBe(HOUR / 2)
+    const lastQuarter = new Date(2026, 9, 23, 23, 45).getTime()
+    expect(getIssueSlotDuration(undefined, lastQuarter)).toBe(15 * 60 * 1000)
+    expect(getIssueSlotDuration({ estimation: 0, reportedTime: 0 }, lastQuarter)).toBe(15 * 60 * 1000)
     const startOfDay = new Date(2026, 9, 23).getTime()
     expect(getIssueSlotDuration({ estimation: 4, reportedTime: 0 }, startOfDay)).toBe(4 * HOUR)
   })
@@ -78,6 +89,19 @@ describe('issue slot duration', () => {
   it('tolerates legacy issue data without reported time', () => {
     const issue: Partial<Issue> = { estimation: 2 }
     expect(getIssueSlotDuration(issue as Issue, MORNING)).toBe(2 * HOUR)
+  })
+})
+
+describe('future workslot duration', () => {
+  it('sums future slots and ignores past or invalid intervals', () => {
+    const slots = [
+      { date: NOW - 2 * HOUR, dueDate: NOW - HOUR },
+      { date: NOW, dueDate: NOW + HOUR },
+      { date: NOW + 2 * HOUR, dueDate: NOW + 4.5 * HOUR },
+      { date: NOW + 5 * HOUR, dueDate: NOW + 4 * HOUR }
+    ]
+    expect(getFutureWorkslotsDuration(slots, NOW)).toBe(3.5 * HOUR)
+    expect(getFutureWorkslotsDuration(slots, NOW + 3 * HOUR)).toBe(0)
   })
 })
 
@@ -209,10 +233,4 @@ it('reuses unchanged constraints on ticks and clears a start hint at its boundar
     reached
   )
   expect(resolved.size).toBe(0)
-})
-
-it('keeps the uncapped legacy fallback without a positive estimate', () => {
-  const late = new Date(2026, 9, 23, 23, 45).getTime()
-  expect(getIssueSlotDuration(undefined, late)).toBe(HOUR / 2)
-  expect(getIssueSlotDuration({ estimation: 0, reportedTime: 0 }, late)).toBe(HOUR / 2)
 })

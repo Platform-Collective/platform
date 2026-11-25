@@ -16,7 +16,7 @@
   import { SortingOrder, WithLookup } from '@hcengineering/core'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import tags from '@hcengineering/tags'
-  import { Component, IconMoreV2, Spinner, showPanel, Icon, tooltip } from '@hcengineering/ui'
+  import { Component, IconInfo, IconMoreV2, Spinner, showPanel, Icon, tooltip } from '@hcengineering/ui'
   import { showMenu } from '@hcengineering/view-resources'
   import time, { ToDo, ToDoPriority, WorkSlot } from '@hcengineering/time'
   import plugin from '../plugin'
@@ -81,6 +81,7 @@
   class="hulyToDoLine-container"
   class:hovered
   class:isDone
+  class:isUnavailable
   use:tooltip={{ component: isUnavailable ? IssuePlanningTooltip : undefined, props: constraints ?? {} }}
   on:click|stopPropagation={open}
   on:contextmenu={onContextMenu}
@@ -97,12 +98,14 @@
       {/if}
     </div>
     <WorkItemPresenter {todo} kind={'todo-line'} withoutSpace />
-    <div
-      class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label"
-      style:opacity={isUnavailable ? 0.55 : 1}
-    >
+    <div class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label">
       {todo.title}
     </div>
+    {#if isUnavailable}
+      <div class="secondary-textColor" aria-hidden="true">
+        <Icon icon={IconInfo} size="small" />
+      </div>
+    {/if}
   </div>
   <div class="flex-row-top flex-no-shrink flex-gap-2">
     <div class="flex-row-center min-h-6 max-h-6 flex-gap-2">
@@ -128,3 +131,9 @@
     <ToDoCheckbox checked={isDone} priority={todo.priority} on:value={markDone} />
   </div>
 </button>
+
+<style lang="scss">
+  .hulyToDoLine-container.isUnavailable .hulyToDoLine-title {
+    opacity: 0.55;
+  }
+</style>

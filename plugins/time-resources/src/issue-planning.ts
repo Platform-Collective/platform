@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Class, Doc, Ref, Status } from '@hcengineering/core'
-import type { ToDo } from '@hcengineering/time'
+import type { ToDo, WorkSlot } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 
 export interface IssuePlanningConstraints {
@@ -13,11 +13,24 @@ const HOUR = 60 * 60 * 1000
 /** Longest default slot: one working day. Larger estimates can be extended or split by the user. */
 const MAX_SLOT_HOURS = 8
 
+/** Total duration of workslots that have not started yet. */
+export function getFutureWorkslotsDuration (
+  workslots: ReadonlyArray<Pick<WorkSlot, 'date' | 'dueDate'>>,
+  now: number
+): number {
+  return workslots.reduce(
+    (duration, slot) =>
+      slot.date >= now && slot.dueDate > slot.date ? duration + slot.dueDate - slot.date : duration,
+    0
+  )
+}
+
 /**
  * Default slot length in milliseconds for a slot starting at `start`.
  *
- * Uses the issue's positive remaining hours, capped at one working day and at the end of the start
- * day. Missing or non-positive remaining time keeps the previous, uncapped default.
+ * Uses the issue's positive remaining hours minus the time already reserved in future workslots,
+ * capped at one working day and at the end of the start day. Missing or non-positive remaining time
+ * keeps the previous default, also capped at the end of the start day.
  *
  * The remaining time is derived from `estimation` and `reportedTime` on purpose instead of reading the
  * server-maintained `remainingTime`: older issues may not have that field filled in, and both values
@@ -26,12 +39,14 @@ const MAX_SLOT_HOURS = 8
 export function getIssueSlotDuration (
   issue: Pick<Issue, 'estimation' | 'reportedTime'> | undefined,
   start: number,
+  futureWorkTime: number = 0,
   fallback: number = HOUR / 2
 ): number {
-  const remaining = (issue?.estimation ?? 0) - (issue?.reportedTime ?? 0)
-  if (!Number.isFinite(remaining) || remaining <= 0) return fallback
+  const remaining = (issue?.estimation ?? 0) - (issue?.reportedTime ?? 0) - futureWorkTime / HOUR
   const endOfDay = new Date(start).setHours(24, 0, 0, 0)
-  return Math.min(remaining * HOUR, MAX_SLOT_HOURS * HOUR, endOfDay - start)
+  const untilMidnight = endOfDay - start
+  if (!Number.isFinite(remaining) || remaining <= 0) return Math.min(fallback, untilMidnight)
+  return Math.min(remaining * HOUR, MAX_SLOT_HOURS * HOUR, untilMidnight)
 }
 
 /** Unique ids of all issues that block any of the given issues. */

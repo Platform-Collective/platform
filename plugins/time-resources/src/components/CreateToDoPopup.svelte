@@ -31,7 +31,7 @@
   import DueDateEditor from './DueDateEditor.svelte'
   import PriorityEditor from './PriorityEditor.svelte'
   import Workslots from './Workslots.svelte'
-  import { getIssueSlotDuration } from '../issue-planning'
+  import { getFutureWorkslotsDuration, getIssueSlotDuration } from '../issue-planning'
 
   export let object: Doc | undefined
   export let value: string = ''
@@ -145,7 +145,8 @@
         : undefined
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
-    const defaultDuration = getIssueSlotDuration(issue, date)
+    const futureWorkTime = getFutureWorkslotsDuration(slots, now)
+    const defaultDuration = getIssueSlotDuration(issue, date, futureWorkTime)
     const dueDate = date + defaultDuration
     slots.push({
       eventId: generateEventId(),
