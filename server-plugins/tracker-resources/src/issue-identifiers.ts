@@ -24,26 +24,46 @@ export async function updateIssueIdentifierAliases (txes: Tx[], control: Trigger
   if (updates.length === 0) return []
 
   const ids = [...new Set(updates.map((tx) => tx.objectId))]
+  const historyProjection: Record<string, 0 | 1> = {
+    _id: 1,
+    _class: 1,
+    objectId: 1,
+    modifiedOn: 1,
+    attributes: 1,
+    operations: 1
+  }
   const [issues, aliases, history] = await Promise.all([
     control.findAll(control.ctx, tracker.class.Issue, { _id: { $in: ids } }, { showArchived: true }),
     control.findAll(control.ctx, tracker.class.IssueIdentifierAlias, { issue: { $in: ids } }, { showArchived: true }),
     control.findAll(
       control.ctx,
       core.class.TxCUD,
-      { objectId: { $in: ids } },
-      { sort: { modifiedOn: SortingOrder.Ascending, _id: SortingOrder.Ascending } }
+      {
+        objectId: { $in: ids },
+        $or: [
+          { _class: core.class.TxCreateDoc },
+          { _class: core.class.TxUpdateDoc, 'operations.identifier': { $exists: true } }
+        ]
+      },
+      {
+        sort: { modifiedOn: SortingOrder.Descending, _id: SortingOrder.Descending },
+        projection: historyProjection
+      }
     )
   ])
   const result: Tx[] = []
   const pending = new Set(control.txes.map((tx) => tx._id))
   const matched = new Set<Ref<Tx>>(updates.map((tx) => tx._id))
   for (const issue of issues) {
-    // Triggers run after persistence. Rebuild the state before this batch, then
-    // replay it in order so multiple moves in one batch retain each identifier.
-    const previous = TxProcessor.buildDoc2Doc<Issue>(
-      history.filter((tx) => tx.objectId === issue._id && !pending.has(tx._id))
-    )
-    let identifier = previous?.identifier
+    // Triggers run after persistence. Start with the latest relevant entry before
+    // this batch, then replay it in order to retain every identifier.
+    const previous = history.find((tx) => tx.objectId === issue._id && !pending.has(tx._id))
+    let identifier =
+      previous?._class === core.class.TxCreateDoc
+        ? (previous as TxCreateDoc<Issue>).attributes.identifier
+        : previous?._class === core.class.TxUpdateDoc
+          ? (previous as TxUpdateDoc<Issue>).operations.identifier
+          : undefined
     for (const tx of control.txes) {
       const cud = tx as TxCUD<Issue>
       if (cud.objectId !== issue._id) continue
@@ -52,13 +72,20 @@ export async function updateIssueIdentifierAliases (txes: Tx[], control: Trigger
       } else if (tx._class === core.class.TxUpdateDoc) {
         const next = (tx as TxUpdateDoc<Issue>).operations.identifier
         if (next === undefined) continue
-        if (matched.has(tx._id) && identifier !== undefined && identifier !== next) {
-          result.push(
-            control.txFactory.createTxCreateDoc(tracker.class.IssueIdentifierAlias, issue.space, {
-              identifier,
-              issue: issue._id
+        if (matched.has(tx._id) && identifier !== next) {
+          if (identifier === undefined) {
+            control.ctx.warn('Cannot create issue identifier alias without previous identifier', {
+              issueId: issue._id,
+              txId: tx._id
             })
-          )
+          } else {
+            result.push(
+              control.txFactory.createTxCreateDoc(tracker.class.IssueIdentifierAlias, issue.space, {
+                identifier,
+                issue: issue._id
+              })
+            )
+          }
         }
         identifier = next
       }
