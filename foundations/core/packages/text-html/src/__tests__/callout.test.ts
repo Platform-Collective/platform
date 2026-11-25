@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { getCalloutEmoji, MarkupNodeType, type MarkupNode } from '@hcengineering/text-core'
+import { getCalloutEmoji, MarkupMarkType, MarkupNodeType, type MarkupNode } from '@hcengineering/text-core'
 import { htmlToMarkup, markupToHtml } from '..'
 
 describe('callout HTML conversion', () => {
@@ -69,6 +69,34 @@ describe('callout HTML conversion', () => {
     expect(markupToHtml(doc)).toBe(
       '<p>A < B & C</p><div data-type="callout" data-kind="info" data-emoji="ℹ️"><p>A < B & C</p></div>'
     )
+  })
+
+  it('escapes content text on demand without changing the default HTML output', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          attrs: { textAlign: null },
+          content: [
+            { type: MarkupNodeType.text, text: 'Use <b>literal</b> & ' },
+            { type: MarkupNodeType.text, text: 'bold', marks: [{ type: MarkupMarkType.bold }] }
+          ]
+        }
+      ]
+    }
+
+    const html = markupToHtml(doc, { escapeText: true })
+    expect(html).toBe('<p>Use &lt;b&gt;literal&lt;/b&gt; &amp; <strong>bold</strong></p>')
+    const content = htmlToMarkup(html).content?.[0].content ?? []
+    expect(content.map((node) => node.text ?? '').join('')).toBe('Use <b>literal</b> & bold')
+    expect(
+      content
+        .filter((node) => node.marks?.some((mark) => mark.type === MarkupMarkType.bold) !== true)
+        .map((node) => node.text ?? '')
+        .join('')
+    ).toBe('Use <b>literal</b> & ')
+    expect(markupToHtml(doc)).toContain('Use <b>literal</b> & ')
   })
 
   it('handles split text nodes consistently inside and outside callouts', () => {

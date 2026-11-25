@@ -46,7 +46,7 @@ interface IState {
   quote: (str: string) => string
   repeat: (str: string, n: number) => string
   markString: (mark: MarkupMark, open: boolean, parent: MarkupNode, index: number) => string
-  renderHtml: (node: MarkupNode) => string
+  renderHtml: (node: MarkupNode, escapeText?: boolean) => string
   refUrl: string
   imageUrl: string
   inAutolink?: boolean
@@ -350,11 +350,12 @@ export const storeNodes: Record<string, NodeProcessor> = {
   callout: (state, node) => {
     if (parseCalloutEmoji(nodeAttrs(node).emoji) !== null) {
       // GitHub admonitions have no custom emoji attribute, so retain the lossless HTML form for those.
-      state.write(state.renderHtml(node).replace(/\n/g, '&#10;'))
+      state.write(state.renderHtml(node, true).replace(/\n/g, '&#10;'))
       state.closeBlock(node)
       return
     }
-    state.wrapBlock('> ', '> [!NOTE]\n> ', node, () => {
+    state.wrapBlock('> ', '> [!NOTE]', node, () => {
+      state.ensureNewLine()
       state.renderContent(node)
     })
   },
@@ -533,7 +534,7 @@ export const storeMarks: Record<string, MarkProcessor> = {
   }
 }
 
-export type HtmlWriter = (markup: MarkupNode) => string
+export type HtmlWriter = (markup: MarkupNode, escapeText?: boolean) => string
 
 export interface StateOptions {
   tightLists: boolean
@@ -566,7 +567,7 @@ export class MarkdownState implements IState {
     this.inTightList = false
     this.refUrl = options.refUrl
     this.imageUrl = options.imageUrl
-    this.htmlWriter = options.htmlWriter ?? markupToHtml
+    this.htmlWriter = options.htmlWriter ?? ((node, escapeText = false) => markupToHtml(node, { escapeText }))
 
     this.options = options
   }
@@ -592,8 +593,8 @@ export class MarkdownState implements IState {
     }
   }
 
-  renderHtml (node: MarkupNode): string {
-    return this.htmlWriter(node)
+  renderHtml (node: MarkupNode, escapeText = false): string {
+    return this.htmlWriter(node, escapeText)
   }
 
   wrapBlock (delim: string, firstDelim: string | null, node: MarkupNode, f: () => void): void {

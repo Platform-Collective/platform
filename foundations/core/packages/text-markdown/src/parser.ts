@@ -54,7 +54,6 @@ interface ParsingSpecialRule {
   getAttrs?: (tok: Token, state: MarkdownParseState) => Attrs | undefined
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ParsingIgnoreRule {
   // empty
 }
@@ -654,11 +653,12 @@ export const isListItemToken = (token?: Token): boolean => token?.type === 'list
 
 const calloutMarker = '[!NOTE]'
 
-function convertCallout (tokens: Token[], open: number): boolean {
+function convertCallout (tokens: Token[], open: number, close: number): boolean {
   if (
     tokens[open].type !== 'blockquote_open' ||
     tokens[open + 1]?.type !== 'paragraph_open' ||
-    tokens[open + 2]?.type !== 'inline'
+    tokens[open + 2]?.type !== 'inline' ||
+    tokens[open + 3]?.type !== 'paragraph_close'
   ) {
     return false
   }
@@ -667,11 +667,6 @@ function convertCallout (tokens: Token[], open: number): boolean {
   if (inline.content !== calloutMarker && !inline.content.startsWith(calloutMarker + '\n')) {
     return false
   }
-
-  const close = tokens.findIndex(
-    (token, index) => index > open && token.type === 'blockquote_close' && token.level === tokens[open].level
-  )
-  if (close === -1) return false
 
   tokens[open].type = 'callout_open'
   tokens[close].type = 'callout_close'
@@ -684,6 +679,36 @@ function convertCallout (tokens: Token[], open: number): boolean {
   }
   if (children[0]?.type === 'softbreak') children.shift()
   return true
+}
+
+function convertCallouts (tokens: Token[]): void {
+  const openBlockquotes: number[] = []
+  const markerParagraphs = new Set<number>()
+
+  for (let index = 0; index < tokens.length; index++) {
+    if (tokens[index].type === 'blockquote_open') {
+      openBlockquotes.push(index)
+    } else if (tokens[index].type === 'blockquote_close') {
+      const open = openBlockquotes.pop()
+      if (open === undefined) continue
+
+      const marker = tokens[open + 2]?.content ?? ''
+      const markerOnly = marker === calloutMarker || marker === calloutMarker + '\n'
+      if (convertCallout(tokens, open, index) && markerOnly && index > open + 4) {
+        markerParagraphs.add(open + 1)
+        markerParagraphs.add(open + 2)
+        markerParagraphs.add(open + 3)
+      }
+    }
+  }
+
+  let write = 0
+  for (let read = 0; read < tokens.length; read++) {
+    if (!markerParagraphs.has(read)) {
+      tokens[write++] = tokens[read]
+    }
+  }
+  tokens.length = write
 }
 
 export interface TaskListEnv {
@@ -739,9 +764,7 @@ export class MarkdownParser {
   }
 
   calloutRule: RuleCore = (state: StateCore): boolean => {
-    for (let i = 0; i < state.tokens.length; i++) {
-      convertCallout(state.tokens, i)
-    }
+    convertCallouts(state.tokens)
     return true
   }
 

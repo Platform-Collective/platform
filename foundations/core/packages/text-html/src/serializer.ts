@@ -26,14 +26,15 @@ import {
   MarkupNodeType
 } from '@hcengineering/text-core'
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface HtmlSerializerOptions {}
+export interface HtmlSerializerOptions {
+  escapeText?: boolean
+}
 
 export class HtmlSerializer {
   constructor (private readonly options: HtmlSerializerOptions = {}) {}
 
   serialize (markup: MarkupNode): string {
-    const builder = new NodeBuilder(true)
+    const builder = new NodeBuilder(true, this.options.escapeText === true)
     addNode(builder, markup)
     return builder.toText()
   }
@@ -42,10 +43,14 @@ export class HtmlSerializer {
 class NodeBuilder {
   textParts: string[] = []
 
-  constructor (private readonly addTags: boolean) {}
+  constructor (private readonly addTags: boolean, private readonly escapeText = false) {}
 
   addText (text: string): void {
     this.textParts.push(text)
+  }
+
+  addContentText (text: string): void {
+    this.addText(this.escapeText ? escapeHtml(text) : text)
   }
 
   openTag (
@@ -230,7 +235,7 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     builder.closeTag('code')
     builder.closeTag('pre')
   } else if (node.type === MarkupNodeType.text) {
-    builder.addText(node.text ?? '')
+    builder.addContentText(node.text ?? '')
   } else if (node.type === MarkupNodeType.gif) {
     // Deliberately not modelled on the image case below: that one reads attrs.src only, so a
     // library gif (file-id set, src null) would serialize to src="undefined" and lose the blob
@@ -265,7 +270,7 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
       'data-objectclass': attrs.objectclass,
       'data-label': attrs.label
     })
-    builder.addText(label !== undefined ? `@${label}` : '')
+    builder.addContentText(label !== undefined ? `@${label}` : '')
     builder.closeTag('span')
   } else if (node.type === MarkupNodeType.hard_break) {
     builder.openTag('br', {}, { selfClosing: true })
