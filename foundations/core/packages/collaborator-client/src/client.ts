@@ -49,6 +49,17 @@ export const CONTENT_NOTICE_MAP = 'content-notices'
 export const CONTENT_NOTICE_KEY = 'latest'
 
 /** @public */
+export function parseCollaborationNotice (value: unknown): CollaborationNotice | undefined {
+  if (value === null || typeof value !== 'object' || !('type' in value) || !('params' in value)) return
+
+  const { type, params } = value
+  if (typeof type !== 'string' || type === '' || params === null || typeof params !== 'object') return
+  if (!('title' in params) || typeof params.title !== 'string') return
+
+  return { type, params: { title: params.title } }
+}
+
+/** @public */
 export interface UpdateContentRequest {
   content: Record<string, Markup>
   notice?: CollaborationNotice

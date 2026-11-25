@@ -16,6 +16,7 @@
 import {
   CONTENT_NOTICE_KEY,
   CONTENT_NOTICE_MAP,
+  parseCollaborationNotice,
   type UpdateContentRequest,
   type UpdateContentResponse
 } from '@hcengineering/collaborator-client'
@@ -31,19 +32,25 @@ export async function updateContent (
   payload: UpdateContentRequest,
   params: RpcMethodParams
 ): Promise<UpdateContentResponse> {
-  const { content, notice } = payload
+  const { content, notice: rawNotice } = payload
   const { hocuspocus, transformer } = params
 
-  const updates = ctx.withSync('transform', {}, () => {
-    const updates: Record<string, Uint8Array> = {}
+  const notice = parseCollaborationNotice(rawNotice)
+  if (rawNotice !== undefined && notice === undefined) {
+    throw new Error('Invalid collaboration notice')
+  }
 
-    Object.entries(content).forEach(([field, markup]) => {
-      const ydoc = transformer.toYdoc(markup, field)
-      updates[field] = encodeStateAsUpdate(ydoc)
-    })
+  if (content === null || typeof content !== 'object' || Array.isArray(content)) {
+    throw new Error('Invalid document content')
+  }
+  const fields = Object.entries(content)
+  if (fields.some(([field, markup]) => field === CONTENT_NOTICE_MAP || typeof markup !== 'string')) {
+    throw new Error('Invalid document content')
+  }
 
-    return updates
-  })
+  const updates = ctx.withSync('transform', {}, () =>
+    fields.map(([field, markup]) => ({ field, update: encodeStateAsUpdate(transformer.toYdoc(markup, field)) }))
+  )
 
   const connection = await ctx.with('connect', {}, () => {
     return hocuspocus.openDirectConnection(documentName, context)
@@ -52,18 +59,16 @@ export async function updateContent (
   try {
     await ctx.with('update', {}, () =>
       connection.transact((document) => {
+        // Resolve shared types before changing content. Yjs does not roll back transactions on exceptions.
+        const fragments = updates.map(({ field, update }) => ({ fragment: document.getXmlFragment(field), update }))
+        const notices = notice === undefined ? undefined : document.getMap(CONTENT_NOTICE_MAP)
+
         document.transact(() => {
-          Object.entries(updates).forEach(([field, update]) => {
-            const fragment = document.getXmlFragment(field)
+          for (const { fragment, update } of fragments) {
             fragment.delete(0, fragment.length)
             applyUpdate(document, update)
-          })
-          if (notice !== undefined) {
-            document.getMap(CONTENT_NOTICE_MAP).set(CONTENT_NOTICE_KEY, {
-              type: notice.type,
-              params: { title: notice.params.title }
-            })
           }
+          if (notice !== undefined) notices?.set(CONTENT_NOTICE_KEY, notice)
         }, connection)
       })
     )

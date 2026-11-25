@@ -24,6 +24,19 @@ describe('observeContentNotices', () => {
     stop()
   })
 
+  it('ignores malformed notices received in a Yjs update', () => {
+    const source = new Doc()
+    const target = new Doc()
+    const callback = jest.fn()
+    const stop = observeContentNotices(target, () => true, callback)
+
+    source.getMap(CONTENT_NOTICE_MAP).set(CONTENT_NOTICE_KEY, { type: 'document-restored' })
+    applyUpdate(target, encodeStateAsUpdate(source))
+
+    expect(callback).not.toHaveBeenCalled()
+    stop()
+  })
+
   it('ignores notices present during initial synchronization and stops observing', () => {
     const ydoc = new Doc()
     const callback = jest.fn()
@@ -31,15 +44,15 @@ describe('observeContentNotices', () => {
     const stop = observeContentNotices(ydoc, () => synced, callback)
     const notices = ydoc.getMap(CONTENT_NOTICE_MAP)
 
-    notices.set(CONTENT_NOTICE_KEY, { type: 'initial', params: {} })
+    notices.set(CONTENT_NOTICE_KEY, { type: 'document-restored', params: { title: 'initial' } })
     expect(callback).not.toHaveBeenCalled()
 
     synced = true
-    notices.set(CONTENT_NOTICE_KEY, { type: 'latest', params: {} })
+    notices.set(CONTENT_NOTICE_KEY, { type: 'document-restored', params: { title: 'latest' } })
     expect(callback).toHaveBeenCalledTimes(1)
 
     stop()
-    notices.set(CONTENT_NOTICE_KEY, { type: 'later', params: {} })
+    notices.set(CONTENT_NOTICE_KEY, { type: 'document-restored', params: { title: 'later' } })
     expect(callback).toHaveBeenCalledTimes(1)
   })
 })

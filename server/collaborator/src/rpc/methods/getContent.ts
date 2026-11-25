@@ -36,11 +36,9 @@ export async function getContent (
 
   try {
     const content = await ctx.with('transform', {}, async () => {
-      const object: Record<string, string> = {}
+      let object: Record<string, string> = {}
       await connection.transact((document) => {
-        document.share.forEach((_, field) => {
-          object[field] = transformer.fromYdoc(document, field)
-        })
+        object = transformer.fromYdoc(document)
       })
       return object
     })
