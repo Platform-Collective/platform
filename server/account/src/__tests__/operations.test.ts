@@ -322,7 +322,7 @@ describe('account operations', () => {
   })
 
   describe('listWorkspaceInvites', () => {
-    test('returns normalized domains of existing restricted invites for maintainers', async () => {
+    test('returns only normalized domains to maintainers, including for owner invites', async () => {
       ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.Maintainer)
       ;(mockDb.invite.find as jest.Mock).mockResolvedValue([
         {
@@ -334,6 +334,14 @@ describe('account operations', () => {
           allowedDomains: 'example.com,example.org'
         },
         {
+          id: 'owner-restricted',
+          workspaceUuid: mockWorkspace.uuid,
+          expiresOn: -1,
+          remainingUses: -1,
+          role: AccountRole.Owner,
+          allowedDomains: 'owner.example.com'
+        },
+        {
           id: 'unrestricted',
           workspaceUuid: mockWorkspace.uuid,
           expiresOn: -1,
@@ -343,7 +351,8 @@ describe('account operations', () => {
       ])
 
       await expect(listWorkspaceInvites(mockCtx, mockDb, mockBranding, mockToken, {})).resolves.toEqual([
-        { id: 'restricted', allowedDomains: ['example.com', 'example.org'] }
+        { allowedDomains: ['example.com', 'example.org'] },
+        { allowedDomains: ['owner.example.com'] }
       ])
       expect(mockDb.invite.find).toHaveBeenCalledWith({ workspaceUuid: mockWorkspace.uuid })
     })

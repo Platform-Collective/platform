@@ -243,7 +243,7 @@
           <StatusControl status={existingInvitesError} />
         </div>
       {:else}
-        {#each existingInvites as invite (invite.id)}
+        {#each existingInvites as invite}
           <div class="existing-invite-domains" data-id="existing-invite-domains">
             {invite.allowedDomains.map((domain) => '@' + domain).join(', ')}
           </div>

@@ -539,7 +539,6 @@ export interface InviteInfo {
 }
 
 export interface InviteDetails {
-  id: string
   allowedDomains: string[]
 }
 

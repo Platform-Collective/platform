@@ -1179,7 +1179,7 @@ export async function listWorkspaceInvites (
   for (const invite of invites) {
     const { domains } = parseEmailDomains(invite.allowedDomains)
     if (domains.length > 0) {
-      result.push({ id: invite.id, allowedDomains: domains })
+      result.push({ allowedDomains: domains })
     }
   }
   return result
