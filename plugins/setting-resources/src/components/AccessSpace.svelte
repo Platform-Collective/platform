@@ -6,16 +6,17 @@
   import { getClient } from '@hcengineering/presentation'
   import { Button, Label } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { openDoc } from '@hcengineering/view-resources'
   import type { SpaceAccess } from '../access-overview'
   import setting from '../plugin'
+  import { openSpaceEditor } from '../space-editor'
   import AccessAccount from './AccessAccount.svelte'
   import AccessCollapse from './AccessCollapse.svelte'
 
   export let entry: SpaceAccess
   export let employees: Map<AccountUuid, Employee>
 
-  const hierarchy = getClient().getHierarchy()
+  const client = getClient()
+  const hierarchy = client.getHierarchy()
   let expanded = false
 </script>
 
@@ -32,8 +33,8 @@
       kind="link"
       size="small"
       padding="0"
-      on:click={() => {
-        void openDoc(hierarchy, entry.space)
+      on:click={(event) => {
+        void openSpaceEditor(client, entry.space, event)
       }}
     >
       <strong slot="content">{entry.space.name}</strong>
