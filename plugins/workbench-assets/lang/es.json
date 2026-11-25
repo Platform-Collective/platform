@@ -24,6 +24,8 @@
     "OpenInNewTab": "Abrir en una nueva pestaña",
     "NewVersionAvailable": "Nueva versión disponible",
     "PleaseUpdate": "Por favor, actualice",
+    "SessionExpiryWarning": "La sesión caducará pronto",
+    "SessionExpiryWarningDescription": "Tu sesión caducará en unos minutos. Guarda el trabajo que no hayas enviado antes de que se cierre la sesión.",
     "ServerUnderMaintenance": "Preparando el espacio de trabajo para la nueva versión...",
     "WorkspaceCreating": "Creation in progress...",
     "AccessDenied": "El objeto no existe o no tienes permiso para acceder a él.",

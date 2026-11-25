@@ -24,6 +24,8 @@
     "OpenInNewTab": "在新标签页中打开",
     "NewVersionAvailable": "有新版本可用",
     "PleaseUpdate": "请更新",
+    "SessionExpiryWarning": "会话即将过期",
+    "SessionExpiryWarningDescription": "会话将在几分钟后过期。请在退出登录前保存尚未发送的内容。",
     "ServerUnderMaintenance": "正在为新版本准备工作区...",
     "WorkspaceCreating": "创建进行中...",
     "AccessDenied": "对象不存在或您无权访问",

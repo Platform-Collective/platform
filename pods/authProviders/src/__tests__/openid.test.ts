@@ -329,7 +329,7 @@ describe('B. registerOpenid wiring — non-blocking startup, 503 pending window,
     return koaCtx
   }
 
-  test.each([undefined, 'invalid', '120'])('session config %s keeps OIDC available', async (value) => {
+  test.each([undefined, '120'])('session config %s keeps OIDC available', async (value) => {
     if (value === undefined) delete process.env.OPENID_SESSION_LIFETIME
     else process.env.OPENID_SESSION_LIFETIME = value
     ;(Issuer.discover as jest.Mock).mockResolvedValue({ Client: jest.fn() })
@@ -353,11 +353,17 @@ describe('B. registerOpenid wiring — non-blocking startup, 503 pending window,
       expect((handleProviderAuth as jest.Mock).mock.calls[1][12].exp).toBe(before + 125)
     } else {
       expect(options).toBeUndefined()
-      if (value === undefined) expect(ctx.warn).toHaveBeenCalledTimes(1)
-      else expect(ctx.error).toHaveBeenCalledWith(expect.stringContaining('falling back'), expect.anything())
+      expect(ctx.warn).toHaveBeenCalledTimes(1)
     }
     expect(passport.use).toHaveBeenCalledTimes(1)
     expect(user).toEqual({ email: 'person@example.com', email_verified: true, sub: 'subject' })
+  })
+
+  test('invalid session config fails startup before discovery', () => {
+    process.env.OPENID_SESSION_LIFETIME = 'invalid'
+
+    expect(callRegister).toThrow('OPENID_SESSION_LIFETIME must be an integer between 60 and 31536000 seconds')
+    expect(Issuer.discover).not.toHaveBeenCalled()
   })
 
   test('1. route registered synchronously; pending window responds 503 + Retry-After', async () => {

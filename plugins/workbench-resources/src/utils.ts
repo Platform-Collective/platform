@@ -48,6 +48,7 @@ import workbench, { type Application, type NavigatorModel } from '@hcengineering
 import { derived, get, writable } from 'svelte/store'
 
 import { deleteCookieForLogout } from './logout'
+import { clearOidcSessionExpiryWarning } from './session-expiry'
 
 export const workspaceCreating = writable<number | undefined>(undefined)
 
@@ -272,6 +273,7 @@ export async function reportWorkspaceRead (): Promise<void> {
 }
 
 export async function logOut (cookieTimeoutMs?: number): Promise<void> {
+  clearOidcSessionExpiryWarning()
   clearWorkspaceFaviconCache()
   const accountsUrl = getMetadata(login.metadata.AccountsUrl)
   await deleteCookieForLogout(async () => {

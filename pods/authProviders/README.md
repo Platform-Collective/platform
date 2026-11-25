@@ -10,17 +10,16 @@ changing it. Each successful login receives a fresh deadline.
 
 Unset retains legacy behavior: no JWT expiry and a one-year account cookie. One
 startup warning names the unset variable. Invalid values (including empty values,
-fractional seconds and `idp`) log a startup error and **fall back to the legacy
-unbounded lifetime**. This fail-open policy preserves availability for OIDC-only
-deployments; monitor startup logs to detect configuration mistakes. The provider
-remains registered with its normal discovery retries and temporary 503 responses
-while discovery is pending.
+fractional seconds and `idp`) fail startup instead of silently disabling the
+configured lifetime. The provider otherwise retains its normal discovery retries
+and temporary 503 responses while discovery is pending.
 
 Configured sessions carry `exp` and `extra.authMethod: 'oidc'`. Account/workspace
 reissue paths preserve the original deadline; cookies expire at the earlier of
 that deadline or one year. Creating/joining/leaving a workspace does not renew the
 session. Reissue does not copy `sub` or `grant` into cookies or broaden their
-existing permissions.
+existing permissions. The frontend warns five minutes before expiry, or
+immediately on connection when less time remains, so users can save unsent work.
 
 Transactors reject new requests at expiry and remove an expired OIDC session from
 broadcast/session maps on its next tick (within one second). A terminating error

@@ -271,15 +271,9 @@ export function registerOpenid (
   }
   openidRouters.add(router)
 
-  let sessionLifetime: number | undefined
-  try {
-    sessionLifetime = parseOidcSessionLifetime(process.env.OPENID_SESSION_LIFETIME)
-    if (sessionLifetime === undefined) {
-      measureCtx.warn('OPENID_SESSION_LIFETIME is unset; OIDC sessions retain the legacy unbounded lifetime')
-    }
-  } catch (err) {
-    // Availability policy: invalid configuration must not lock out OIDC-only deployments.
-    measureCtx.error('Invalid OPENID_SESSION_LIFETIME; falling back to legacy unbounded OIDC sessions', { err })
+  const sessionLifetime = parseOidcSessionLifetime(process.env.OPENID_SESSION_LIFETIME)
+  if (sessionLifetime === undefined) {
+    measureCtx.warn('OPENID_SESSION_LIFETIME is unset; OIDC sessions retain the legacy unbounded lifetime')
   }
 
   let oidcReady = false

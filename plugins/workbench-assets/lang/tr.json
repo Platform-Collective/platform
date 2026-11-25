@@ -24,6 +24,8 @@
     "OpenInNewTab": "Yeni sekmede aç",
     "NewVersionAvailable": "Yeni sürüm mevcut",
     "PleaseUpdate": "Lütfen güncelleyin",
+    "SessionExpiryWarning": "Oturumun süresi yakında dolacak",
+    "SessionExpiryWarningDescription": "Oturumunuzun süresi birkaç dakika içinde dolacak. Oturum kapatılmadan önce gönderilmemiş çalışmanızı kaydedin.",
     "ServerUnderMaintenance": "Çalışma alanı yeni sürüm için hazırlanıyor...",
     "WorkspaceCreating": "Oluşturma devam ediyor...",
     "AccessDenied": "Nesne mevcut değil veya erişim izniniz yok.",

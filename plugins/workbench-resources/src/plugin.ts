@@ -42,6 +42,8 @@ export default mergeIds(workbenchId, workbench, {
     OpenInNewTab: '' as IntlString,
     NewVersionAvailable: '' as IntlString,
     PleaseUpdate: '' as IntlString,
+    SessionExpiryWarning: '' as IntlString,
+    SessionExpiryWarningDescription: '' as IntlString,
     WorkspaceCreating: '' as IntlString,
     AccessDenied: '' as IntlString,
     Widget: '' as IntlString,

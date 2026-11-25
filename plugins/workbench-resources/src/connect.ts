@@ -50,19 +50,22 @@ import presentation, {
   upgradeDownloadProgress
 } from '@hcengineering/presentation'
 import {
+  addNotification,
   desktopPlatform,
   getCurrentLocation,
   locationStorageKeyId,
   navigate,
+  NotificationSeverity,
   setMetadataLocalStorage,
   themeStore
 } from '@hcengineering/ui'
 import { get, writable } from 'svelte/store'
 
 import plugin from './plugin'
+import { scheduleOidcSessionExpiryWarning } from './session-expiry'
 import { logOut, workspaceCreating } from './utils'
 import { WorkbenchEvents } from '@hcengineering/workbench'
-import { allowGuestSignUpStore } from '@hcengineering/view-resources'
+import { allowGuestSignUpStore, SimpleNotification } from '@hcengineering/view-resources'
 
 export const error = writable<string | undefined>(undefined)
 export const errorActions = writable<ErrorAction[]>([])
@@ -71,6 +74,22 @@ export interface ErrorAction {
   action: () => void
 }
 const versionStorageKey = 'last_server_version'
+
+function showOidcSessionExpiryWarning (): void {
+  const language = get(themeStore).language
+  translateCB(plugin.string.SessionExpiryWarning, {}, language, (title) => {
+    translateCB(plugin.string.SessionExpiryWarningDescription, {}, language, (description) => {
+      addNotification(
+        title,
+        description,
+        SimpleNotification,
+        undefined,
+        NotificationSeverity.Warning,
+        'oidc-session-expiry'
+      )
+    })
+  })
+}
 
 let _token: string | undefined
 let _client: Client | undefined
@@ -590,6 +609,7 @@ export async function connect (title: string): Promise<Client | undefined> {
     await setClient(newClient)
     await setCommunicationClient(newClient)
   })
+  scheduleOidcSessionExpiryWarning(decodeTokenPayload(token), showOidcSessionExpiryWarning)
   await ctx.with('broadcast-connected', {}, async () => {
     await broadcastEvent(plugin.event.NotifyConnection, me)
   })

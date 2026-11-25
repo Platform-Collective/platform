@@ -24,6 +24,8 @@
     "OpenInNewTab": "Otevřít na nové kartě",
     "NewVersionAvailable": "Je k dispozici nová verze",
     "PleaseUpdate": "Aktualizujte prosím",
+    "SessionExpiryWarning": "Relace brzy vyprší",
+    "SessionExpiryWarningDescription": "Vaše relace vyprší za několik minut. Před odhlášením uložte neodeslanou práci.",
     "ServerUnderMaintenance": "Příprava pracovního prostoru na novou verzi...",
     "WorkspaceCreating": "Vytváření probíhá...",
     "AccessDenied": "Objekt neexistuje nebo k němu nemáte oprávnění.",

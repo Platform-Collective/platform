@@ -24,6 +24,8 @@
     "OpenInNewTab": "Otwórz w nowej karcie",
     "NewVersionAvailable": "Nowa wersja jest dostępna",
     "PleaseUpdate": "Proszę zaktualizować",
+    "SessionExpiryWarning": "Sesja wkrótce wygaśnie",
+    "SessionExpiryWarningDescription": "Sesja wygaśnie za kilka minut. Zapisz niewysłaną pracę przed wylogowaniem.",
     "ServerUnderMaintenance": "Przystosowywanie przestrzeni roboczej do nowej wersji...",
     "WorkspaceCreating": "Trwa tworzenie...",
     "AccessDenied": "Przedmiot nie istnieje lub nie masz do niego dostępu.",
