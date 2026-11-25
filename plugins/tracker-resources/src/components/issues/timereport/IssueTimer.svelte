@@ -32,14 +32,14 @@
   const client = getClientWithTxErrors()
   const employee = getCurrentEmployee()
   const account = getCurrentAccount()
-  const timerId = account.uuid as Ref<IssueTimer>
+  const timerId = String(account.uuid) as Ref<IssueTimer>
   const timerQuery = createQuery()
   let personalSpace: Ref<PersonSpace> | undefined
   let timer: IssueTimer | undefined
   let now = Date.now()
   let busy = false
   let reviewing = false
-  let missingReportId: string | undefined
+  let missingReportId: Ref<TimeSpendReport> | undefined
   let tick: ReturnType<typeof setInterval> | undefined
 
   async function initialize(): Promise<void> {
@@ -94,7 +94,7 @@
     return saved
   }
 
-  async function stopTimer(reportId: string): Promise<void> {
+  async function stopTimer(reportId: Ref<TimeSpendReport>): Promise<void> {
     const stopped = await stopIssueTimer(client, timerId, reportId)
     if (stopped === undefined) return
     const hours = getStoppedTimerHours(stopped)
