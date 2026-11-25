@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Markup } from '@hcengineering/core'
   import { IntlString } from '@hcengineering/platform'
-  import presentation, { MessageViewer, getFileUrl, getImageSize, imageSizeToRatio } from '@hcengineering/presentation'
+  import presentation, { MessageViewer, getFileUrl, getImageWidth } from '@hcengineering/presentation'
   import { EmptyMarkup } from '@hcengineering/text'
   import textEditor, { RefAction } from '@hcengineering/text-editor'
   import {
@@ -218,14 +218,14 @@
       return
     }
 
-    const size = await getImageSize(file)
+    const width = await getImageWidth(file)
 
     editor.editorHandler.insertContent(
       {
         type: 'image',
         attrs: {
           'file-id': attached.file,
-          width: imageSizeToRatio(size.width, size.pixelRatio)
+          width
         }
       },
       {
