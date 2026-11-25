@@ -2,20 +2,44 @@
 
 import chunter from '@hcengineering/chunter'
 import activity from '@hcengineering/activity'
-import core, { type Account, AccountRole, setCurrentAccount } from '@hcengineering/core'
+import { permissionsStore } from '@hcengineering/contact-resources'
+import core, { type Account, AccountRole, setCurrentAccount, type Status } from '@hcengineering/core'
 import { getClient } from '@hcengineering/presentation'
-import task from '@hcengineering/task'
-import { type Issue } from '@hcengineering/tracker'
-import { canChangeDoc } from '@hcengineering/view-resources'
-import { canMarkIssueDuplicate, canShowMarkIssueDuplicate, markIssueDuplicate } from '../duplicate-issue'
+import task, { type TaskType } from '@hcengineering/task'
+import { joinedProjectsStore, taskTypeStore } from '@hcengineering/task-resources'
+import { type Issue, type Project } from '@hcengineering/tracker'
+import { canChangeDoc, statusStore } from '@hcengineering/view-resources'
+import { get } from 'svelte/store'
+import {
+  canMarkIssueDuplicate,
+  canShowMarkIssueDuplicate,
+  getEditableDuplicateProjectIds,
+  markIssueDuplicate
+} from '../duplicate-issue'
 import { updateIssueRelation } from '../issues'
 import tracker from '../plugin'
 import { canEditIssue } from '../utils'
 
-jest.mock('@hcengineering/contact-resources', () => ({ permissionsStore: {} }))
+function mockWritable<T>(value: T): { value: T, set: (next: T) => void } {
+  return {
+    value,
+    set (next: T): void {
+      this.value = next
+    }
+  }
+}
+
+jest.mock('@hcengineering/contact-resources', () => ({ permissionsStore: mockWritable({}) }))
 jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
-jest.mock('@hcengineering/view-resources', () => ({ canChangeDoc: jest.fn() }))
-jest.mock('svelte/store', () => ({ get: () => ({}) }))
+jest.mock('@hcengineering/task-resources', () => ({
+  joinedProjectsStore: mockWritable([]),
+  taskTypeStore: mockWritable(new Map())
+}))
+jest.mock('@hcengineering/view-resources', () => ({
+  canChangeDoc: jest.fn(),
+  statusStore: mockWritable({ byId: new Map(), array: [] })
+}))
+jest.mock('svelte/store', () => ({ get: (store: { value: unknown }) => store.value }))
 jest.mock('../utils', () => ({ canEditIssue: jest.fn() }))
 jest.mock('../issues', () => ({ updateIssueRelation: jest.fn() }))
 jest.mock('@hcengineering/platform', () => ({
@@ -41,7 +65,14 @@ const original: Issue = {
   space: 'other-project' as Issue['space'],
   identifier: 'OTHER-42'
 }
-const canceled = { _id: 'canceled', category: task.statusCategory.Lost }
+const open = { _id: 'open', category: task.statusCategory.Active } as unknown as Status
+const done = { _id: 'done', category: task.statusCategory.Won } as unknown as Status
+const canceled = { _id: 'canceled', category: task.statusCategory.Lost } as unknown as Status
+const taskType = {
+  _id: 'kind',
+  parent: 'workflow',
+  statuses: [canceled._id]
+} as unknown as TaskType
 const ops = {
   match: jest.fn(),
   update: jest.fn(),
@@ -51,28 +82,33 @@ const ops = {
 const client = { findOne: jest.fn(), findAll: jest.fn(), apply: jest.fn() }
 let documents: Map<string, unknown>
 
+function setTaskType (update: Partial<TaskType> = {}): void {
+  const value = { ...taskType, ...update }
+  taskTypeStore.set(new Map([[value._id, value]]))
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
   documents = new Map<string, unknown>([
     [duplicate._id, duplicate],
-    [original._id, original],
-    ['project', { type: 'workflow' }],
-    ['kind', { parent: 'workflow', statuses: ['canceled'] }],
-    ['open', { _id: 'open', category: task.statusCategory.Active }],
-    ['done', { _id: 'done', category: task.statusCategory.Won }],
-    ['canceled', canceled]
+    [original._id, original]
   ])
+  statusStore.set({
+    byId: new Map([open, done, canceled].map((status) => [status._id, status])),
+    array: [open, done, canceled]
+  })
+  setTaskType()
+  joinedProjectsStore.set([
+    { _id: duplicate.space, type: taskType.parent },
+    { _id: original.space, type: taskType.parent }
+  ] as Project[])
   client.findOne.mockImplementation(async (_class, query: { _id: string }) => documents.get(query._id))
-  client.findAll.mockImplementation(async (_class) =>
-    _class === core.class.Status
-      ? [canceled]
-      : [
-          { attachedTo: duplicate._id, collaborator: 'alice' },
-          { attachedTo: duplicate._id, collaborator: 'bob' },
-          { attachedTo: duplicate._id, collaborator: 'bob' },
-          { attachedTo: original._id, collaborator: 'alice' }
-        ]
-  )
+  client.findAll.mockResolvedValue([
+    { attachedTo: duplicate._id, collaborator: 'alice' },
+    { attachedTo: duplicate._id, collaborator: 'bob' },
+    { attachedTo: duplicate._id, collaborator: 'bob' },
+    { attachedTo: original._id, collaborator: 'alice' }
+  ])
   client.apply.mockReturnValue(ops)
   ops.commit.mockResolvedValue({ result: true })
   jest.mocked(getClient).mockReturnValue(client as unknown as ReturnType<typeof getClient>)
@@ -80,6 +116,12 @@ beforeEach(() => {
   setCurrentAccount(account as Account)
   jest.mocked(canChangeDoc).mockReturnValue(true)
   jest.mocked(canEditIssue).mockResolvedValue(true)
+})
+
+it('filters duplicate target projects by edit permission', () => {
+  jest.mocked(canChangeDoc).mockImplementation((_class, space) => space === 'editable')
+  const projects = [{ _id: 'editable' }, { _id: 'readonly' }] as Project[]
+  expect(getEditableDuplicateProjectIds(projects, get(permissionsStore))).toEqual(['editable'])
 })
 
 it('links both issues, records activity, cancels the duplicate and unions subscribers in one batch', async () => {
@@ -98,14 +140,20 @@ it('links both issues, records activity, cancels the duplicate and unions subscr
       duplicate._id,
       'activity',
       tracker.string.DuplicateOf,
-      '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'
+      {
+        __activityInfoMessageMarkup:
+          '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'
+      }
     ],
     [
       'other-project',
       original._id,
       'activity',
       tracker.string.MarkedAsDuplicateOfThis,
-      '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>'
+      {
+        __activityInfoMessageMarkup:
+          '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>'
+      }
     ]
   ])
   expect(ops.addCollection).toHaveBeenCalledWith(
@@ -143,13 +191,13 @@ it('rejects read-only guests and non-single selections', async () => {
 })
 
 it('does not write when the task type has no allowed canceled status', async () => {
-  documents.set('kind', { parent: 'workflow', statuses: ['open'] })
+  setTaskType({ statuses: [open._id] })
   await expect(markIssueDuplicate(duplicate._id, original._id)).rejects.toThrow('no canceled status')
   expect(client.apply).not.toHaveBeenCalled()
 })
 
 it('does not write when the task type belongs to a different project workflow', async () => {
-  documents.set('kind', { parent: 'different-workflow', statuses: ['canceled'] })
+  setTaskType({ parent: 'different-workflow' as TaskType['parent'] })
   await expect(markIssueDuplicate(duplicate._id, original._id)).rejects.toThrow('no canceled status')
   expect(client.apply).not.toHaveBeenCalled()
 })
@@ -200,17 +248,14 @@ it('rejects a duplicate that was canceled while the picker was open', async () =
 })
 
 it('hides the action when the workflow has no canceled status', async () => {
-  documents.set('kind', { parent: 'workflow', statuses: ['open'] })
-  client.findAll.mockResolvedValue([])
+  setTaskType({ statuses: [open._id] })
   expect(await canShowMarkIssueDuplicate(duplicate)).toBe(false)
 })
 
-it('limits the canceled status query to the task type', async () => {
-  await markIssueDuplicate(duplicate._id, original._id)
-  expect(client.findAll).toHaveBeenCalledWith(core.class.Status, {
-    _id: { $in: ['canceled'] },
-    category: task.statusCategory.Lost
-  })
+it('uses cached statuses, project and task type for action visibility', async () => {
+  expect(await canShowMarkIssueDuplicate(duplicate)).toBe(true)
+  expect(client.findOne).not.toHaveBeenCalled()
+  expect(client.findAll).not.toHaveBeenCalled()
 })
 
 it('stores a translatable activity message instead of the actor language', async () => {

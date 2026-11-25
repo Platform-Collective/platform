@@ -713,7 +713,7 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
         fillProps: { _object: 'value' }
       },
       label: tracker.string.MarkAsDuplicate,
-      icon: tracker.icon.Duplicate,
+      icon: tracker.icon.Relations,
       input: 'focus',
       category: tracker.category.Tracker,
       target: tracker.class.Issue,

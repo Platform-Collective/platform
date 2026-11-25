@@ -1,26 +1,25 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
-  import core, { type DocumentQuery, type FindOptions, SortingOrder } from '@hcengineering/core'
+  import { permissionsStore } from '@hcengineering/contact-resources'
+  import core, { type FindOptions, SortingOrder } from '@hcengineering/core'
   import { setPlatformStatus, unknownError } from '@hcengineering/platform'
-  import { ObjectPopup, createQuery } from '@hcengineering/presentation'
+  import { ObjectPopup } from '@hcengineering/presentation'
   import task from '@hcengineering/task'
+  import { joinedProjectsStore } from '@hcengineering/task-resources'
   import { type Issue } from '@hcengineering/tracker'
+  import { statusStore } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
-  import { markIssueDuplicate } from '../duplicate-issue'
+  import { getEditableDuplicateProjectIds, markIssueDuplicate } from '../duplicate-issue'
+  import { createDuplicatePickerQuery } from '../duplicate-issue-utils'
   import tracker from '../plugin'
   import IssueStatusIcon from './issues/IssueStatusIcon.svelte'
 
   export let value: Issue
 
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{ close: Issue | undefined | null }>()
   let loading = false
-  // Keep the initial query empty until status categories have loaded. The live
-  // query also updates the picker when a status moves into the canceled category.
-  let docQuery: DocumentQuery<Issue> = { status: { $in: [] } }
-  const statuses = createQuery()
-  statuses.query(core.class.Status, { category: task.statusCategory.Lost }, (result) => {
-    docQuery = { status: { $nin: result.map((status) => status._id as Issue['status']) } }
-  })
+  $: editableProjects = getEditableDuplicateProjectIds($joinedProjectsStore ?? [], $permissionsStore)
+  $: docQuery = createDuplicatePickerQuery($statusStore.array, editableProjects, task.statusCategory.Lost)
   const options: FindOptions<Issue> = {
     lookup: { status: [tracker.class.IssueStatus, { category: core.class.StatusCategory }] },
     sort: { modifiedOn: SortingOrder.Descending }
@@ -51,11 +50,11 @@
   ignoreObjects={[value._id]}
   category={tracker.completion.IssueCategory}
   placeholder={tracker.string.MarkAsDuplicate}
-  searchMode={'spotlight'}
+  searchMode="spotlight"
   multiSelect={false}
   allowDeselect={false}
   shadows={true}
-  width={'resizable'}
+  width="resizable"
   {loading}
   on:close={onClose}
 >

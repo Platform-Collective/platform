@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Class, Doc, Ref, Status, StatusCategory } from '@hcengineering/core'
+import type { Class, Doc, DocumentQuery, Ref, Status, StatusCategory } from '@hcengineering/core'
 import type { TaskType } from '@hcengineering/task'
+import type { Issue, Project } from '@hcengineering/tracker'
 
 /** Select a canceled status in task-type order, preserving an already canceled status. */
 export function selectCanceledStatus (
@@ -15,6 +16,18 @@ export function selectCanceledStatus (
     .map((id) => byId.get(id))
     .filter((status): status is Status => status?.category === canceledCategory)
   return canceled.find((status) => status._id === currentStatus) ?? canceled[0]
+}
+
+/** Build the duplicate target query from cached statuses and editable projects. */
+export function createDuplicatePickerQuery (
+  statuses: Status[],
+  editableProjects: Array<Ref<Project>>,
+  canceledCategory: Ref<StatusCategory>
+): DocumentQuery<Issue> {
+  return {
+    status: { $nin: statuses.filter((status) => status.category === canceledCategory).map((status) => status._id) },
+    space: { $in: editableProjects }
+  }
 }
 
 /** Encode an issue reference for use as a parameter in an activity message. */

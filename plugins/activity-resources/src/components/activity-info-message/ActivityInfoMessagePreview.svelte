@@ -14,8 +14,11 @@
 -->
 
 <script lang="ts">
-  import { ActivityInfoMessage, ActivityMessagePreviewType } from '@hcengineering/activity'
-  import { translateCB } from '@hcengineering/platform'
+  import {
+    ActivityInfoMessage,
+    ActivityMessagePreviewType,
+    translateActivityInfoMessage
+  } from '@hcengineering/activity'
   import { HTMLViewer } from '@hcengineering/presentation'
   import { themeStore } from '@hcengineering/ui'
 
@@ -26,7 +29,7 @@
   export let type: ActivityMessagePreviewType = 'full'
 
   let content = ''
-  $: translateCB(value.message, value.props, $themeStore.language, (message) => {
+  $: translateActivityInfoMessage(value.message, value.props, $themeStore.language, (message) => {
     content = message
   })
 </script>
