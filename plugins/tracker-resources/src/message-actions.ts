@@ -11,14 +11,14 @@ import { jsonToMarkup } from '@hcengineering/text'
 import { getCurrentResolvedLocation, locationToUrl, showPopup } from '@hcengineering/ui'
 import { encodeObjectURI } from '@hcengineering/view'
 
-import { getMessageAttachmentData, getMessageIssueData, isMessageBlobId } from './message-issue'
+import { getMessageAttachmentData, getMessageIssueData } from './message-issue'
 import tracker from './plugin'
 
 function canCreateIssue (): boolean {
   return hasAccountRole(getCurrentAccount(), AccountRole.User)
 }
 
-export async function canCreateIssueFromMessage (doc?: ActivityMessage | ActivityMessage[]): Promise<boolean> {
+async function canCreateIssueFromMessage (doc?: ActivityMessage | ActivityMessage[]): Promise<boolean> {
   const message = Array.isArray(doc) ? undefined : doc
   return (
     message !== undefined &&
@@ -27,11 +27,11 @@ export async function canCreateIssueFromMessage (doc?: ActivityMessage | Activit
   )
 }
 
-export const canCreateIssueFromCommunicationMessage: MessageActionVisibilityTester = (message) => {
+const canCreateIssueFromCommunicationMessage: MessageActionVisibilityTester = (message) => {
   return canCreateIssue() && message.type === 'text'
 }
 
-export async function createIssueFromMessage (message: ChatMessage): Promise<void> {
+async function createIssueFromMessage (message: ChatMessage): Promise<void> {
   if (!(await canCreateIssueFromMessage(message))) return
 
   try {
@@ -46,8 +46,13 @@ export async function createIssueFromMessage (message: ChatMessage): Promise<voi
       tracker.component.CreateIssue,
       {
         shouldSaveDraft: false,
-        initialData: getMessageIssueData(message.message, sourceUrl, sourceLabel, fallbackTitle, attachments),
-        initialAttachments: attachments.filter((file) => isMessageBlobId(file.file)).map(getMessageAttachmentData)
+        initialData: getMessageIssueData(
+          message.message,
+          sourceUrl,
+          sourceLabel,
+          fallbackTitle,
+          attachments.map(getMessageAttachmentData)
+        )
       },
       'top'
     )
@@ -56,7 +61,7 @@ export async function createIssueFromMessage (message: ChatMessage): Promise<voi
   }
 }
 
-export const createIssueFromCommunicationMessage: MessageActionFunction = async (message, card) => {
+const createIssueFromCommunicationMessage: MessageActionFunction = async (message, card) => {
   if (!canCreateIssueFromCommunicationMessage(message)) return
 
   try {
@@ -93,12 +98,24 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
           sourceLabel,
           fallbackTitle,
           messageAttachments
-        ),
-        initialAttachments: messageAttachments.filter((file) => isMessageBlobId(file.file))
+        )
       },
       'top'
     )
   } catch (err: unknown) {
     await setPlatformStatus(unknownError(err))
+  }
+}
+
+export const messageIssueResources = {
+  function: {
+    CanCreateIssueFromMessage: canCreateIssueFromMessage,
+    CanCreateIssueFromCommunicationMessage: canCreateIssueFromCommunicationMessage
+  },
+  actionImpl: {
+    CreateIssueFromMessage: createIssueFromMessage
+  },
+  messageActionImpl: {
+    CreateIssue: createIssueFromCommunicationMessage
   }
 }

@@ -107,12 +107,7 @@ import {
 import tracker from './plugin'
 import { copyIssueBranch } from './copy-issue-branch'
 import { formatIssueValue } from './issueTableFormatter'
-import {
-  canCreateIssueFromMessage,
-  canCreateIssueFromCommunicationMessage,
-  createIssueFromMessage,
-  createIssueFromCommunicationMessage
-} from './message-actions'
+import { messageIssueResources } from './message-actions'
 
 import MilestoneEditor from './components/milestones/MilestoneEditor.svelte'
 import MilestonePresenter from './components/milestones/MilestonePresenter.svelte'
@@ -544,8 +539,7 @@ export default async (): Promise<Resources> => ({
     ) => await queryMilestone(client, query, filter)
   },
   function: {
-    CanCreateIssueFromMessage: canCreateIssueFromMessage,
-    CanCreateIssueFromCommunicationMessage: canCreateIssueFromCommunicationMessage,
+    ...messageIssueResources.function,
     IssueIdentifierProvider: issueIdentifierProvider,
     IssueTitleProvider: issueTitleProvider,
     ComponentTitleProvider: getComponentTitle,
@@ -579,7 +573,7 @@ export default async (): Promise<Resources> => ({
   },
   actionImpl: {
     CopyIssueBranch: copyIssueBranch,
-    CreateIssueFromMessage: createIssueFromMessage,
+    ...messageIssueResources.actionImpl,
     Move: move,
     EditWorkflowStatuses: editWorkflowStatuses,
     EditProject: editProject,
@@ -587,9 +581,7 @@ export default async (): Promise<Resources> => ({
     DeleteProject: deleteProject,
     DeleteIssue: deleteIssue
   },
-  messageActionImpl: {
-    CreateIssue: createIssueFromCommunicationMessage
-  },
+  messageActionImpl: messageIssueResources.messageActionImpl,
   resolver: {
     Location: resolveLocation
   },

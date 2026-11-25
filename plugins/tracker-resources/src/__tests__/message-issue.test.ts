@@ -6,7 +6,12 @@ import { setMetadata } from '@hcengineering/platform'
 import presentation, { deleteFile, generateFileId, getFileUrl, uploadFile } from '@hcengineering/presentation'
 import { jsonToMarkup } from '@hcengineering/text'
 import { markdownToMarkup } from '@hcengineering/text-markdown'
-import { copyMessageAttachments, getMessageIssueData, getMessageAttachmentData } from '../message-issue'
+import {
+  classifyMessageAttachments,
+  copyMessageAttachments,
+  getMessageAttachmentData,
+  getMessageIssueData
+} from '../message-issue'
 
 jest.mock('@hcengineering/presentation', () => ({
   __esModule: true,
@@ -218,7 +223,11 @@ describe('copyMessageAttachments', () => {
   })
 
   it('uploads independent bytes once and remaps inline references without changing the source', async () => {
-    const result = await copyMessageAttachments([source, source], description)
+    const result = await copyMessageAttachments(
+      classifyMessageAttachments([source, source]),
+      [source, source],
+      description
+    )
 
     expect(fetchFile).toHaveBeenCalledWith('https://files.example/source-blob', {
       headers: { Authorization: 'Bearer session-token' }
@@ -244,7 +253,7 @@ describe('copyMessageAttachments', () => {
   })
 
   it('retains an independent attachment for source files still embedded in the edited description', async () => {
-    const result = await copyMessageAttachments([], description, [source])
+    const result = await copyMessageAttachments(classifyMessageAttachments([source]), [], description)
     expect(result.attachments).toEqual([{ ...source, file: 'copied-blob' }])
     expect(result.description).not.toContain('source-blob')
   })
@@ -253,7 +262,12 @@ describe('copyMessageAttachments', () => {
     const oversized = { ...source, file: 'oversized-blob' as Ref<Blob>, size: 25 * 1024 * 1024 + 1 }
     const progress = jest.fn()
 
-    const result = await copyMessageAttachments([oversized, source], description, undefined, progress)
+    const result = await copyMessageAttachments(
+      classifyMessageAttachments([oversized, source]),
+      [oversized, source],
+      description,
+      progress
+    )
 
     expect(result.attachments).toEqual([{ ...source, file: 'copied-blob' }])
     expect(fetchFile).toHaveBeenCalledTimes(1)
@@ -280,7 +294,7 @@ describe('copyMessageAttachments', () => {
       ])
       fetchFile.mockResolvedValue(new Response(new Uint8Array(25 * 1024 * 1024 + 1)))
 
-      const result = await copyMessageAttachments([oversized], inline)
+      const result = await copyMessageAttachments(classifyMessageAttachments([oversized]), [oversized], inline)
 
       expect(result.attachments).toEqual([])
       expect(JSON.parse(result.description).content).toEqual([
@@ -301,7 +315,7 @@ describe('copyMessageAttachments', () => {
   it('copies a small file with an unknown declared size and records its actual size', async () => {
     const unknownSize = { ...source, size: 0 }
 
-    const result = await copyMessageAttachments([unknownSize], description)
+    const result = await copyMessageAttachments(classifyMessageAttachments([unknownSize]), [unknownSize], description)
 
     expect(result.attachments).toEqual([{ ...unknownSize, file: 'copied-blob', size: 3 }])
     expect(uploadFile).toHaveBeenCalledTimes(1)
@@ -309,7 +323,11 @@ describe('copyMessageAttachments', () => {
 
   it('does not copy files removed from both the preview and the description', async () => {
     const edited = markup([paragraph('Edited description')])
-    expect(await copyMessageAttachments([], edited, [source])).toEqual({ attachments: [], description: edited })
+    expect(await copyMessageAttachments(classifyMessageAttachments([source]), [], edited)).toEqual({
+      attachments: [],
+      description: edited,
+      sizeOmissions: []
+    })
     expect(fetchFile).not.toHaveBeenCalled()
     expect(uploadFile).not.toHaveBeenCalled()
   })
@@ -320,9 +338,9 @@ describe('copyMessageAttachments', () => {
       const unsafe = { ...source, file: file as Ref<Blob> }
       const inline = markup([{ type: 'image', attrs: { 'file-id': file } }])
 
-      expect((await copyMessageAttachments([unsafe], inline)).attachments).toEqual([])
-      expect((await copyMessageAttachments([unsafe], inline, [])).attachments).toEqual([])
-      expect((await copyMessageAttachments([], inline, [unsafe])).attachments).toEqual([])
+      const classified = classifyMessageAttachments([unsafe])
+      expect((await copyMessageAttachments(classified, [unsafe], inline)).attachments).toEqual([])
+      expect((await copyMessageAttachments(classified, [], inline)).attachments).toEqual([])
       expect(getFileUrl).not.toHaveBeenCalled()
       expect(fetchFile).not.toHaveBeenCalled()
       expect(uploadFile).not.toHaveBeenCalled()
@@ -340,7 +358,11 @@ describe('copyMessageAttachments', () => {
     const unsafe = { ...source, file: 'unsafe-blob' as Ref<Blob> }
     jest.mocked(getFileUrl).mockImplementation((file) => (file === unsafe.file ? url : `https://files.example/${file}`))
 
-    const result = await copyMessageAttachments([unsafe, source], description)
+    const result = await copyMessageAttachments(
+      classifyMessageAttachments([unsafe, source]),
+      [unsafe, source],
+      description
+    )
 
     expect(fetchFile).toHaveBeenCalledTimes(1)
     expect(fetchFile).toHaveBeenCalledWith('https://files.example/source-blob', {
@@ -354,7 +376,8 @@ describe('copyMessageAttachments', () => {
     setMetadata(presentation.metadata.UploadURL, undefined)
     jest.mocked(getFileUrl).mockImplementation((file) => `/files/${file}`)
 
-    expect((await copyMessageAttachments([source], description)).attachments).toHaveLength(1)
+    const result = await copyMessageAttachments(classifyMessageAttachments([source]), [source], description)
+    expect(result.attachments).toHaveLength(1)
     expect(fetchFile).toHaveBeenCalledWith('https://huly.example/files/source-blob', {
       headers: { Authorization: 'Bearer session-token' }
     })
@@ -366,7 +389,8 @@ describe('copyMessageAttachments', () => {
       setMetadata(key, 'https://storage.example/base')
       jest.mocked(getFileUrl).mockImplementation((file) => `https://storage.example/blob/${file}`)
 
-      expect((await copyMessageAttachments([source], description)).attachments).toHaveLength(1)
+      const result = await copyMessageAttachments(classifyMessageAttachments([source]), [source], description)
+      expect(result.attachments).toHaveLength(1)
       expect(fetchFile).toHaveBeenCalledWith('https://storage.example/blob/source-blob', {
         headers: { Authorization: 'Bearer session-token' }
       })
@@ -376,9 +400,10 @@ describe('copyMessageAttachments', () => {
   it('cleans up earlier copies if a later source file cannot be downloaded', async () => {
     fetchFile.mockResolvedValueOnce({ ok: true, blob: async () => new globalThis.Blob(['png']) })
     fetchFile.mockResolvedValueOnce({ ok: false, status: 404 })
-    await expect(
-      copyMessageAttachments([source, { ...source, file: 'missing-blob' as Ref<Blob> }], description)
-    ).rejects.toThrow('Failed to copy message attachment: 404')
+    const files = [source, { ...source, file: 'missing-blob' as Ref<Blob> }]
+    await expect(copyMessageAttachments(classifyMessageAttachments(files), files, description)).rejects.toThrow(
+      'Failed to copy message attachment: 404'
+    )
     expect(deleteFile).toHaveBeenCalledWith('copied-blob')
     expect(deleteFile).not.toHaveBeenCalledWith('source-blob')
   })
@@ -386,7 +411,9 @@ describe('copyMessageAttachments', () => {
   it('cleans up a failed upload and propagates the original error even if cleanup fails', async () => {
     jest.mocked(uploadFile).mockRejectedValue(new Error('Upload failed'))
     jest.mocked(deleteFile).mockRejectedValue(new Error('Cleanup failed'))
-    await expect(copyMessageAttachments([source], description)).rejects.toThrow('Upload failed')
+    await expect(copyMessageAttachments(classifyMessageAttachments([source]), [source], description)).rejects.toThrow(
+      'Upload failed'
+    )
     expect(deleteFile).toHaveBeenCalledWith('copied-blob')
   })
 })

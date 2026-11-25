@@ -12,7 +12,7 @@ import {
 } from '@hcengineering/platform'
 import presentation, { createFileStorage } from '@hcengineering/presentation'
 
-import { copyMessageAttachments, getMessageIssueData, isMessageAttachmentWithinSizeLimit } from '../message-issue'
+import { copyMessageAttachments, getMessageIssueData, getCopyableMessageAttachments } from '../message-issue'
 import tracker from '../plugin'
 
 // Load the actual file API without loading the Svelte components in the package entry point.
@@ -38,7 +38,7 @@ describe('saving attachments from a message', () => {
   const omittedWarning = new Status(Severity.WARNING, tracker.string.MessageAttachmentsTooLarge, { limit: 25 })
   const listener = jest.fn(async () => {})
 
-  function issueDescription (source: Array<AttachedData<Attachment>>): string {
+  function issueData (source: Array<AttachedData<Attachment>>): ReturnType<typeof getMessageIssueData> {
     const message = JSON.stringify({
       type: 'doc',
       content: [
@@ -56,7 +56,6 @@ describe('saving attachments from a message', () => {
       ]
     })
     return getMessageIssueData(message, 'https://app.example/source', 'Original message', 'New issue', source)
-      .description
   }
 
   beforeEach(() => {
@@ -89,11 +88,19 @@ describe('saving attachments from a message', () => {
     setMetadata(presentation.metadata.FileStorage, createFileStorage(storeUrl, datalakeUrl, hulylakeUrl))
     const fetchFile = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(limit + 1)))
     const source = includeDeclared ? [downloaded, declared] : [downloaded]
-    const description = issueDescription(source)
+    const { description, sourceAttachments } = issueData(source)
 
-    const saved = await copyMessageAttachments(source.filter(isMessageAttachmentWithinSizeLimit), description, source)
+    const saved = await copyMessageAttachments(
+      sourceAttachments,
+      getCopyableMessageAttachments(sourceAttachments),
+      description
+    )
 
     expect(saved.attachments).toEqual([])
+    expect(saved.sizeOmissions).toEqual([
+      { attachment: downloaded, omission: 'downloaded-size' },
+      ...(includeDeclared ? [{ attachment: declared, omission: 'declared-size' }] : [])
+    ])
     expect(saved.description).not.toContain(downloaded.file)
     expect(saved.description).not.toContain(declared.file)
     expect(saved.description).toContain('Before ')
@@ -106,12 +113,13 @@ describe('saving attachments from a message', () => {
 
   it('warns once when only the declared size excludes an attachment', async () => {
     const fetchFile = jest.spyOn(globalThis, 'fetch')
-    const description = issueDescription([declared])
+    const { description, sourceAttachments } = issueData([declared])
 
-    const saved = await copyMessageAttachments([], description, [declared])
+    const saved = await copyMessageAttachments(sourceAttachments, [], description)
 
     expect(saved.attachments).toEqual([])
     expect(saved.description).not.toContain(declared.file)
+    expect(saved.sizeOmissions).toEqual([{ attachment: declared, omission: 'declared-size' }])
     expect(fetchFile).not.toHaveBeenCalled()
     expect(listener).toHaveBeenCalledTimes(1)
     expect(listener).toHaveBeenCalledWith(PlatformEvent, omittedWarning)
@@ -120,7 +128,13 @@ describe('saving attachments from a message', () => {
   it('does not warn when a file was removed from both the attachment list and description', async () => {
     const description = JSON.stringify({ type: 'doc', content: [] })
 
-    expect(await copyMessageAttachments([], description, [downloaded])).toEqual({ attachments: [], description })
+    const { sourceAttachments } = issueData([downloaded])
+
+    expect(await copyMessageAttachments(sourceAttachments, [], description)).toEqual({
+      attachments: [],
+      description,
+      sizeOmissions: []
+    })
     expect(listener).not.toHaveBeenCalled()
   })
 })

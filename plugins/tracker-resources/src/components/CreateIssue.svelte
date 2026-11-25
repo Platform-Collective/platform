@@ -88,7 +88,7 @@
   import { fillIssueDefaults } from '../issue-defaults'
   import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
-  import { copyMessageAttachments, isMessageAttachmentWithinSizeLimit } from '../message-issue'
+  import { copyMessageAttachments, getCopyableMessageAttachments, type MessageIssueData } from '../message-issue'
   import tracker from '../plugin'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
@@ -113,9 +113,11 @@
   export let shouldSaveDraft: boolean = true
   export let parentIssue: Issue | undefined
   export let originalIssue: Issue | undefined
-  export let initialData: Pick<IssueDraft, 'title' | 'description'> | undefined = undefined
-  export let initialAttachments: AttachedData<Attachment>[] = []
-  let messageAttachments = initialAttachments.filter(isMessageAttachmentWithinSizeLimit)
+  export let initialData:
+    | (Pick<IssueDraft, 'title' | 'description'> & Partial<Pick<MessageIssueData, 'sourceAttachments'>>)
+    | undefined = undefined
+  const sourceMessageAttachments = initialData?.sourceAttachments ?? []
+  let messageAttachments = getCopyableMessageAttachments(sourceMessageAttachments)
 
   const mDraftController = new MultipleDraftController(tracker.ids.IssueDraft)
   // Stored across the function/dispatch boundary so the success-path close
@@ -478,9 +480,9 @@
     // to prevent other operations to infer our measurement.
     try {
       const copied = await copyMessageAttachments(
+        sourceMessageAttachments,
         messageAttachments,
         object.description,
-        initialAttachments,
         (current, total) => {
           copyingAttachments = { current, total }
         }

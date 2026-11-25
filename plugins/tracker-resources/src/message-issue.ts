@@ -18,6 +18,39 @@ const MESSAGE_ISSUE_TITLE_LIMIT = 100
 const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB = 25
 const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT = MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB * 1024 * 1024
 
+type SizeOmission = 'declared-size' | 'downloaded-size'
+type AttachmentOmission = SizeOmission | 'invalid-id' | 'invalid-url'
+
+export interface MessageAttachment {
+  attachment: AttachedData<Attachment>
+  omission?: AttachmentOmission
+}
+
+export interface MessageIssueData {
+  title: string
+  description: Markup
+  sourceAttachments: MessageAttachment[]
+}
+
+interface SavedMessageAttachment extends MessageAttachment {
+  copy?: AttachedData<Attachment>
+}
+
+interface MessageAttachmentSizeOmission {
+  attachment: AttachedData<Attachment>
+  omission: SizeOmission
+}
+
+interface MessageAttachmentCopy {
+  attachments: Array<AttachedData<Attachment>>
+  description: Markup
+  sizeOmissions: MessageAttachmentSizeOmission[]
+}
+
+function isSizeOmission (omission: AttachmentOmission | undefined): omission is SizeOmission {
+  return omission === 'declared-size' || omission === 'downloaded-size'
+}
+
 function messageText (node: MarkupNode): string {
   if (node.type === MarkupNodeType.text) return node.text ?? ''
   if (node.type === MarkupNodeType.reference) return String(node.attrs?.label ?? '')
@@ -64,14 +97,15 @@ export function getMessageIssueData (
   sourceUrl: string,
   sourceLabel: string,
   fallbackTitle: string,
-  sourceAttachments: Array<Pick<AttachedData<Attachment>, 'file' | 'size'>> = []
-): { title: string, description: Markup } {
+  attachments: Array<AttachedData<Attachment>> = []
+): MessageIssueData {
   const parsed = markupToJSON(message)
   const doc = { ...parsed, content: parsed.content?.flatMap(referencesToText) }
+  const sourceAttachments = classifyMessageAttachments(attachments)
   const omittedFiles = new Set(
-    sourceAttachments
-      .filter((attachment) => !isMessageBlobId(attachment.file) || !isMessageAttachmentWithinSizeLimit(attachment))
-      .map((attachment) => attachment.file)
+    Array.from(messageAttachmentsByFile(sourceAttachments)).flatMap(([file, { omission }]) =>
+      omission !== undefined ? [file] : []
+    )
   )
   updateAttachmentReferences(doc, new Map<Ref<Blob>, Ref<Blob>>(), omittedFiles)
   const firstLine =
@@ -87,6 +121,7 @@ export function getMessageIssueData (
 
   return {
     title,
+    sourceAttachments,
     description: jsonToMarkup({
       ...doc,
       content: [
@@ -113,13 +148,36 @@ export function getMessageAttachmentData (attachment: AttachedData<Attachment>):
 }
 
 /** Accept plain workspace blob IDs, never URLs or paths supplied by a message. */
-export function isMessageBlobId (file: unknown): file is Ref<Blob> {
+function isMessageBlobId (file: unknown): file is Ref<Blob> {
   return typeof file === 'string' && file.length > 0 && !/[^a-zA-Z0-9_-]/.test(file)
 }
 
-export function isMessageAttachmentWithinSizeLimit (attachment: Pick<AttachedData<Attachment>, 'size'>): boolean {
-  return (
-    Number.isFinite(attachment.size) && attachment.size >= 0 && attachment.size <= MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT
+/** Classify every source attachment before filtering the list or the description. */
+export function classifyMessageAttachments (attachments: Array<AttachedData<Attachment>>): MessageAttachment[] {
+  return attachments.map((attachment) => {
+    const { size, file } = attachment
+    if (!Number.isFinite(size) || size < 0 || size > MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT) {
+      return { attachment, omission: 'declared-size' }
+    }
+    return isMessageBlobId(file) ? { attachment } : { attachment, omission: 'invalid-id' }
+  })
+}
+
+function messageAttachmentsByFile (source: readonly MessageAttachment[]): Map<Ref<Blob>, SavedMessageAttachment> {
+  const byFile = new Map<Ref<Blob>, SavedMessageAttachment>()
+  for (const decision of source) {
+    const { attachment, omission } = decision
+    const previous = byFile.get(attachment.file)
+    // A single blob can be attached more than once. An omission applies to all of its inline references.
+    if (previous?.omission === undefined || isSizeOmission(omission)) byFile.set(attachment.file, decision)
+  }
+  return byFile
+}
+
+/** Select the attachments shown in the issue dialog before the user edits the list. */
+export function getCopyableMessageAttachments (source: readonly MessageAttachment[]): Array<AttachedData<Attachment>> {
+  return Array.from(messageAttachmentsByFile(source).values()).flatMap(({ attachment, omission }) =>
+    omission === undefined ? [attachment] : []
   )
 }
 
@@ -141,51 +199,35 @@ function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string 
 
 /** Copy message files, update inline references and report size omissions before saving the issue. */
 export async function copyMessageAttachments (
-  attachments: Array<AttachedData<Attachment>>,
+  sourceAttachments: readonly MessageAttachment[],
+  selectedAttachments: ReadonlyArray<AttachedData<Attachment>>,
   description: Markup,
-  sourceAttachments: Array<AttachedData<Attachment>> = attachments,
   onProgress?: (copied: number, total: number) => void
-): Promise<{ attachments: Array<AttachedData<Attachment>>, description: Markup }> {
-  if (attachments.length === 0 && sourceAttachments.length === 0) return { attachments, description }
+): Promise<MessageAttachmentCopy> {
+  if (sourceAttachments.length === 0) return { attachments: [], description, sizeOmissions: [] }
 
   const doc = markupToJSON(description)
-  const omittedFiles = new Set<Ref<Blob>>()
-  let omittedForSize = false
-  for (const attachment of [...attachments, ...sourceAttachments]) {
-    if (!isMessageAttachmentWithinSizeLimit(attachment)) {
-      omittedForSize = true
-      omittedFiles.add(attachment.file)
-    } else if (!isMessageBlobId(attachment.file)) {
-      omittedFiles.add(attachment.file)
-    }
-  }
-  const files = new Map(
-    attachments
-      .filter((attachment) => isMessageBlobId(attachment.file) && isMessageAttachmentWithinSizeLimit(attachment))
-      .map((attachment) => [attachment.file, attachment])
-  )
+  const selected = new Set(selectedAttachments.map(({ file }) => file))
   function collectInlineFiles (node: MarkupNode): void {
-    const source = sourceAttachments.find(
-      (attachment) =>
-        isMessageBlobId(attachment.file) &&
-        isMessageAttachmentWithinSizeLimit(attachment) &&
-        attachment.file === node.attrs?.['file-id']
-    )
-    if (source !== undefined) files.set(source.file, source)
+    const fileId = node.attrs?.['file-id']
+    if (typeof fileId === 'string') selected.add(fileId as Ref<Blob>)
     node.content?.forEach(collectInlineFiles)
   }
   collectInlineFiles(doc)
-  for (const file of omittedFiles) files.delete(file)
 
-  if (files.size > 0) onProgress?.(0, files.size)
+  const decisions = messageAttachmentsByFile(sourceAttachments)
+  const files = Array.from(selected).flatMap((file) => {
+    const decision = decisions.get(file)
+    return decision !== undefined && decision.omission === undefined ? [decision.attachment] : []
+  })
+
+  if (files.length > 0) onProgress?.(0, files.length)
   let copied = 0
-  const copies = new Map<Ref<Blob>, Ref<Blob>>()
-  const actualSizes = new Map<Ref<Blob>, number>()
   try {
-    for (const attachment of files.values()) {
+    for (const attachment of files) {
       const url = getMessageAttachmentUrl(attachment)
       if (url === undefined) {
-        omittedFiles.add(attachment.file)
+        decisions.set(attachment.file, { attachment, omission: 'invalid-url' })
         continue
       }
       const response = await fetch(url, {
@@ -194,24 +236,34 @@ export async function copyMessageAttachments (
       if (!response.ok) throw new Error(`Failed to copy message attachment: ${response.status}`)
       const blob = await response.blob()
       if (blob.size > MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT) {
-        omittedForSize = true
-        omittedFiles.add(attachment.file)
+        decisions.set(attachment.file, { attachment, omission: 'downloaded-size' })
         continue
       }
-      actualSizes.set(attachment.file, blob.size)
       const file = new File([blob], attachment.name, {
         type: attachment.type,
         lastModified: attachment.lastModified
       })
       const id = generateFileId() as Ref<Blob>
-      copies.set(attachment.file, id)
+      decisions.set(attachment.file, { attachment, copy: { ...attachment, file: id, size: blob.size } })
       await uploadFile(file, id)
-      copied++
-      onProgress?.(copied, files.size)
+      onProgress?.(++copied, files.length)
     }
 
-    updateAttachmentReferences(doc, copies, omittedFiles)
-    if (omittedForSize) {
+    const attachments: Array<AttachedData<Attachment>> = []
+    const sizeOmissions: MessageAttachmentSizeOmission[] = []
+    const copiedIds = new Map<Ref<Blob>, Ref<Blob>>()
+    const omittedFiles = new Set<Ref<Blob>>()
+    for (const [file, { attachment, copy, omission }] of decisions) {
+      if (copy !== undefined) {
+        attachments.push(copy)
+        copiedIds.set(file, copy.file)
+      } else if (omission !== undefined) {
+        omittedFiles.add(file)
+        if (isSizeOmission(omission)) sizeOmissions.push({ attachment, omission })
+      }
+    }
+    updateAttachmentReferences(doc, copiedIds, omittedFiles)
+    if (sizeOmissions.length > 0) {
       await setPlatformStatus(
         new Status(Severity.WARNING, tracker.string.MessageAttachmentsTooLarge, {
           limit: MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB
@@ -219,19 +271,14 @@ export async function copyMessageAttachments (
       )
     }
     return {
-      attachments: Array.from(files.values())
-        .filter((attachment) => copies.has(attachment.file))
-        .map((attachment) => ({
-          ...attachment,
-          file: copies.get(attachment.file) ?? attachment.file,
-          size: actualSizes.get(attachment.file) ?? attachment.size
-        })),
-      description: jsonToMarkup(doc)
+      attachments,
+      description: jsonToMarkup(doc),
+      sizeOmissions
     }
   } catch (err: unknown) {
     await Promise.allSettled(
-      Array.from(copies.values(), async (file) => {
-        await deleteFile(file)
+      Array.from(decisions.values()).map(async ({ copy }) => {
+        if (copy !== undefined) await deleteFile(copy.file)
       })
     )
     throw err
