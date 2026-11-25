@@ -62,7 +62,14 @@ function createStorage (): { db: ModelDb, hierarchy: Hierarchy, factory: TxFacto
 }
 
 async function addDoc<T extends Doc> (db: ModelDb, factory: TxFactory, doc: T): Promise<void> {
-  const tx = factory.createTxCreateDoc(doc._class, doc.space, doc as unknown as Data<T>, doc._id)
+  const tx = factory.createTxCreateDoc(
+    doc._class,
+    doc.space,
+    doc as unknown as Data<T>,
+    doc._id,
+    undefined,
+    doc.createdBy
+  )
   await db.tx(tx)
 }
 
