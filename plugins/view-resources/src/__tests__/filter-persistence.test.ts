@@ -13,10 +13,16 @@ function createStorage (): {
   getItem: jest.Mock<string | null, [string]>
   setItem: jest.Mock<void, [string, string]>
   removeItem: jest.Mock<void, [string]>
+  key: jest.Mock<string | null, [number]>
+  readonly length: number
 } {
   const values = new Map<string, string>()
   return {
+    get length () {
+      return values.size
+    },
     getItem: jest.fn((key: string) => values.get(key) ?? null),
+    key: jest.fn((index: number) => Array.from(values.keys())[index] ?? null),
     removeItem: jest.fn((key: string) => {
       values.delete(key)
     }),
@@ -47,6 +53,22 @@ describe('filter persistence', () => {
     persistence.load(key, false)
     persistence.save(key, [], false)
     expect(storage.setItem).not.toHaveBeenCalled()
+  })
+
+  it('limits stored drafts to 100 keys without touching other storage', () => {
+    const storage = createStorage()
+    storage.setItem('unrelated', 'keep')
+    const persistence = createFilterPersistence(storage, jest.fn())
+    for (let index = 0; index <= 100; index++) {
+      const draftKey = `filter/view-${index}`
+      persistence.load(draftKey, false)
+      persistence.save(draftKey, filters, false)
+    }
+    expect(storage.length).toBe(101)
+    expect(storage.getItem('filter/view-0')).toBeNull()
+    expect(storage.getItem('filter/view-1')).not.toBeNull()
+    expect(storage.getItem('filter/view-100')).not.toBeNull()
+    expect(storage.getItem('unrelated')).toBe('keep')
   })
 
   it('ignores transient query and fragment without mutating the location', () => {
@@ -191,6 +213,8 @@ describe('filter persistence', () => {
 
   it('keeps filters usable when browser storage is unavailable or full', () => {
     const storage = {
+      length: 0,
+      key: () => null,
       getItem: () => {
         throw new Error('Storage unavailable')
       },

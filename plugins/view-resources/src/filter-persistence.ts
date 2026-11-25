@@ -8,14 +8,30 @@ export function makeFilterStorageKey (location: Location, filterClass?: string):
   return `filter/${location.path.map(encodeURIComponent).join('/')}${filterClass ?? ''}`
 }
 
+const MAX_FILTER_DRAFTS = 100
+
+type FilterStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem' | 'key' | 'length'>
+
 export interface FilterPersistence {
   load: (key: string, savedView: boolean, override?: Filter[], location?: string) => void
   save: (key: string, filters: Filter[], savedView: boolean) => void
 }
 
-/** Keeps unsaved filters scoped to the current view and class. */
+function trimFilterDrafts (storage: FilterStorage, activeKey: string): void {
+  const draftKeys: string[] = []
+  for (let index = 0; index < storage.length; index++) {
+    const key = storage.key(index)
+    if (key?.startsWith('filter/') === true && key !== activeKey) draftKeys.push(key)
+  }
+  const removeCount = draftKeys.length + 1 - MAX_FILTER_DRAFTS
+  for (let index = 0; index < removeCount; index++) {
+    storage.removeItem(draftKeys[index])
+  }
+}
+
+/** Keeps unsaved filters scoped to the current view and class, with at most 100 stored drafts. */
 export function createFilterPersistence (
-  storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>,
+  storage: FilterStorage,
   restore: (filters: Filter[]) => void
 ): FilterPersistence {
   let activeKey: string | undefined
@@ -53,7 +69,10 @@ export function createFilterPersistence (
       navigationFilters = undefined
       try {
         if (filters.length === 0) storage.removeItem(key)
-        else storage.setItem(key, JSON.stringify(filters))
+        else {
+          storage.setItem(key, JSON.stringify(filters))
+          trimFilterDrafts(storage, key)
+        }
       } catch {
         // Filtering still works when storage is unavailable or its quota is exceeded.
       }

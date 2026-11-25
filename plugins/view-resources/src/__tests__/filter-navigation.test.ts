@@ -115,7 +115,11 @@ it.each([{ override: filters }, { override: [] }])(
     const draft = [{ ...filters[0], value: ['draft'] }] as unknown as Filter[]
     const values = new Map([[key, JSON.stringify(draft)]])
     const storage = {
+      get length () {
+        return values.size
+      },
       getItem: (key: string) => values.get(key) ?? null,
+      key: (index: number) => Array.from(values.keys())[index] ?? null,
       setItem: jest.fn((key: string, value: string) => values.set(key, value)),
       removeItem: jest.fn((key: string) => values.delete(key))
     }
