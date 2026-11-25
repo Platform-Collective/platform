@@ -83,9 +83,7 @@ export class AuthorRuns {
   drain (prev: Record<string, string>, curr: Record<string, string>): AuthorSegment[] {
     const runs = [...this.closed]
     if (this.current !== undefined) runs.push({ ...this.current })
-    this.closed.length = 0
-    this.current = undefined
-    this.captures = 0
+    this.discard()
     try {
       return runs.map((run) => {
         let end = curr
@@ -110,11 +108,16 @@ export class AuthorRuns {
     }
   }
 
+  discard (): void {
+    this.closed.length = 0
+    this.current = undefined
+    this.captures = 0
+  }
+
   destroy (): void {
     this.document.off('beforeTransaction', this.beforeTransaction)
     this.document.off('afterTransaction', this.afterTransaction)
     this.candidates.clear()
-    this.closed.length = 0
-    this.current = undefined
+    this.discard()
   }
 }

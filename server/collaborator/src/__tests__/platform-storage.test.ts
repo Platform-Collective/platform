@@ -4,8 +4,10 @@ import activity from '@hcengineering/activity'
 import core, { MeasureMetricsContext, type Blob, type Ref, type TxOperations } from '@hcengineering/core'
 import { loadCollabYdoc, saveCollabJson, saveCollabYdoc } from '@hcengineering/collaboration'
 import type { StorageAdapter } from '@hcengineering/server-core'
+import { Document as HocuspocusDocument } from '@hocuspocus/server'
 import { Doc } from 'yjs'
 import type { Context } from '../context'
+import { StorageExtension } from '../extensions/storage'
 import type { AuthorSegment, DocumentSaveBatch } from '../storage/adapter'
 import { PlatformStorageAdapter } from '../storage/platform'
 
@@ -333,4 +335,47 @@ it('loads an existing Yjs blob and retains its content as the next diff baseline
   })
   expect(clients[0].domainRequest.mock.calls[0][1].event.extra.update.prevValue).toBe(markup('old'))
   doc.destroy()
+})
+
+it('saves valid final markup through the real adapter when an author boundary cannot be converted', async () => {
+  const { adapter, clients, contexts } = setup()
+  const document = new HocuspocusDocument('doc', undefined, { gc: false })
+  document.isLoading = false
+  const fromYdoc = (doc: Doc): Record<string, string> => {
+    if (doc !== document) throw new Error('unsupported shared type')
+    return { content: markup(doc.getText('content').toString()) }
+  }
+  const extension = new StorageExtension({
+    ctx,
+    transformer: { fromYdoc, toYdoc: () => new Doc() },
+    adapter
+  })
+  document.getText('content').insert(0, 'old')
+  await extension.afterLoadDocument({ context: contexts[0], document, documentName: 'doc' } as unknown as Parameters<
+    StorageExtension['afterLoadDocument']
+  >[0])
+  document.transact(
+    () => {
+      document.getText('content').insert(3, 'a')
+    },
+    { context: contexts[0] }
+  )
+  document.transact(
+    () => {
+      document.getText('content').insert(4, 'b')
+    },
+    { context: contexts[1] }
+  )
+  await extension.onChange({ context: contexts[1], document, documentName: 'doc' } as unknown as Parameters<
+    StorageExtension['onChange']
+  >[0])
+  await extension.onStoreDocument({ context: contexts[1], document, documentName: 'doc' } as unknown as Parameters<
+    StorageExtension['onStoreDocument']
+  >[0])
+  expect(saveCollabYdoc).toHaveBeenCalledTimes(1)
+  expect(jest.mocked(saveCollabJson).mock.calls[0][4]).toBe(markup('oldab'))
+  expect(clients[1].diffUpdate).toHaveBeenCalledTimes(1)
+  expect(clients[1].domainRequest).toHaveBeenCalledTimes(1)
+  expect(clients[1].addCollection).toHaveBeenCalledTimes(1)
+  document.destroy()
 })

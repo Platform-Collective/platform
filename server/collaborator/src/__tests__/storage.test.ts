@@ -39,7 +39,10 @@ function deferred (): { promise: Promise<void>, resolve: () => void } {
   return { promise, resolve }
 }
 
-async function setup (saveDocument: CollabStorageAdapter['saveDocument']): Promise<{
+async function setup (
+  saveDocument: CollabStorageAdapter['saveDocument'],
+  documentTransformer: Transformer = transformer
+): Promise<{
   extension: StorageExtension
   document: Document
   edit: (context: Context, value: string) => void
@@ -47,7 +50,7 @@ async function setup (saveDocument: CollabStorageAdapter['saveDocument']): Promi
 }> {
   const extension = new StorageExtension({
     ctx,
-    transformer,
+    transformer: documentTransformer,
     adapter: {
       loadDocument: async () => undefined,
       saveDocument
@@ -417,7 +420,7 @@ it.each([false, true])('persists Yjs bytes when markup conversion fails (at load
   document.destroy()
 })
 
-it('persists Yjs bytes without activity when a deferred boundary conversion fails', async () => {
+it('persists final markup with a combined diff when a deferred boundary conversion fails', async () => {
   const document = new Document('doc', undefined, { gc: false })
   document.isLoading = false
   const fromYdoc = jest.fn((doc: Doc) => {
@@ -454,8 +457,44 @@ it('persists Yjs bytes without activity when a deferred boundary conversion fail
   >[0])
   expect(save).toHaveBeenCalledTimes(1)
   expect(storedContent(save.mock.calls[0][2])).toBe('oldab')
+  expect(save.mock.calls[0][4].curr()).toEqual({ content: 'oldab' })
+  expect(save.mock.calls[0][5].segments).toHaveLength(1)
+  expect(save.mock.calls[0][5].segments[0]).toMatchObject({
+    context: B,
+    prev: { content: 'old' },
+    curr: { content: 'oldab' }
+  })
+  document.destroy()
+})
+
+it('discards a frozen batch when final conversion fails before the next save', async () => {
+  let fail = false
+  const fromYdoc = jest.fn((doc: Doc) => {
+    if (fail) throw new Error('temporary conversion failure')
+    return { content: doc.getText('content').toString() }
+  })
+  const save = jest.fn().mockImplementation(async (_ctx, _name, _bytes, _context, markup) => markup.curr())
+  const { document, edit, store } = await setup(save, { fromYdoc, toYdoc: () => new Doc() })
+  edit(A, 'a')
+  edit(B, 'b')
+  fail = true
+  await store(B)
+  expect(storedContent(save.mock.calls[0][2])).toBe('oldab')
   expect(save.mock.calls[0][4].curr()).toEqual({ content: 'old' })
   expect(save.mock.calls[0][5].segments).toHaveLength(1)
   expect(save.mock.calls[0][5].segments[0].curr).toEqual(save.mock.calls[0][5].segments[0].prev)
+
+  fail = false
+  edit(C, 'c')
+  await store(C)
+  expect(save).toHaveBeenCalledTimes(2)
+  expect(storedContent(save.mock.calls[1][2])).toBe('oldabc')
+  expect(save.mock.calls[1][4].curr()).toEqual({ content: 'oldabc' })
+  expect(save.mock.calls[1][5].segments).toHaveLength(1)
+  expect(save.mock.calls[1][5].segments[0]).toMatchObject({
+    context: C,
+    prev: { content: 'old' },
+    curr: { content: 'oldabc' }
+  })
   document.destroy()
 })

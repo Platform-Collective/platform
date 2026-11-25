@@ -253,14 +253,19 @@ export class StorageExtension implements Extension {
     const prev = this.markups.get(documentName) ?? {}
     const runs = this.runs.get(documentName)
     let curr = prev
-    let segments: AuthorSegment[] = []
     try {
       curr = this.configuration.transformer.fromYdoc(document)
-      segments = runs?.drain(prev, curr) ?? []
     } catch (error) {
       // Persist the Yjs bytes even when this document cannot be converted to markup.
-      curr = prev
+      runs?.discard()
       ctx.warn('document is not of a markup type', { documentName, error })
+    }
+    let segments: AuthorSegment[] = []
+    try {
+      segments = runs?.drain(prev, curr) ?? []
+    } catch (error) {
+      // Preserve the valid final markup as one combined diff when a boundary cannot be converted.
+      ctx.warn('failed to convert document author history', { documentName, error })
     }
     if (segments.length === 0) {
       segments.push({
