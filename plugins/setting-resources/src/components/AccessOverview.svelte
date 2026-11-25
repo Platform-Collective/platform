@@ -208,9 +208,11 @@
           </div>
           {#if mode === 'spaces'}
             {#each filteredSpaces as entry (entry.space._id)}
-              <Lazy>
-                <AccessSpace {entry} {employees} />
-              </Lazy>
+              <div class="lazy-space">
+                <Lazy>
+                  <AccessSpace {entry} {employees} />
+                </Lazy>
+              </div>
             {:else}
               <Label label={setting.string.AccessNoResults} />
             {/each}
@@ -256,6 +258,10 @@
   .overview {
     width: 100%;
     padding: 1rem;
+  }
+
+  .lazy-space {
+    min-height: 3.25rem;
   }
 
   .filters {
