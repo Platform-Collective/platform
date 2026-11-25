@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { Employee, Person } from '@hcengineering/contact'
+import { Employee, Person, PersonSpace } from '@hcengineering/contact'
 import {
   AttachedDoc,
   Attribute,
@@ -486,6 +486,20 @@ export interface IssueTemplate extends Doc, IssueTemplateData {
 /**
  * @public
  *
+ * The current user's issue timer, stored in their personal space.
+ */
+export interface IssueTimer extends Doc {
+  space: Ref<PersonSpace>
+  issueId: Ref<Issue>
+  identifier: string
+  reportId: Ref<TimeSpendReport>
+  startedAt: Timestamp
+  stoppedAt?: Timestamp
+}
+
+/**
+ * @public
+ *
  * Declares time spend entry
  */
 export interface TimeSpendReport extends AttachedDoc {
@@ -569,6 +583,7 @@ const pluginState = plugin(trackerId, {
   class: {
     Project: '' as Ref<Class<Project>>,
     Issue: '' as Ref<Class<Issue>>,
+    IssueTimer: '' as Ref<Class<IssueTimer>>,
     IssueRelation: '' as Ref<Class<IssueRelation>>,
     IssueTemplate: '' as Ref<Class<IssueTemplate>>,
     Component: '' as Ref<Class<Component>>,

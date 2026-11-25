@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import type { Data, DocumentUpdate, TxOperations } from '@hcengineering/core'
+import type { IssueTimer } from '@hcengineering/tracker'
 import {
   discardIssueTimer,
   formatElapsedTime,
   getElapsedTime,
+  getIssueTimerWarnings,
   getReportHours,
   getStoppedTimerHours,
-  readIssueTimer,
   saveReportOnce,
   startIssueTimer,
-  stopIssueTimer,
-  withIssueTimerLock
+  stopIssueTimer
 } from '../issue-timer'
-import type { RunningIssueTimer } from '../issue-timer'
+
+jest.mock('../../../../plugin', () => ({
+  __esModule: true,
+  default: { class: { IssueTimer: 'tracker:class:IssueTimer' } }
+}))
 
 describe('issue timer duration', () => {
   it('uses timestamps so elapsed time survives reloads and suspended tabs', () => {
@@ -43,147 +48,201 @@ describe('issue timer duration', () => {
   })
 })
 
-describe('persisted issue timer', () => {
-  const key = 'workspace:user'
-  const timer: RunningIssueTimer = {
-    issueId: 'issue',
+describe('issue timer review warnings', () => {
+  const start = new Date(2026, 0, 15, 8, 0, 0).getTime()
+
+  it('warns only after ten hours', () => {
+    expect(getIssueTimerWarnings(start, start + 10 * 3600000)).toEqual([])
+    expect(getIssueTimerWarnings(start, start + 10 * 3600000 + 1)).toEqual(['long'])
+  })
+
+  it('warns when the timer crosses local midnight', () => {
+    const startedAt = new Date(2026, 0, 15, 23, 30, 0).getTime()
+    const stoppedAt = new Date(2026, 0, 16, 0, 15, 0).getTime()
+    expect(getIssueTimerWarnings(startedAt, stoppedAt)).toEqual(['pastMidnight'])
+  })
+
+  it('reports both warnings for a long timer that crosses midnight', () => {
+    const startedAt = new Date(2026, 0, 15, 20, 0, 0).getTime()
+    const stoppedAt = new Date(2026, 0, 16, 7, 0, 0).getTime()
+    expect(getIssueTimerWarnings(startedAt, stoppedAt)).toEqual(['long', 'pastMidnight'])
+  })
+})
+
+interface TimerState {
+  timer: IssueTimer | undefined
+}
+
+interface TimerQuery {
+  _id?: string
+  reportId?: string
+  stoppedAt?: { $exists: boolean }
+}
+
+function makeTimer (reportId: string = 'report', issueId: string = 'issue'): IssueTimer {
+  const timer: IssueTimer = {
+    _id: 'account' as IssueTimer['_id'],
+    _class: 'tracker:class:IssueTimer' as IssueTimer['_class'],
+    space: 'personal-space' as IssueTimer['space'],
+    issueId: issueId as IssueTimer['issueId'],
     identifier: 'TEST-1',
-    reportId: 'report',
-    startedAt: 1000
+    reportId: reportId as IssueTimer['reportId'],
+    startedAt: 1000,
+    modifiedOn: 0,
+    modifiedBy: 'user' as IssueTimer['modifiedBy']
   }
-  let values: Map<string, string>
-  let storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+  return timer
+}
+
+function timerData (timer: IssueTimer): Data<IssueTimer> {
+  return {
+    issueId: timer.issueId,
+    identifier: timer.identifier,
+    reportId: timer.reportId,
+    startedAt: timer.startedAt,
+    stoppedAt: timer.stoppedAt
+  }
+}
+
+function matchesQuery (timer: IssueTimer | undefined, query: TimerQuery): boolean {
+  if (timer === undefined) return false
+  if (query._id !== undefined && timer._id !== query._id) return false
+  if (query.reportId !== undefined && timer.reportId !== query.reportId) return false
+  if (query.stoppedAt?.$exists === false && timer.stoppedAt !== undefined) return false
+  return true
+}
+
+function createClient (state: TimerState): TxOperations {
+  const client = {
+    findOne: async (_class: string, query: TimerQuery) => matchesQuery(state.timer, query) ? state.timer : undefined,
+    apply: () => {
+      const matches: TimerQuery[] = []
+      const notMatches: TimerQuery[] = []
+      let action: () => void = () => {}
+      const ops = {
+        match: (_class: string, query: TimerQuery) => {
+          matches.push(query)
+          return ops
+        },
+        notMatch: (_class: string, query: TimerQuery) => {
+          notMatches.push(query)
+          return ops
+        },
+        createDoc: async (
+          _class: IssueTimer['_class'],
+          space: IssueTimer['space'],
+          data: Data<IssueTimer>,
+          id: IssueTimer['_id']
+        ) => {
+          action = () => {
+            const created: IssueTimer = {
+              ...data,
+              _id: id,
+              _class,
+              space,
+              modifiedOn: 0,
+              modifiedBy: 'user' as IssueTimer['modifiedBy']
+            }
+            state.timer = created
+          }
+          return id
+        },
+        update: async (current: IssueTimer, update: DocumentUpdate<IssueTimer>) => {
+          action = () => {
+            if (state.timer?._id === current._id) {
+              state.timer = { ...state.timer, ...(update as Pick<IssueTimer, 'stoppedAt'>) }
+            }
+          }
+        },
+        remove: async (current: IssueTimer) => {
+          action = () => {
+            if (state.timer?._id === current._id) state.timer = undefined
+          }
+        },
+        commit: async () => {
+          await Promise.resolve()
+          if (!matches.every((query) => matchesQuery(state.timer, query))) return { result: false }
+          if (notMatches.some((query) => matchesQuery(state.timer, query))) return { result: false }
+          action()
+          return { result: true }
+        }
+      }
+      return ops
+    }
+  }
+  return client as unknown as TxOperations
+}
+
+async function start (client: TxOperations, timer: IssueTimer): Promise<boolean> {
+  return await startIssueTimer(client, timer.space, timer._id, timerData(timer))
+}
+
+describe('persisted issue timer', () => {
+  let state: TimerState
+  let client: TxOperations
+  let timer: IssueTimer
 
   beforeEach(() => {
-    values = new Map()
-    storage = {
-      getItem: (key) => values.get(key) ?? null,
-      setItem: (key, value) => values.set(key, value),
-      removeItem: (key) => values.delete(key)
-    }
+    state = { timer: undefined }
+    client = createClient(state)
+    timer = makeTimer()
   })
 
-  it('restores the running timer and prevents replacing it with another issue', () => {
-    expect(startIssueTimer(storage, key, timer)).toBe(true)
-    expect(readIssueTimer(storage, key)).toEqual(timer)
-    expect(startIssueTimer(storage, key, { ...timer, issueId: 'another' })).toBe(false)
-    expect(readIssueTimer(storage, key)).toEqual(timer)
-    expect(startIssueTimer(storage, 'workspace:other-user', { ...timer, issueId: 'another' })).toBe(true)
+  it('stores the timer in the personal space and prevents another device replacing it', async () => {
+    const otherDevice = createClient(state)
+    expect(await start(client, timer)).toBe(true)
+    expect(state.timer).toMatchObject({ ...timerData(timer), space: 'personal-space' })
+    const otherTimer = makeTimer()
+    otherTimer.issueId = 'another' as IssueTimer['issueId']
+    expect(await start(otherDevice, otherTimer)).toBe(false)
+    expect(state.timer?.issueId).toBe('issue')
   })
 
-  it('discards a timer for an unavailable issue and allows starting another timer', () => {
-    startIssueTimer(storage, key, timer)
-    discardIssueTimer(storage, key, timer.reportId)
-    expect(readIssueTimer(storage, key)).toBeUndefined()
-    expect(startIssueTimer(storage, key, { ...timer, issueId: 'another', reportId: 'next-report' })).toBe(true)
+  it('freezes and retains the elapsed time until the report is saved', async () => {
+    await start(client, timer)
+    const stopped = await stopIssueTimer(client, timer._id, timer.reportId, 3601000)
+    expect(stopped).toMatchObject({ stoppedAt: 3601000 })
+    expect(state.timer?.stoppedAt).toBe(3601000)
+    expect(getStoppedTimerHours(stopped as IssueTimer)).toBe(1)
+    expect(await discardIssueTimer(client, stopped as IssueTimer)).toBe(true)
+    expect(state.timer).toBeUndefined()
   })
 
-  it('does not discard a replacement timer from a stale control', () => {
-    const replacement = { ...timer, reportId: 'next-report' }
-    startIssueTimer(storage, key, replacement)
-    discardIssueTimer(storage, key, timer.reportId)
-    expect(readIssueTimer(storage, key)).toEqual(replacement)
-  })
-
-  it('can discard a stopped timer whose report was not saved', () => {
-    startIssueTimer(storage, key, timer)
-    stopIssueTimer(storage, key, timer.reportId, 3601000)
-    discardIssueTimer(storage, key, timer.reportId)
-    expect(readIssueTimer(storage, key)).toBeUndefined()
-    expect(startIssueTimer(storage, key, { ...timer, reportId: 'next-report' })).toBe(true)
-  })
-
-  it('refuses to start while a stopped timer still awaits its report', () => {
-    startIssueTimer(storage, key, timer)
-    stopIssueTimer(storage, key, timer.reportId, 3601000)
-    expect(startIssueTimer(storage, key, { ...timer, issueId: 'another', reportId: 'next-report' })).toBe(false)
-  })
-
-  it.each(['invalid json', '{}', '{"startedAt":-1}', 'null'])('ignores invalid saved data: %s', (value) => {
-    values.set(key, value)
-    expect(readIssueTimer(storage, key)).toBeUndefined()
-  })
-
-  it('freezes the elapsed duration when stopped and keeps the timer until the report is saved', () => {
-    startIssueTimer(storage, key, timer)
-    const stopped = stopIssueTimer(storage, key, timer.reportId, 3601000)
-    expect(stopped).toEqual({ ...timer, stoppedAt: 3601000 })
-    expect(readIssueTimer(storage, key)).toEqual({ ...timer, stoppedAt: 3601000 })
-    expect(getStoppedTimerHours(stopped as RunningIssueTimer)).toBe(1)
-    discardIssueTimer(storage, key, timer.reportId)
-    expect(readIssueTimer(storage, key)).toBeUndefined()
-  })
-
-  it('keeps the first stop time when stopping again, e.g. after the report popup was cancelled', () => {
-    startIssueTimer(storage, key, timer)
-    stopIssueTimer(storage, key, timer.reportId, 3601000)
-    expect(stopIssueTimer(storage, key, timer.reportId, 7201000)).toEqual({ ...timer, stoppedAt: 3601000 })
-  })
-
-  it('reports long durations unchanged so the user can correct them in the report popup', () => {
-    startIssueTimer(storage, key, timer)
-    const stopped = stopIssueTimer(storage, key, timer.reportId, timer.startedAt + 13 * 3600000)
-    expect(getStoppedTimerHours(stopped as RunningIssueTimer)).toBe(13)
-  })
-
-  it('ignores a stop for a timer that another tab saved or replaced', () => {
-    expect(stopIssueTimer(storage, key, timer.reportId, 3601000)).toBeUndefined()
-    const replacement = { ...timer, reportId: 'next-report' }
-    startIssueTimer(storage, key, replacement)
-    expect(stopIssueTimer(storage, key, timer.reportId, 3601000)).toBeUndefined()
-    expect(readIssueTimer(storage, key)).toEqual(replacement)
-  })
-
-  it('stops by the stored report ID even when the stored identifier is stale', () => {
-    const movedTimer = { ...timer, identifier: 'OLD-1' }
-    startIssueTimer(storage, key, movedTimer)
-    expect(stopIssueTimer(storage, key, movedTimer.reportId, 3601000)).toEqual({ ...movedTimer, stoppedAt: 3601000 })
-  })
-
-  it('reports zero hours for a zero-duration timer', () => {
-    startIssueTimer(storage, key, timer)
-    const stopped = stopIssueTimer(storage, key, timer.reportId, timer.startedAt)
-    expect(getStoppedTimerHours(stopped as RunningIssueTimer)).toBe(0)
-  })
-
-  it('serializes overlapping changes so only one stop wins', async () => {
-    startIssueTimer(storage, key, timer)
-    let finish: () => void = () => {}
-    const results: Array<RunningIssueTimer | undefined> = []
-    const first = withIssueTimerLock(key, async () => {
-      results.push(stopIssueTimer(storage, key, timer.reportId, 3601000))
-      await new Promise<void>((resolve) => {
-        finish = resolve
-      })
-      discardIssueTimer(storage, key, timer.reportId)
+  it('keeps the first stop time when another device stops the timer again', async () => {
+    await start(client, timer)
+    const otherDevice = createClient(state)
+    const results = await Promise.all([
+      stopIssueTimer(client, timer._id, timer.reportId, 3601000),
+      stopIssueTimer(otherDevice, timer._id, timer.reportId, 7201000)
+    ])
+    expect(results.filter(Boolean)).toHaveLength(1)
+    expect(state.timer?.stoppedAt).toBe(3601000)
+    expect(await stopIssueTimer(otherDevice, timer._id, timer.reportId, 7201000)).toMatchObject({
+      stoppedAt: 3601000
     })
-    const second = withIssueTimerLock(key, async () => {
-      results.push(stopIssueTimer(storage, key, timer.reportId, 7201000))
-    })
-    await Promise.resolve()
-    expect(results).toHaveLength(1)
-    finish()
-    await Promise.all([first, second])
-    expect(results).toEqual([{ ...timer, stoppedAt: 3601000 }, undefined])
-    expect(readIssueTimer(storage, key)).toBeUndefined()
   })
 
-  it('releases the lock after a failed action', async () => {
-    await expect(
-      withIssueTimerLock(key, async () => {
-        throw new Error('Offline')
-      })
-    ).rejects.toThrow('Offline')
-    startIssueTimer(storage, key, timer)
-    await withIssueTimerLock(key, async () => {
-      discardIssueTimer(storage, key, timer.reportId)
-    })
-    expect(readIssueTimer(storage, key)).toBeUndefined()
+  it('ignores a stop for a timer that was saved or replaced', async () => {
+    expect(await stopIssueTimer(client, timer._id, timer.reportId, 3601000)).toBeUndefined()
+    await start(client, makeTimer('next-report'))
+    expect(await stopIssueTimer(client, timer._id, timer.reportId, 3601000)).toBeUndefined()
+    expect(state.timer?.reportId).toBe('next-report')
+  })
+
+  it('does not discard a replacement timer from a stale control', async () => {
+    state.timer = makeTimer('next-report')
+    expect(await discardIssueTimer(client, timer)).toBe(false)
+    expect(state.timer?.reportId).toBe('next-report')
+  })
+
+  it('reports zero hours for a zero-duration timer', async () => {
+    await start(client, timer)
+    const stopped = await stopIssueTimer(client, timer._id, timer.reportId, timer.startedAt)
+    expect(getStoppedTimerHours(stopped as IssueTimer)).toBe(0)
   })
 })
 
 describe('saving a timer report once', () => {
-  // Mocked server: a scoped apply with notMatch checks and inserts atomically, and the trigger adds to the total.
   let reports: Set<string>
   let reportedTime: number
   let create: jest.Mock
@@ -221,7 +280,6 @@ describe('saving a timer report once', () => {
       releaseChecks = resolve
     })
     let checks = 0
-    // Both dialogs see no report before either creates it.
     const racingExists = async (): Promise<boolean> => {
       const found = reports.has('report')
       if (++checks === 2) releaseChecks()

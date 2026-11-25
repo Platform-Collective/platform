@@ -37,6 +37,7 @@
   import PriorityEditor from '../PriorityEditor.svelte'
   import RelationEditor from '../RelationEditor.svelte'
   import IssueDependenciesPanel from '../IssueDependenciesPanel.svelte'
+  import IssueTimer from '../timereport/IssueTimer.svelte'
   import StartDateEditor from '../StartDateEditor.svelte'
   import StatusEditor from '../StatusEditor.svelte'
   import SchedulingModeEditor from '../SchedulingModeEditor.svelte'
@@ -265,4 +266,12 @@
       {/each}
     {/if}
   {/each}
+
+  {#if !readonly}
+    <div class="divider" />
+    <span class="labelOnPanel">
+      <Label label={tracker.string.TimeSpendReports} />
+    </span>
+    <IssueTimer {issue} />
+  {/if}
 </div>

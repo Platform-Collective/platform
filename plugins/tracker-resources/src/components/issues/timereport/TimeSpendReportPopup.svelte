@@ -28,6 +28,7 @@
   import { Analytics } from '@hcengineering/analytics'
   import { createTimeSpendReport, createTimeSpendReportOnce } from './create-time-spend-report'
   import { saveReportOnce } from './issue-timer'
+  import type { IssueTimerWarning } from './issue-timer'
 
   export let issue: Issue | undefined = undefined
   export let issueId: Ref<Issue> | undefined = issue?._id
@@ -41,6 +42,7 @@
   // Prefill a new report, e.g. with the time measured by an issue timer, and reuse its ID so retries cannot duplicate it.
   export let initialValue: Partial<Pick<TimeSpendReport, 'date' | 'value' | 'description'>> | undefined = undefined
   export let reportId: Ref<TimeSpendReport> | undefined = undefined
+  export let timerWarnings: IssueTimerWarning[] = []
 
   const data = {
     date: value?.date ?? initialValue?.date ?? getTimeReportDate(defaultTimeReportDay),
@@ -59,16 +61,6 @@
 
   async function notify(label: IntlString, severity: NotificationSeverity): Promise<void> {
     addNotification(await translate(label, {}), '', undefined as any, undefined, severity)
-  }
-
-  async function create(): Promise<void> {
-    try {
-      await save()
-    } catch (err) {
-      await notify(tracker.string.TimeReportSaveFailed, NotificationSeverity.Error)
-      // With a stable report ID (timer path) saving is idempotent, so Card keeps the dialog open for a retry.
-      throw err
-    }
   }
 
   async function save(): Promise<void> {
@@ -114,7 +106,7 @@
 <Card
   label={value === undefined ? tracker.string.TimeSpendReportAdd : tracker.string.TimeSpendReportValue}
   {canSave}
-  okAction={create}
+  okAction={save}
   retryOnError={value === undefined && reportId !== undefined}
   gap={'gapV-4'}
   on:close
@@ -126,6 +118,16 @@
       <TitlePresenter showParent={false} value={issue} />
     {/if}
   </svelte:fragment>
+  {#if timerWarnings.includes('long')}
+    <div class="timer-warning">
+      <Label label={tracker.string.TimerLongDuration} />
+    </div>
+  {/if}
+  {#if timerWarnings.includes('pastMidnight')}
+    <div class="timer-warning">
+      <Label label={tracker.string.TimerPastMidnight} />
+    </div>
+  {/if}
   <div class="flex-row-center gap-2">
     <EditBox
       autoFocus
@@ -186,3 +188,9 @@
     />
   </svelte:fragment>
 </Card>
+
+<style>
+  .timer-warning {
+    color: var(--theme-warning-color);
+  }
+</style>

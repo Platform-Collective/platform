@@ -54,7 +54,6 @@
   import { canEditIssue } from '../../../utils'
   import tracker from '../../../plugin'
   import IssueStatusActivity from '../IssueStatusActivity.svelte'
-  import IssueTimer from '../timereport/IssueTimer.svelte'
   import ControlPanel from './ControlPanel.svelte'
   import CopyToClipboard from './CopyToClipboard.svelte'
   import SubIssueSelector from './SubIssueSelector.svelte'
@@ -303,7 +302,6 @@
 
     <svelte:fragment slot="utils">
       {#if !effectiveReadonly}
-        <IssueTimer {issue} />
         <Button
           icon={IconMoreH}
           iconProps={{ size: 'medium' }}

@@ -14,8 +14,8 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Analytics } from '@hcengineering/analytics'
   import type { IntlString } from '@hcengineering/platform'
+  import { reportCardError } from '../card-error'
   import {
     Button,
     IconClose,
@@ -94,7 +94,7 @@
           // Only for idempotent actions: keep the dialog and its values open so the action can be retried.
           void done.catch((err) => {
             okProcessing = false
-            Analytics.handleError(err)
+            reportCardError(err)
           })
         }
       } else {

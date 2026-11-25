@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: EPL-2.0
 
-export interface RunningIssueTimer {
-  issueId: string
-  identifier: string
-  reportId: string
-  startedAt: number
-  stoppedAt?: number
-}
+import type { PersonSpace } from '@hcengineering/contact'
+import type { Data, Ref, TxOperations } from '@hcengineering/core'
+import type { IssueTimer } from '@hcengineering/tracker'
+import tracker from '../../../plugin'
 
-interface TimerStorage {
-  getItem: (key: string) => string | null
-  setItem: (key: string, value: string) => void
-  removeItem: (key: string) => void
-}
+export type IssueTimerWarning = 'long' | 'pastMidnight'
+
+const longTimerThreshold = 10 * 60 * 60 * 1000
 
 /** Calculate elapsed milliseconds from timestamps, including time spent outside the issue view. */
 export function getElapsedTime (startedAt: number, now: number): number {
@@ -33,67 +28,68 @@ export function formatElapsedTime (elapsed: number): string {
     .join(':')
 }
 
-/** Restore a timer, ignoring malformed or obsolete browser data. Storage access errors propagate to the UI. */
-export function readIssueTimer (storage: TimerStorage, key: string): RunningIssueTimer | undefined {
-  const value = storage.getItem(key)
-  if (value === null) return
-  let data: unknown
-  try {
-    data = JSON.parse(value)
-  } catch {
-    return
-  }
-  if (typeof data !== 'object' || data === null) return
-  const timer = data as Partial<RunningIssueTimer>
+/** Identify durations that should be explicitly reviewed before creating a report. */
+export function getIssueTimerWarnings (startedAt: number, stoppedAt: number): IssueTimerWarning[] {
+  const warnings: IssueTimerWarning[] = []
+  if (getElapsedTime(startedAt, stoppedAt) > longTimerThreshold) warnings.push('long')
+  const started = new Date(startedAt)
+  const stopped = new Date(stoppedAt)
   if (
-    typeof timer.issueId !== 'string' ||
-    typeof timer.identifier !== 'string' ||
-    typeof timer.reportId !== 'string' ||
-    typeof timer.startedAt !== 'number' ||
-    !Number.isFinite(timer.startedAt) ||
-    timer.startedAt < 0 ||
-    (timer.stoppedAt !== undefined &&
-      (typeof timer.stoppedAt !== 'number' || !Number.isFinite(timer.stoppedAt) || timer.stoppedAt < timer.startedAt))
+    Number.isFinite(started.getTime()) &&
+    Number.isFinite(stopped.getTime()) &&
+    (started.getFullYear() !== stopped.getFullYear() ||
+      started.getMonth() !== stopped.getMonth() ||
+      started.getDate() !== stopped.getDate())
   ) {
-    return
+    warnings.push('pastMidnight')
   }
-  return timer as RunningIssueTimer
+  return warnings
 }
 
-/** Start only when the user has no running or unsaved timer. Call under the user's timer lock. */
-export function startIssueTimer (storage: TimerStorage, key: string, timer: RunningIssueTimer): boolean {
-  if (readIssueTimer(storage, key) !== undefined) return false
-  storage.setItem(key, JSON.stringify(timer))
-  return true
+/** Create the user's single timer atomically in their personal space. */
+export async function startIssueTimer (
+  client: TxOperations,
+  space: Ref<PersonSpace>,
+  id: Ref<IssueTimer>,
+  timer: Data<IssueTimer>
+): Promise<boolean> {
+  const ops = client.apply(`tracker:issue-timer:${id}`).notMatch(tracker.class.IssueTimer, { _id: id })
+  await ops.createDoc(tracker.class.IssueTimer, space, timer, id)
+  return (await ops.commit()).result
 }
 
-/** Remove only the displayed timer, after its report is saved or to discard it. Call under the user's timer lock. */
-export function discardIssueTimer (storage: TimerStorage, key: string, reportId: string): void {
-  if (readIssueTimer(storage, key)?.reportId === reportId) storage.removeItem(key)
+/** Remove only the displayed timer, after its report is saved or to discard it. */
+export async function discardIssueTimer (client: TxOperations, timer: IssueTimer): Promise<boolean> {
+  const ops = client
+    .apply(`tracker:issue-timer:${timer._id}`)
+    .match(tracker.class.IssueTimer, { _id: timer._id, reportId: timer.reportId })
+  await ops.remove(timer)
+  return (await ops.commit()).result
 }
 
-/**
- * Freeze the elapsed time so the report can be reviewed without the timer running on, and keep it until the report
- * is saved or the timer is discarded. Call under the user's timer lock.
- */
-export function stopIssueTimer (
-  storage: TimerStorage,
-  key: string,
-  reportId: string,
+/** Freeze the elapsed time atomically so another device cannot move the stop time or replace the timer. */
+export async function stopIssueTimer (
+  client: TxOperations,
+  id: Ref<IssueTimer>,
+  reportId: IssueTimer['reportId'],
   now: number = Date.now()
-): RunningIssueTimer | undefined {
-  const timer = readIssueTimer(storage, key)
-  // The caller passes the timer it displayed; another tab may have stopped, saved or replaced it before the lock.
+): Promise<IssueTimer | undefined> {
+  const timer = await client.findOne(tracker.class.IssueTimer, { _id: id })
   if (timer === undefined || timer.reportId !== reportId) return
-  if (timer.stoppedAt === undefined) {
-    timer.stoppedAt = Math.max(timer.startedAt, now)
-    storage.setItem(key, JSON.stringify(timer))
-  }
-  return timer
+  if (timer.stoppedAt !== undefined) return timer
+  const stoppedAt = Math.max(timer.startedAt, now)
+  const ops = client.apply(`tracker:issue-timer:${id}`).match(tracker.class.IssueTimer, {
+    _id: id,
+    reportId,
+    stoppedAt: { $exists: false }
+  })
+  await ops.update(timer, { stoppedAt })
+  if (!(await ops.commit()).result) return
+  return { ...timer, stoppedAt }
 }
 
 /** Report hours of a stopped timer, rounded like getReportHours. */
-export function getStoppedTimerHours (timer: RunningIssueTimer): number {
+export function getStoppedTimerHours (timer: Pick<IssueTimer, 'startedAt' | 'stoppedAt'>): number {
   return getReportHours(getElapsedTime(timer.startedAt, timer.stoppedAt ?? timer.startedAt))
 }
 
@@ -112,18 +108,5 @@ export async function saveReportOnce (
   } catch (err) {
     if (await exists().catch(() => false)) return 'exists'
     throw err
-  }
-}
-
-let pending: Promise<unknown> = Promise.resolve()
-
-/** Serialize timer changes across browser tabs, or within this window if Web Locks are unavailable. */
-export async function withIssueTimerLock (key: string, action: () => Promise<void>): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.locks !== undefined) {
-    await navigator.locks.request(key, action)
-  } else {
-    const next = pending.then(action)
-    pending = next.catch(() => {})
-    await next
   }
 }
