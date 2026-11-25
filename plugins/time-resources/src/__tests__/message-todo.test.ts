@@ -46,6 +46,12 @@ describe('message ToDo content', () => {
     expect(getMessageToDoContent(message, LINK, 'Action Item').title).toBe('Action Item')
   })
 
+  it('truncates titles longer than 100 characters with an ellipsis', () => {
+    const message = jsonToMarkup(nodeDoc(nodeParagraph(nodeText(`${'a'.repeat(100)} ${'b'.repeat(20)}`))))
+    expect(getMessageToDoContent(message, LINK, 'Action Item').title).toBe(`${'a'.repeat(100)}…`)
+    expect(getMessageToDoContent('a'.repeat(100), LINK, 'Action Item').title).toBe('a'.repeat(100))
+  })
+
   it('creates valid link markup with the full thread URL and no message body', () => {
     const link = `${LINK}&thread=parent&quote="quoted"`
     const { description } = getMessageToDoContent('Title\nPrivate body', link, 'Action Item')

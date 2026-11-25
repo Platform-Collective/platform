@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { getCurrentEmployee } from '@hcengineering/contact'
-import calendar, { AccessLevel, type Calendar, generateEventId } from '@hcengineering/calendar'
+import calendar, { AccessLevel, generateEventId } from '@hcengineering/calendar'
 import { getCurrentAccount, SortingOrder } from '@hcengineering/core'
-import type { Doc, Ref } from '@hcengineering/core'
-import { translate } from '@hcengineering/platform'
-import { getClient } from '@hcengineering/presentation'
+import type { Doc } from '@hcengineering/core'
+import { getMetadata, translate } from '@hcengineering/platform'
+import presentation, { getClient } from '@hcengineering/presentation'
 import { makeRank } from '@hcengineering/task'
 import { ToDoPriority } from '@hcengineering/time'
 import type { ToDo } from '@hcengineering/time'
@@ -13,27 +13,30 @@ import { locationToUrl } from '@hcengineering/ui'
 import { getObjectLinkFragment } from '@hcengineering/view-resources'
 import { getMessageToDoContent, isMessageToDoSource } from './message-todo'
 import time from './plugin'
+import { findPrimaryCalendar } from './utils'
 
 export async function getMessageToDoDefaults (object: Doc): Promise<Pick<ToDo, 'title' | 'description'>> {
   if (!isMessageToDoSource(object)) return { title: '', description: '' }
   const location = await getObjectLinkFragment(getClient().getHierarchy(), object)
-  const link = new URL(locationToUrl(location), window.location.origin).href
+  const frontUrl = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
+  const link = new URL(locationToUrl(location), frontUrl).href
   return getMessageToDoContent(object.message, link, await translate(time.string.ToDo, {}))
 }
 
 /** Schedule a private planner item using the calendar's native reminder support. */
-export async function createMessageToDo (object: Doc, date: number, reminders: number[] = []): Promise<void> {
+export async function createMessageToDo (
+  object: Doc,
+  date: number,
+  reminders: number[] = [],
+  duration: number = 30 * 60 * 1000
+): Promise<void> {
   if (!Number.isFinite(date)) throw new Error('Invalid planned date')
   const content = await getMessageToDoDefaults(object)
   const user = getCurrentEmployee()
   const account = getCurrentAccount()
   const client = getClient()
-  const external = await client.findOne(calendar.class.ExternalCalendar, {
-    default: true,
-    hidden: false,
-    user: account.primarySocialId
-  })
-  const calendarId = external?._id ?? (`${account.uuid}_calendar` as Ref<Calendar>)
+  const calendarId = await findPrimaryCalendar()
+  const dueDate = date + duration
   const ops = client.apply(undefined, 'create-todo')
   const latestTodo = await ops.findOne(
     time.class.ToDo,
@@ -48,7 +51,7 @@ export async function createMessageToDo (object: Doc, date: number, reminders: n
     'todos',
     {
       ...content,
-      dueDate: date,
+      dueDate,
       user,
       attachedSpace: object.space,
       visibility: 'private',
@@ -61,7 +64,7 @@ export async function createMessageToDo (object: Doc, date: number, reminders: n
   await ops.addCollection(time.class.WorkSlot, calendar.space.Calendar, id, time.class.ToDo, 'workslots', {
     eventId: generateEventId(),
     date,
-    dueDate: date + 30 * 60 * 1000,
+    dueDate,
     title: content.title,
     description: content.description,
     participants: [user],

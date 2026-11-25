@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import calendar, {
+  AccessLevel,
+  type Calendar,
+  type ExternalCalendar,
+  type PrimaryCalendar
+} from '@hcengineering/calendar'
 import {
   setCurrentAccount,
   AccountRole,
@@ -11,13 +17,18 @@ import {
   type Ref,
   type Space
 } from '@hcengineering/core'
-import { getClient } from '@hcengineering/presentation'
-import { createMessageToDo } from '../message-reminder'
+import presentation, { getClient } from '@hcengineering/presentation'
+import { setMetadata } from '@hcengineering/platform'
+import { createMessageToDo, getMessageToDoDefaults } from '../message-reminder'
 import { type MessageToDoSource } from '../message-todo'
 import time from '../plugin'
 
 jest.mock('@hcengineering/contact', () => ({ getCurrentEmployee: () => 'employee' }))
-jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
+jest.mock('@hcengineering/presentation', () => ({
+  __esModule: true,
+  default: { metadata: { FrontUrl: 'front-url' } },
+  getClient: jest.fn()
+}))
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual('@hcengineering/platform'),
   translate: async () => 'Action Item'
@@ -35,6 +46,35 @@ const message: MessageToDoSource = {
   modifiedBy: 'social' as PersonId,
   message: 'Follow up'
 }
+const defaultCalendar: ExternalCalendar = {
+  _id: 'default-calendar' as Ref<ExternalCalendar>,
+  _class: calendar.class.ExternalCalendar,
+  space: calendar.space.Calendar,
+  modifiedOn: 0,
+  modifiedBy: 'social' as PersonId,
+  name: 'Default calendar',
+  hidden: false,
+  visibility: 'private',
+  user: 'social' as PersonId,
+  access: AccessLevel.Owner,
+  default: true,
+  externalId: 'external',
+  externalUser: 'user'
+}
+const primaryCalendar: Calendar = {
+  ...defaultCalendar,
+  _id: 'primary-calendar' as Ref<Calendar>,
+  _class: calendar.class.Calendar,
+  name: 'Primary calendar'
+}
+const preference: PrimaryCalendar = {
+  _id: 'preference' as Ref<PrimaryCalendar>,
+  _class: calendar.class.PrimaryCalendar,
+  space: calendar.space.Calendar,
+  modifiedOn: 0,
+  modifiedBy: 'social' as PersonId,
+  attachedTo: primaryCalendar._id
+}
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -46,6 +86,7 @@ beforeEach(() => {
     fullSocialIds: []
   }
   setCurrentAccount(account)
+  setMetadata(presentation.metadata.FrontUrl, 'https://public.example')
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: { location: { origin: 'https://example.com' } }
@@ -53,11 +94,16 @@ beforeEach(() => {
   jest.mocked(getClient).mockReturnValue({
     getHierarchy: () => ({}),
     apply: () => ops,
-    findOne: async () => undefined
+    findAll: async () => [defaultCalendar, primaryCalendar],
+    findOne: async (_class: Ref<Class<Doc>>): Promise<Doc | undefined> => {
+      if (_class === calendar.class.PrimaryCalendar) return preference
+      if (_class === calendar.class.ExternalCalendar) return defaultCalendar
+      return undefined
+    }
   } as unknown as ReturnType<typeof getClient>)
 })
 
-it('keeps the message title clean and schedules a native thirty-minute WorkSlot', async () => {
+it('uses the primary calendar and schedules a native thirty-minute WorkSlot', async () => {
   const start = Date.UTC(2026, 10, 12, 14, 30)
   await createMessageToDo(message, start)
   expect(addCollection).toHaveBeenCalledWith(
@@ -66,7 +112,7 @@ it('keeps the message title clean and schedules a native thirty-minute WorkSlot'
     time.ids.NotAttached,
     time.class.ToDo,
     'todos',
-    expect.objectContaining({ title: 'Follow up' })
+    expect.objectContaining({ title: 'Follow up', dueDate: start + 30 * 60 * 1000 })
   )
   expect(addCollection).toHaveBeenCalledWith(
     time.class.WorkSlot,
@@ -74,9 +120,43 @@ it('keeps the message title clean and schedules a native thirty-minute WorkSlot'
     'todo',
     time.class.ToDo,
     'workslots',
-    expect.objectContaining({ title: 'Follow up', date: start, dueDate: start + 30 * 60 * 1000, reminders: [] })
+    expect.objectContaining({
+      title: 'Follow up',
+      date: start,
+      dueDate: start + 30 * 60 * 1000,
+      calendar: primaryCalendar._id,
+      reminders: []
+    })
   )
   expect(ops.commit).toHaveBeenCalledTimes(1)
+})
+
+it('uses the configured public front URL for the message link', async () => {
+  const { description } = await getMessageToDoDefaults(message)
+  expect(description).toContain('https://public.example/workbench/workspace/chunter/message')
+  expect(description).not.toContain('https://example.com')
+})
+
+it('uses the selected duration and the slot end as the ToDo due date', async () => {
+  const start = Date.UTC(2026, 10, 12, 14, 30)
+  const duration = 60 * 60 * 1000
+  await createMessageToDo(message, start, [], duration)
+  expect(addCollection).toHaveBeenCalledWith(
+    time.class.ToDo,
+    time.space.ToDos,
+    time.ids.NotAttached,
+    time.class.ToDo,
+    'todos',
+    expect.objectContaining({ dueDate: start + duration })
+  )
+  expect(addCollection).toHaveBeenCalledWith(
+    time.class.WorkSlot,
+    expect.anything(),
+    'todo',
+    time.class.ToDo,
+    'workslots',
+    expect.objectContaining({ date: start, dueDate: start + duration })
+  )
 })
 
 it('does not update the source message collection or metadata', async () => {

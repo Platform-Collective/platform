@@ -26,7 +26,8 @@ export function getMessageToDoContent (
     return ['paragraph', 'heading', 'codeBlock'].includes(node.type) ? `${text}\n` : text
   }
 
-  const title = getText(markupToJSON(message)).trim().split(/\r?\n/, 1)[0].trim() || fallback
+  const firstLine = getText(markupToJSON(message)).trim().split(/\r?\n/, 1)[0].trim() || fallback
+  const title = firstLine.length > 100 ? `${firstLine.slice(0, 100).trimEnd()}…` : firstLine
   return {
     title,
     description: jsonToMarkup(nodeDoc(nodeParagraph(markLink({ href: link, title }, nodeText(link)))))
