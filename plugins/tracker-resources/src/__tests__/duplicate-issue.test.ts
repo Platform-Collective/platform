@@ -20,7 +20,7 @@ import { updateIssueRelation } from '../issues'
 import tracker from '../plugin'
 import { canEditIssue } from '../utils'
 
-function mockWritable<T>(value: T): { value: T, set: (next: T) => void } {
+function mockWritable<T> (value: T): { value: T, set: (next: T) => void } {
   return {
     value,
     set (next: T): void {
@@ -140,20 +140,14 @@ it('links both issues, records activity, cancels the duplicate and unions subscr
       duplicate._id,
       'activity',
       tracker.string.DuplicateOf,
-      {
-        __activityInfoMessageMarkup:
-          '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'
-      }
+      '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'
     ],
     [
       'other-project',
       original._id,
       'activity',
       tracker.string.MarkedAsDuplicateOfThis,
-      {
-        __activityInfoMessageMarkup:
-          '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>'
-      }
+      '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>'
     ]
   ])
   expect(ops.addCollection).toHaveBeenCalledWith(

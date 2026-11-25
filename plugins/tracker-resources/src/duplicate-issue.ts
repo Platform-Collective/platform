@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import activity, { createActivityInfoMessageMarkup } from '@hcengineering/activity'
+import activity from '@hcengineering/activity'
 import type { PermissionsStore } from '@hcengineering/contact'
 import { permissionsStore } from '@hcengineering/contact-resources'
 import core, { AccountRole, getCurrentAccount, type Doc, type Ref, type Status } from '@hcengineering/core'
@@ -102,7 +102,7 @@ export async function markIssueDuplicate (duplicateId: Ref<Issue>, originalId: R
   ] as const) {
     await ops.addCollection(activity.class.ActivityInfoMessage, issue.space, issue._id, issue._class, 'activity', {
       message,
-      props: { issue: createActivityInfoMessageMarkup(createDuplicateReference(other)) }
+      props: { issue: createDuplicateReference(other) }
     })
   }
   await ops.update(duplicate, { status: canceled._id })

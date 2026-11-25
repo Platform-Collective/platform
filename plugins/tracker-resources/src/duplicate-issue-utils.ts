@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { createActivityInfoMessageReference } from '@hcengineering/activity'
 import type { Class, Doc, DocumentQuery, Ref, Status, StatusCategory } from '@hcengineering/core'
 import type { TaskType } from '@hcengineering/task'
 import type { Issue, Project } from '@hcengineering/tracker'
@@ -36,15 +37,5 @@ export function createDuplicateReference (issue: {
   _class: Ref<Class<Doc>>
   identifier: string
 }): string {
-  const escape = (value: string): string =>
-    value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;')
-  const id = escape(issue._id)
-  const objectClass = escape(issue._class)
-  const label = escape(issue.identifier)
-  return `<span data-type="reference" data-id="${id}" data-objectclass="${objectClass}" data-label="${label}">@${label}</span>`
+  return createActivityInfoMessageReference({ id: issue._id, objectClass: issue._class, label: issue.identifier })
 }
