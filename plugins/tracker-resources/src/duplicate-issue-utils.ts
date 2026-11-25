@@ -35,7 +35,7 @@ export function selectCanceledStatus (
 interface DuplicatePickerScope {
   readonly source: Ref<Issue>
   readonly creators?: PersonId[]
-  readonly eligible?: Ref<Issue>[]
+  readonly eligible?: Array<Ref<Issue>>
 }
 
 /** Build the duplicate target query from cached statuses, editable projects and guest eligibility. */
