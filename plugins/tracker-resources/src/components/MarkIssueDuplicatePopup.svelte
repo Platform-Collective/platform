@@ -1,25 +1,51 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import { permissionsStore } from '@hcengineering/contact-resources'
-  import core, { type FindOptions, SortingOrder } from '@hcengineering/core'
+  import core, {
+    AccountRole,
+    getCurrentAccount,
+    type Doc,
+    type FindOptions,
+    type Ref,
+    SortingOrder
+  } from '@hcengineering/core'
   import { setPlatformStatus, unknownError } from '@hcengineering/platform'
-  import { ObjectPopup } from '@hcengineering/presentation'
+  import { createQuery, getClient, ObjectPopup } from '@hcengineering/presentation'
   import task from '@hcengineering/task'
-  import { joinedProjectsStore } from '@hcengineering/task-resources'
+  import { activeProjects } from '@hcengineering/task-resources'
   import { type Issue } from '@hcengineering/tracker'
   import { statusStore } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import { getEditableDuplicateProjectIds, markIssueDuplicate } from '../duplicate-issue'
-  import { createDuplicatePickerQuery } from '../duplicate-issue-utils'
+  import { createDuplicatePickerQuery, createDuplicateTargetFilter } from '../duplicate-issue-utils'
   import tracker from '../plugin'
   import IssueStatusIcon from './issues/IssueStatusIcon.svelte'
 
   export let value: Issue
 
   const dispatch = createEventDispatcher<{ close: Issue | undefined | null }>()
+  const account = getCurrentAccount()
+  const isGuest =
+    account.role === AccountRole.Guest ||
+    account.role === AccountRole.DocGuest ||
+    account.role === AccountRole.ReadOnlyGuest
   let loading = false
-  $: editableProjects = getEditableDuplicateProjectIds($joinedProjectsStore ?? [], $permissionsStore)
+  let collaboratorOf = new Set<Ref<Doc>>()
+
+  if (isGuest) {
+    const collaboratorQuery = createQuery()
+    collaboratorQuery.query(core.class.Collaborator, { collaborator: account.uuid }, (result) => {
+      collaboratorOf = new Set(result.map((collaborator) => collaborator.attachedTo))
+    })
+  }
+
+  $: editableProjects = getEditableDuplicateProjectIds(Array.from($activeProjects.values()), $permissionsStore)
   $: docQuery = createDuplicatePickerQuery($statusStore.array, editableProjects, task.statusCategory.Lost)
+  $: targetFilter = createDuplicateTargetFilter(
+    docQuery,
+    getClient().getHierarchy(),
+    isGuest ? { socialIds: account.socialIds, collaboratorOf } : undefined
+  )
   const options: FindOptions<Issue> = {
     lookup: { status: [tracker.class.IssueStatus, { category: core.class.StatusCategory }] },
     sort: { modifiedOn: SortingOrder.Descending }
@@ -47,6 +73,7 @@
   _class={tracker.class.Issue}
   {options}
   {docQuery}
+  filter={targetFilter}
   ignoreObjects={[value._id]}
   category={tracker.completion.IssueCategory}
   placeholder={tracker.string.MarkAsDuplicate}

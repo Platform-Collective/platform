@@ -6,7 +6,7 @@ import { permissionsStore } from '@hcengineering/contact-resources'
 import core, { type Account, AccountRole, setCurrentAccount, type Status } from '@hcengineering/core'
 import { getClient } from '@hcengineering/presentation'
 import task, { type TaskType } from '@hcengineering/task'
-import { joinedProjectsStore, taskTypeStore } from '@hcengineering/task-resources'
+import { activeProjects, taskTypeStore } from '@hcengineering/task-resources'
 import { type Issue, type Project } from '@hcengineering/tracker'
 import { canChangeDoc, statusStore } from '@hcengineering/view-resources'
 import { get } from 'svelte/store'
@@ -32,7 +32,7 @@ function mockWritable<T> (value: T): { value: T, set: (next: T) => void } {
 jest.mock('@hcengineering/contact-resources', () => ({ permissionsStore: mockWritable({}) }))
 jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
 jest.mock('@hcengineering/task-resources', () => ({
-  joinedProjectsStore: mockWritable([]),
+  activeProjects: mockWritable(new Map()),
   taskTypeStore: mockWritable(new Map())
 }))
 jest.mock('@hcengineering/view-resources', () => ({
@@ -98,10 +98,12 @@ beforeEach(() => {
     array: [open, done, canceled]
   })
   setTaskType()
-  joinedProjectsStore.set([
-    { _id: duplicate.space, type: taskType.parent },
-    { _id: original.space, type: taskType.parent }
-  ] as Project[])
+  activeProjects.set(
+    new Map([
+      [duplicate.space, { _id: duplicate.space, type: taskType.parent }],
+      [original.space, { _id: original.space, type: taskType.parent }]
+    ]) as Map<Project['_id'], Project>
+  )
   client.findOne.mockImplementation(async (_class, query: { _id: string }) => documents.get(query._id))
   client.findAll.mockResolvedValue([
     { attachedTo: duplicate._id, collaborator: 'alice' },

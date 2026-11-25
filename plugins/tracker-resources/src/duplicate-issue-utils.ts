@@ -1,9 +1,19 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { createActivityInfoMessageReference } from '@hcengineering/activity'
-import type { Class, Doc, DocumentQuery, Ref, Status, StatusCategory } from '@hcengineering/core'
+import {
+  matchQuery,
+  type Account,
+  type Class,
+  type Doc,
+  type DocumentQuery,
+  type Hierarchy,
+  type Ref,
+  type Status,
+  type StatusCategory
+} from '@hcengineering/core'
 import type { TaskType } from '@hcengineering/task'
-import type { Issue, Project } from '@hcengineering/tracker'
+import tracker, { type Issue, type Project } from '@hcengineering/tracker'
 
 /** Select a canceled status in task-type order, preserving an already canceled status. */
 export function selectCanceledStatus (
@@ -28,6 +38,29 @@ export function createDuplicatePickerQuery (
   return {
     status: { $nin: statuses.filter((status) => status.category === canceledCategory).map((status) => status._id) },
     space: { $in: editableProjects }
+  }
+}
+
+export interface DuplicateTargetGuest {
+  readonly socialIds: Account['socialIds']
+  readonly collaboratorOf: ReadonlySet<Ref<Doc>>
+}
+
+/** Apply the base query and guest edit rules to normal and spotlight results. */
+export function createDuplicateTargetFilter (
+  query: DocumentQuery<Issue>,
+  hierarchy: Hierarchy,
+  guest?: DuplicateTargetGuest
+): (doc: Doc) => boolean {
+  return (doc) => {
+    if (matchQuery([doc], query, tracker.class.Issue, hierarchy).length === 0) return false
+    if (guest === undefined) return true
+    return (
+      (doc.createdBy !== undefined &&
+        Array.isArray(guest.socialIds) &&
+        guest.socialIds.includes(doc.createdBy)) ||
+      guest.collaboratorOf.has(doc._id)
+    )
   }
 }
 

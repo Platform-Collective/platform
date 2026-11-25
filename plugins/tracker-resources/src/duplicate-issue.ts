@@ -7,7 +7,7 @@ import core, { AccountRole, getCurrentAccount, type Doc, type Ref, type Status }
 import { translate } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import task from '@hcengineering/task'
-import { joinedProjectsStore, taskTypeStore } from '@hcengineering/task-resources'
+import { activeProjects, taskTypeStore } from '@hcengineering/task-resources'
 import { type Issue, type Project } from '@hcengineering/tracker'
 import { canChangeDoc, statusStore } from '@hcengineering/view-resources'
 import { get } from 'svelte/store'
@@ -42,7 +42,7 @@ export async function canShowMarkIssueDuplicate (doc?: Doc | Doc[]): Promise<boo
 }
 
 function findCanceledStatus (issue: Issue): Status | undefined {
-  const project = get(joinedProjectsStore)?.find((project) => project._id === issue.space)
+  const project = get(activeProjects).get(issue.space)
   const taskType = get(taskTypeStore).get(issue.kind)
   if (taskType === undefined || project === undefined || taskType.parent !== project.type) return undefined
   const statuses = get(statusStore).byId
