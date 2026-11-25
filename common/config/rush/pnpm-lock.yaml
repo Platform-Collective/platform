@@ -35295,13 +35295,13 @@ importers:
         specifier: workspace:^0.7.0
         version: link:../../models/all
       '@hcengineering/mongo':
-        specifier: workspace:^0.7.18
+        specifier: workspace:^0.7.16
         version: link:../../foundations/server/packages/mongo
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../foundations/utils/packages/platform-rig
       '@hcengineering/postgres':
-        specifier: workspace:^0.7.23
+        specifier: workspace:^0.7.22
         version: link:../../foundations/server/packages/postgres
       '@types/jest':
         specifier: ^30.0.0
