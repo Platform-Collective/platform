@@ -104,7 +104,7 @@ function makeClient (child: Document = makeChild()): {
 } {
   return {
     createDoc: jest.fn(async () => {}),
-    findOne: jest.fn(async () => child).mockResolvedValueOnce(undefined),
+    findOne: jest.fn(async (): Promise<Document | undefined> => child).mockResolvedValueOnce(undefined),
     getHierarchy: jest.fn(() => ({}))
   }
 }
