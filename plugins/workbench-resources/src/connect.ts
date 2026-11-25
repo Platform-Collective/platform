@@ -62,7 +62,7 @@ import {
 import { get, writable } from 'svelte/store'
 
 import plugin from './plugin'
-import { scheduleOidcSessionExpiryWarning } from './session-expiry'
+import { clearOidcSessionExpiryWarning, scheduleOidcSessionExpiryWarning } from './session-expiry'
 import { logOut, workspaceCreating } from './utils'
 import { WorkbenchEvents } from '@hcengineering/workbench'
 import { allowGuestSignUpStore, SimpleNotification } from '@hcengineering/view-resources'
@@ -96,6 +96,7 @@ let _client: Client | undefined
 let _clientSet: boolean = false
 
 export async function disconnect (): Promise<void> {
+  clearOidcSessionExpiryWarning()
   if (_client !== undefined) {
     await _client.close()
     _client = undefined
@@ -241,6 +242,7 @@ export async function connect (title: string): Promise<Client | undefined> {
   let lastOnConnectAt = 0
 
   if (_token !== token && _client !== undefined) {
+    clearOidcSessionExpiryWarning()
     // We need to flush all data from memory
     await ctx.with('purge-client', {}, async () => {
       await purgeClient()
