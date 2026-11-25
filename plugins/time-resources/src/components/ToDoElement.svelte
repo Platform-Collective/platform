@@ -98,7 +98,10 @@
       {/if}
     </div>
     <WorkItemPresenter {todo} kind={'todo-line'} withoutSpace />
-    <div class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label">
+    <div
+      class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label"
+      style:opacity={isUnavailable ? 0.55 : 1}
+    >
       {todo.title}
     </div>
     {#if isUnavailable}
@@ -131,9 +134,3 @@
     <ToDoCheckbox checked={isDone} priority={todo.priority} on:value={markDone} />
   </div>
 </button>
-
-<style lang="scss">
-  .hulyToDoLine-container.isUnavailable .hulyToDoLine-title {
-    opacity: 0.55;
-  }
-</style>
