@@ -19,7 +19,6 @@
   import { NotificationContext } from '@hcengineering/communication-types'
   import { Ref, WithLookup } from '@hcengineering/core'
   import presence from '@hcengineering/presence'
-  import { getResource } from '@hcengineering/platform'
   import {
     ComponentExtensions,
     createNotificationContextsQuery,
@@ -47,10 +46,10 @@
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
   import { canChangeDoc, showMenu } from '@hcengineering/view-resources'
-  import workbench from '@hcengineering/workbench'
 
   import { permissionsStore } from '@hcengineering/contact-resources'
-  import { afterUpdate } from 'svelte'
+  import { afterUpdate, onDestroy } from 'svelte'
+  import { handleMissingCardDocument } from '../missingDocument'
   import card from '../plugin'
   import { openCardInSidebar, setViewMode, viewStore } from '../utils'
   import CardIcon from './CardIcon.svelte'
@@ -78,28 +77,40 @@
   let title: string = ''
   let isTitleEditing = false
   let prevId: Ref<Card> = _id
+  let missingDocumentRevision = 0
 
   $: if (prevId !== _id) {
     prevId = _id
+    missingDocumentRevision++
     context = undefined
     isContextLoaded = false
     isTitleEditing = false
   }
 
-  $: query.query(card.class.Card, { _id }, async (result) => {
+  $: query.query(card.class.Card, { _id }, (result) => {
+    const revision = ++missingDocumentRevision
     if (result.length > 0) {
       ;[doc] = result
       if (!isTitleEditing) {
         title = doc.title
       }
     } else {
+      const missingId = _id
       // Let workbench move a matching tab; otherwise keep the editor fallback.
-      const handleMissingTabDocument = await getResource(workbench.function.HandleMissingTabDocument)
-      if (handleMissingTabDocument?.(_id) === true) return
-      const loc = getCurrentLocation()
-      loc.path.length = 3
-      navigate(loc)
+      handleMissingCardDocument(
+        missingId,
+        () => revision === missingDocumentRevision,
+        () => {
+          const loc = getCurrentLocation()
+          loc.path.length = 3
+          navigate(loc)
+        }
+      )
     }
+  })
+
+  onDestroy(() => {
+    missingDocumentRevision++
   })
 
   $: contextsQuery.query({ cardId: _id, limit: 1 }, (res) => {
