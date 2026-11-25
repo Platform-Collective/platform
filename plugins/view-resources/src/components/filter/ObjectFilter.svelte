@@ -44,6 +44,7 @@
   import view from '../../plugin'
   import { buildConfigLookup, getPresenter } from '../../utils'
   import FilterRemovedNotification from './FilterRemovedNotification.svelte'
+  import { isObjectFilterValueSelected, toggleObjectFilterValue } from './object-filter-selection'
 
   export let filter: Filter
   export let space: Ref<Space> | undefined = undefined
@@ -181,19 +182,11 @@
     if (value != null && grouppingManager !== undefined) {
       return grouppingManager.hasValue(value, values)
     }
-    return values.includes(value?._id ?? value)
+    return isObjectFilterValueSelected(value, values)
   }
 
   function handleFilterToggle(value: any): void {
-    if (isSelected(value, filter.value)) {
-      filter.value = filter.value.filter((p) => (value ? p !== value._id : p != null))
-    } else {
-      if (value) {
-        filter.value = [...filter.value, value._id]
-      } else {
-        filter.value = [...filter.value, undefined]
-      }
-    }
+    filter.value = toggleObjectFilterValue(value, filter.value, isSelected(value, filter.value))
 
     updateFilter()
   }
