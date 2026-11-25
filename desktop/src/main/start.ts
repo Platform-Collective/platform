@@ -456,7 +456,9 @@ function runTheApp (): void {
     autoUpdater.setFeedURL({
       provider: 'generic',
       url: updatesUrl,
-      channel: updatesChannel
+      channel: updatesChannel,
+      // The dist storage ignores multi-range requests, which breaks differential download.
+      useMultipleRangeRequest: false
     })
     void autoUpdater.checkForUpdatesAndNotify()
   })
