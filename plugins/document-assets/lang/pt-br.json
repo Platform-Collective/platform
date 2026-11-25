@@ -14,7 +14,7 @@
     "Snapshot": "Instantâneo",
     "RestoreVersion": "Restaurar esta versão",
     "RestoreVersionConfirm": "Substituir o conteúdo atual do documento por esta versão? Um instantâneo do conteúdo atual será salvo antes da restauração. Os tópicos de comentários em linha ancorados a conteúdo que não está mais presente podem ficar desvinculados.",
-    "VersionRestored": "Versão {title} restaurada por {name}",
+    "VersionRestored": "Versão {title} restaurada",
     "BeforeVersionRestore": "Antes de restaurar {title}",
     "NoVersions": "Não há versões definidas",
     "DocumentApplication": "Documentos",

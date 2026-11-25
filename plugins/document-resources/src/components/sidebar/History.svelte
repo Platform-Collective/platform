@@ -15,9 +15,7 @@
 //
 -->
 <script lang="ts">
-  import contact, { formatName, type PermissionsStore } from '@hcengineering/contact'
-  import { getPersonByPersonId } from '@hcengineering/contact-resources'
-  import { getCurrentAccount } from '@hcengineering/core'
+  import contact, { type PermissionsStore } from '@hcengineering/contact'
   import { Document, DocumentSnapshot } from '@hcengineering/document'
   import { getResource, setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
   import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
@@ -85,11 +83,7 @@
         restoring = true
         try {
           const title = await translate(document.string.BeforeVersionRestore, { title: snapshot.title })
-          const account = getCurrentAccount()
-          const person = await getPersonByPersonId(account.primarySocialId).catch(() => null)
-          const restoredBy =
-            person !== null ? formatName(person.name) || account.primarySocialId : account.primarySocialId
-          await restoreDocumentSnapshot(client, doc, snapshot, title, restoredBy)
+          await restoreDocumentSnapshot(client, doc, snapshot, title)
         } catch (err) {
           await setPlatformStatus(unknownError(err))
         } finally {

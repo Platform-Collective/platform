@@ -58,19 +58,10 @@ export interface UpdateContentRequest {
 export interface UpdateContentResponse {}
 
 /** @public */
-export interface DeleteContentRequest {
-  content: Record<string, MarkupBlobRef>
-}
-
-/** @public */
-export interface DeleteContentResponse {}
-
-/** @public */
 export interface CollaboratorClient {
   getMarkup: (document: CollaborativeDoc, source?: Ref<Blob> | null) => Promise<Markup>
   createMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<MarkupBlobRef>
   updateMarkup: (document: CollaborativeDoc, markup: Markup, notice?: CollaborationNotice) => Promise<void>
-  deleteMarkup: (document: CollaborativeDoc, content: MarkupBlobRef) => Promise<void>
   copyContent: (source: CollaborativeDoc, target: CollaborativeDoc) => Promise<void>
 }
 
@@ -156,20 +147,6 @@ class CollaboratorClientImpl implements CollaboratorClient {
       3,
       async () => {
         await this.rpc<UpdateContentRequest, UpdateContentResponse>(document, 'updateContent', { content, notice })
-      },
-      50
-    )
-  }
-
-  async deleteMarkup (document: CollaborativeDoc, blob: MarkupBlobRef): Promise<void> {
-    const content = {
-      [document.objectAttr]: blob
-    }
-
-    await retry(
-      3,
-      async () => {
-        await this.rpc<DeleteContentRequest, DeleteContentResponse>(document, 'deleteContent', { content })
       },
       50
     )

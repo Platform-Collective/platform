@@ -14,7 +14,7 @@
     "Snapshot": "快照",
     "RestoreVersion": "恢复此版本",
     "RestoreVersionConfirm": "将当前文档内容替换为此版本？恢复前将保存当前内容的快照。锚定到已不存在内容的内联评论线程可能会失去关联。",
-    "VersionRestored": "{name} 已将文档恢复到版本 {title}",
+    "VersionRestored": "已恢复到版本 {title}",
     "BeforeVersionRestore": "恢复 {title} 之前",
     "NoVersions": "没有定义的版本",
     "DocumentApplication": "文档",

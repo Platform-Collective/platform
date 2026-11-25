@@ -14,7 +14,7 @@
     "Snapshot": "Migawka",
     "RestoreVersion": "Przywróć tę wersję",
     "RestoreVersionConfirm": "Zastąpić bieżącą zawartość dokumentu tą wersją? Przed przywróceniem zostanie zapisana migawka bieżącej zawartości. Wątki komentarzy wbudowanych zakotwiczone w treści, której już nie ma, mogą stracić powiązanie.",
-    "VersionRestored": "Wersja {title} została przywrócona przez {name}",
+    "VersionRestored": "Wersja {title} została przywrócona",
     "BeforeVersionRestore": "Przed przywróceniem {title}",
     "NoVersions": "Nie zdefiniowano wersji",
     "DocumentApplication": "Dokumenty",

@@ -5,7 +5,7 @@ import type { MeasureContext } from '@hcengineering/core'
 import { Doc } from 'yjs'
 import type { Context } from '../../context'
 import type { RpcMethodParams } from '../rpc'
-import { updateContent } from './updateContent'
+import { methods } from './index'
 
 function makeContext (): MeasureContext {
   return {
@@ -19,10 +19,15 @@ function makeContext (): MeasureContext {
 }
 
 describe('updateContent', () => {
-  it('publishes the notice in the same document transaction as the content', async () => {
+  it('is registered without a content deletion method', () => {
+    expect(methods.updateContent).toBeDefined()
+    expect(methods.deleteContent).toBeUndefined()
+  })
+
+  it('publishes a version-only notice in the content transaction', async () => {
     const target = new Doc()
     const source = new Doc()
-    const notice = { type: 'document-restored', params: { title: 'Snapshot', name: 'Restorer' } }
+    const notice = { type: 'document-restored', params: { title: 'Snapshot', name: 'Impersonated user' } }
     const disconnect = jest.fn(async () => {})
     const transact = jest.fn(async (fn: (document: Doc) => void) => {
       fn(target)
@@ -33,7 +38,7 @@ describe('updateContent', () => {
       transformer: { toYdoc: () => source }
     } as unknown as RpcMethodParams
 
-    await updateContent(
+    await methods.updateContent(
       makeContext(),
       {} as unknown as Context,
       'workspace|Document|doc|content',
@@ -41,7 +46,10 @@ describe('updateContent', () => {
       params
     )
 
-    expect(target.getMap(CONTENT_NOTICE_MAP).get(CONTENT_NOTICE_KEY)).toEqual(notice)
+    expect(target.getMap(CONTENT_NOTICE_MAP).get(CONTENT_NOTICE_KEY)).toEqual({
+      type: 'document-restored',
+      params: { title: 'Snapshot' }
+    })
     expect(transact).toHaveBeenCalledTimes(1)
     expect(disconnect).toHaveBeenCalledTimes(1)
   })

@@ -58,12 +58,6 @@ export async function updateMarkup (
 }
 
 /** @public */
-export async function deleteMarkup (doc: CollaborativeDoc, content: Ref<Blob>): Promise<void> {
-  const client = getClient()
-  await client.deleteMarkup(doc, content)
-}
-
-/** @public */
 export async function copyMarkup (source: CollaborativeDoc, target: CollaborativeDoc): Promise<void> {
   const client = getClient()
   await client.copyContent(source, target)

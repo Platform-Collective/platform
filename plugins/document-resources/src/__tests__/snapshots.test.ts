@@ -2,7 +2,7 @@
 
 import type { Document, DocumentSnapshot } from '@hcengineering/document'
 import type { TxOperations } from '@hcengineering/core'
-import { createMarkup, deleteMarkup, getMarkup, updateMarkup } from '@hcengineering/presentation'
+import { createMarkup, getMarkup, updateMarkup } from '@hcengineering/presentation'
 import { canChangeAttribute } from '@hcengineering/view-resources'
 import { canRestoreSnapshot, createDocumentSnapshot, restoreDocumentSnapshot } from '../snapshots'
 
@@ -56,6 +56,8 @@ jest.mock('svelte/store', () => ({
   }
 }))
 
+const { deleteMarkup } = jest.requireMock<{ deleteMarkup: jest.Mock }>('@hcengineering/presentation')
+
 const doc = { _id: 'doc', _class: 'Document', space: 'teamspace', content: 'live-blob' } as unknown as Document
 const snapshot = {
   _id: 'snapshot',
@@ -86,7 +88,7 @@ beforeEach(() => {
     .mocked(getMarkup)
     .mockImplementation(async (id) => (id.objectId === snapshot._id ? 'saved content' : 'live content'))
   jest.mocked(createMarkup).mockResolvedValue('backup-blob' as DocumentSnapshot['content'])
-  jest.mocked(deleteMarkup).mockResolvedValue(undefined)
+  deleteMarkup.mockResolvedValue(undefined)
   jest.mocked(updateMarkup).mockResolvedValue(undefined)
 })
 
@@ -141,15 +143,18 @@ describe('createDocumentSnapshot', () => {
     }
   })
 
-  it('deletes the uploaded content if persisting the snapshot fails', async () => {
+  it('keeps a committed snapshot blob when the createDoc response is lost', async () => {
     const { client, createDoc } = makeClient()
-    createDoc.mockRejectedValueOnce(new Error('Persist failed'))
-    jest.mocked(deleteMarkup).mockRejectedValueOnce(new Error('Cleanup failed'))
-    await expect(createDocumentSnapshot(client, doc, 'Backup')).rejects.toThrow('Persist failed')
-    expect(deleteMarkup).toHaveBeenCalledWith(
-      { objectClass: 'DocumentSnapshot', objectId: 'new-snapshot', objectAttr: 'content' },
-      'backup-blob'
-    )
+    const persisted = new Map<string, { content: DocumentSnapshot['content'] }>()
+    createDoc.mockImplementationOnce(async () => {
+      persisted.set('new-snapshot', { content: 'backup-blob' as DocumentSnapshot['content'] })
+      throw new Error('Connection lost')
+    })
+
+    await expect(createDocumentSnapshot(client, doc, 'Backup')).rejects.toThrow('Connection lost')
+
+    expect(persisted.get('new-snapshot')).toEqual({ content: 'backup-blob' })
+    expect(deleteMarkup).not.toHaveBeenCalled()
   })
 
   it('does not create a snapshot when the document cannot be edited', async () => {
@@ -164,7 +169,7 @@ describe('createDocumentSnapshot', () => {
 describe('restoreDocumentSnapshot', () => {
   it('persists a backup before replacing the current collaborative content', async () => {
     const { client, createDoc } = makeClient()
-    await restoreDocumentSnapshot(client, doc, snapshot, 'Before restore', 'Restorer')
+    await restoreDocumentSnapshot(client, doc, snapshot, 'Before restore')
     expect(getMarkup).toHaveBeenCalledWith(
       { objectClass: snapshot._class, objectId: snapshot._id, objectAttr: 'content' },
       snapshot.content
@@ -173,7 +178,7 @@ describe('restoreDocumentSnapshot', () => {
     expect(updateMarkup).toHaveBeenCalledWith(
       { objectClass: doc._class, objectId: doc._id, objectAttr: 'content' },
       'saved content',
-      { type: 'document-restored', params: { title: snapshot.title, name: 'Restorer' } }
+      { type: 'document-restored', params: { title: snapshot.title } }
     )
     expect(createDoc.mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(updateMarkup).mock.invocationCallOrder[0])
   })
@@ -190,7 +195,7 @@ describe('restoreDocumentSnapshot', () => {
         await backup
       })
     })
-    const restoring = restoreDocumentSnapshot(client, doc, snapshot, 'Before restore', 'Restorer')
+    const restoring = restoreDocumentSnapshot(client, doc, snapshot, 'Before restore')
     await backupStarted
     expect(updateMarkup).not.toHaveBeenCalled()
     finishBackup()
@@ -204,7 +209,7 @@ describe('restoreDocumentSnapshot', () => {
     if (reason === 'locked') findOne.mockResolvedValue({ ...doc, lockedBy: 'account' })
     if (reason === 'forbidden') jest.mocked(canChangeAttribute).mockReturnValue(false)
     const version = reason === 'wrong parent' ? { ...snapshot, parent: 'other' as Document['_id'] } : snapshot
-    await expect(restoreDocumentSnapshot(client, doc, version, 'Before restore', 'Restorer')).rejects.toThrow()
+    await expect(restoreDocumentSnapshot(client, doc, version, 'Before restore')).rejects.toThrow()
     expect(createDoc).not.toHaveBeenCalled()
     expect(updateMarkup).not.toHaveBeenCalled()
   })
@@ -212,9 +217,7 @@ describe('restoreDocumentSnapshot', () => {
   it('does not change live content if reading the selected version fails', async () => {
     const { client, createDoc } = makeClient()
     jest.mocked(getMarkup).mockRejectedValueOnce(new Error('Read failed'))
-    await expect(restoreDocumentSnapshot(client, doc, snapshot, 'Before restore', 'Restorer')).rejects.toThrow(
-      'Read failed'
-    )
+    await expect(restoreDocumentSnapshot(client, doc, snapshot, 'Before restore')).rejects.toThrow('Read failed')
     expect(createDoc).not.toHaveBeenCalled()
     expect(updateMarkup).not.toHaveBeenCalled()
   })
@@ -226,18 +229,14 @@ describe('restoreDocumentSnapshot', () => {
     }
     if (stage === 'upload') jest.mocked(createMarkup).mockRejectedValueOnce(new Error('Backup failed'))
     if (stage === 'persist') createDoc.mockRejectedValueOnce(new Error('Backup failed'))
-    await expect(restoreDocumentSnapshot(client, doc, snapshot, 'Before restore', 'Restorer')).rejects.toThrow(
-      'Backup failed'
-    )
+    await expect(restoreDocumentSnapshot(client, doc, snapshot, 'Before restore')).rejects.toThrow('Backup failed')
     expect(updateMarkup).not.toHaveBeenCalled()
   })
 
   it('retains the backup when updating the live document fails', async () => {
     const { client, createDoc } = makeClient()
     jest.mocked(updateMarkup).mockRejectedValueOnce(new Error('Update failed'))
-    await expect(restoreDocumentSnapshot(client, doc, snapshot, 'Before restore', 'Restorer')).rejects.toThrow(
-      'Update failed'
-    )
+    await expect(restoreDocumentSnapshot(client, doc, snapshot, 'Before restore')).rejects.toThrow('Update failed')
     expect(createDoc).toHaveBeenCalled()
   })
 })

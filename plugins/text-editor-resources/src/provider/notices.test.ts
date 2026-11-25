@@ -13,13 +13,13 @@ describe('observeContentNotices', () => {
 
     source.getMap(CONTENT_NOTICE_MAP).set(CONTENT_NOTICE_KEY, {
       type: 'document-restored',
-      params: { title: 'Snapshot', name: 'Restorer' }
+      params: { title: 'Snapshot' }
     })
     applyUpdate(target, encodeStateAsUpdate(source))
 
     expect(callback).toHaveBeenCalledWith({
       type: 'document-restored',
-      params: { title: 'Snapshot', name: 'Restorer' }
+      params: { title: 'Snapshot' }
     })
     stop()
   })

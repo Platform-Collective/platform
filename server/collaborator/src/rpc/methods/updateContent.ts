@@ -59,7 +59,10 @@ export async function updateContent (
             applyUpdate(document, update)
           })
           if (notice !== undefined) {
-            document.getMap(CONTENT_NOTICE_MAP).set(CONTENT_NOTICE_KEY, notice)
+            document.getMap(CONTENT_NOTICE_MAP).set(CONTENT_NOTICE_KEY, {
+              type: notice.type,
+              params: { title: notice.params.title }
+            })
           }
         }, connection)
       })
