@@ -26,6 +26,7 @@ const markup = (text: string): string =>
   })
 
 function makeClient (account: string): {
+  client: unknown
   txFactory: { account: string }
   getHierarchy: jest.Mock
   findOne: jest.Mock
@@ -37,6 +38,7 @@ function makeClient (account: string): {
 } {
   const saved = new Map<string, unknown>()
   return {
+    client: undefined,
     txFactory: { account },
     getHierarchy: jest.fn().mockReturnValue({
       findAttribute: () => ({ type: { _class: core.class.TypeCollaborativeDoc } }),
@@ -72,7 +74,10 @@ function setup (): {
     account: index === 0 ? 'A' : 'B',
     connectionId: String(index),
     wsIds: { uuid: 'workspace' },
-    clientFactory: jest.fn().mockResolvedValue(client)
+    clientFactory: jest.fn().mockImplementation(async (params?: { client?: unknown }) => {
+      client.client = params?.client ?? client
+      return client
+    })
   })) as unknown as Context[]
   const segment = (index: number, prev: string, curr: string, id: string): AuthorSegment => ({
     context: contexts[index],
@@ -91,10 +96,10 @@ function setup (): {
 
 beforeEach(() => jest.clearAllMocks())
 
-it('holds at most two author connections while saving many authors', async () => {
+it('uses one service connection while saving many authors', async () => {
   const { adapter } = setup()
   let active = 0
-  let peak = 0
+  let connections = 0
   const clients = Array.from({ length: 20 }, (_, index) => makeClient(String(index)))
   const segments = clients.map((client, index): AuthorSegment => {
     client.close.mockImplementation(async () => {
@@ -104,9 +109,12 @@ it('holds at most two author connections while saving many authors', async () =>
       account: String(index),
       connectionId: String(index),
       wsIds: { uuid: 'workspace' },
-      clientFactory: async () => {
-        active++
-        peak = Math.max(peak, active)
+      clientFactory: async (params?: { client?: unknown }) => {
+        if (params?.client === undefined) {
+          active++
+          connections++
+        }
+        client.client = params?.client ?? client
         return client
       }
     } as unknown as Context
@@ -128,7 +136,7 @@ it('holds at most two author connections while saving many authors', async () =>
       { prev: () => segments[0].prev, curr: () => segments[19].curr },
       { segments }
     )
-    expect(peak).toBeLessThanOrEqual(2)
+    expect(connections).toBe(1)
     expect(active).toBe(0)
   } finally {
     doc.destroy()
@@ -158,7 +166,6 @@ it('emits exact A/B/A diffs in both representations with one final blob update a
   expect(clients[0].diffUpdate).toHaveBeenCalledTimes(1)
   expect(clients[1].diffUpdate).not.toHaveBeenCalled()
   for (const client of clients) {
-    expect(client.close).toHaveBeenCalledTimes(1)
     for (const call of client.domainRequest.mock.calls) {
       const event = call[1].event
       const segment = batch.segments.find(({ messageId }) => messageId === event.messageId) as AuthorSegment
@@ -178,7 +185,9 @@ it('emits exact A/B/A diffs in both representations with one final blob update a
     }
   }
   expect(contexts[0].clientFactory).toHaveBeenCalledTimes(1)
-  expect(contexts[1].clientFactory).toHaveBeenCalledTimes(1)
+  expect(contexts[1].clientFactory).toHaveBeenCalledWith({ client: clients[0].client })
+  expect(clients[0].close).toHaveBeenCalledTimes(1)
+  expect(clients[1].close).not.toHaveBeenCalled()
   expect(clients.map((client) => client.domainRequest.mock.calls.length)).toEqual([2, 1])
   expect(clients.map((client) => client.addCollection.mock.calls.length)).toEqual([2, 1])
   doc.destroy()
@@ -252,7 +261,8 @@ it('does not replay successful writes when closing the transport fails', async (
     )
   ).resolves.toEqual(batch.segments[2].curr)
   expect(batch.segments.every((segment) => segment.eventSent === true && segment.activitySaved === true)).toBe(true)
-  expect(clients[1].close).toHaveBeenCalledTimes(1)
+  expect(clients[0].close).toHaveBeenCalledTimes(1)
+  expect(clients[1].close).not.toHaveBeenCalled()
   doc.destroy()
 })
 

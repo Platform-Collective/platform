@@ -152,19 +152,15 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
       segments: [{ context, prev: getMarkup.prev(), curr: getMarkup.curr(), id: generateId(), timestamp: Date.now() }]
     }
     const clients = new Map<Context['account'], TxOperations>()
+    let serviceClient: TxOperations | undefined
     const getClient = async (author: Context): Promise<TxOperations> => {
       let client = clients.get(author.account)
       if (client === undefined) {
-        // Bound live transactor connections independently of the number of editors.
-        if (clients.size >= 2) {
-          const oldest = clients.entries().next().value
-          if (oldest !== undefined) {
-            await oldest[1].close()
-            clients.delete(oldest[0])
-          }
-        }
         try {
-          client = await ctx.with('connect', {}, () => author.clientFactory())
+          client = await ctx.with('connect', {}, () =>
+            author.clientFactory(serviceClient === undefined ? {} : { client: serviceClient.client })
+          )
+          serviceClient ??= client
         } catch (error) {
           ctx.error('failed to connect author to platform', { documentName, account: author.account, error })
           throw error
@@ -205,13 +201,11 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
         }
       )
     } finally {
-      for (const client of clients.values()) {
-        try {
-          await client.close()
-        } catch (error) {
-          // Cleanup must not replay already acknowledged activity writes.
-          ctx.warn('failed to close platform client', { documentName, error })
-        }
+      try {
+        await serviceClient?.close()
+      } catch (error) {
+        // Cleanup must not replay already acknowledged activity writes.
+        ctx.warn('failed to close platform client', { documentName, error })
       }
     }
   }
