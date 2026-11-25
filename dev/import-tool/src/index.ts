@@ -164,7 +164,7 @@ export function importTool (): void {
   // import-clickup-tasks /home/anna/work/clickup/aleksandr/debug/tasks.csv --workspace ws1 --user user1 --password 1234
   program
     .command('import-clickup-tasks <file>')
-    .description('import extracted archive exported from Notion as "Markdown & CSV"')
+    .description('import tasks exported from ClickUp as CSV')
     .option('-u, --user <user>', 'user')
     .option('-p, --password <password>', 'password')
     .option('--token <token>', `API token, used instead of user and password (or set ${API_TOKEN_ENV})`)

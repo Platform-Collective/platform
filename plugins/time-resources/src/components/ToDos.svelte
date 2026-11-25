@@ -32,7 +32,6 @@
     IconMenuOpen,
     Label,
     Scroller,
-    areDatesEqual,
     defaultSP,
     deviceOptionsStore as deviceInfo,
     ticker,
@@ -52,6 +51,7 @@
   } from '../issue-planning'
   import { queryPlanningIssues } from '../planning-query'
   import CreateToDo from './CreateToDo.svelte'
+  import { isPlannedTodoVisible } from './planned-todos'
   import ToDoGroup from './ToDoGroup.svelte'
 
   export let mode: ToDosMode
@@ -273,24 +273,7 @@
 
   function filterActive(mode: ToDosMode, raw: WithLookup<ToDo>[], currentDate: Date): WithLookup<ToDo>[] {
     if (mode === 'planned') {
-      const today = areDatesEqual(new Date(), currentDate)
-      const res: WithLookup<ToDo>[] = []
-      const endDay = new Date().setHours(23, 59, 59, 999)
-      for (const todo of raw) {
-        const nearest = getNearest(getWorkslots(todo))
-        if (nearest === undefined) {
-          res.push(todo)
-        } else {
-          if (today) {
-            if (nearest.dueDate < endDay) {
-              res.push(todo)
-            }
-          } else if (areDatesEqual(new Date(nearest.date), currentDate)) {
-            res.push(todo)
-          }
-        }
-      }
-      return res
+      return raw.filter((todo) => isPlannedTodoVisible(getNearest(getWorkslots(todo)), currentDate))
     } else {
       return raw
     }

@@ -143,6 +143,20 @@ export interface AttributeFilter extends Class<Type<any>> {
 }
 
 /**
+ * Applied to a reference attribute (`core.class.Attribute`) to show which space
+ * each value belongs to in the attribute's filter when the filter spans spaces,
+ * for example `PROJ · Sprint 1` for a milestone filter outside a project.
+ *
+ * @public
+ */
+export interface ReferenceFilterSpace extends AnyAttribute {
+  // Class of the referenced documents' `space`, looked up with the values.
+  spaceClass: Ref<Class<Space>>
+  // Field of the looked-up space that identifies it, such as `identifier`.
+  labelKey: string
+}
+
+/**
  * @public
  */
 export interface AttributeEditor extends Class<Doc> {

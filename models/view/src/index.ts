@@ -30,7 +30,7 @@ import {
   type Space
 } from '@hcengineering/core'
 import { type Builder, Mixin, Model, Prop, TypeRecord, TypeRef, TypeString, UX } from '@hcengineering/model'
-import core, { TClass, TDoc } from '@hcengineering/model-core'
+import core, { TAttribute, TClass, TDoc } from '@hcengineering/model-core'
 import preference, { TPreference } from '@hcengineering/model-preference'
 import presentation from '@hcengineering/model-presentation'
 import { type Asset, getEmbeddedLabel, type IntlString, type Resource, type Status } from '@hcengineering/platform'
@@ -91,6 +91,7 @@ import {
   type ObjectTooltip,
   type ObjectValidator,
   type PreviewPresenter,
+  type ReferenceFilterSpace,
   type ReferenceObjectProvider,
   type ReferenceVersion,
   type ReferenceVersionsProvider,
@@ -155,6 +156,12 @@ export class TClassFilters extends TClass implements ClassFilters {
 export class TAttributeFilter extends TClass implements AttributeFilter {
   component!: AnyComponent
   group?: 'top' | 'bottom'
+}
+
+@Mixin(view.mixin.ReferenceFilterSpace, core.class.Attribute)
+export class TReferenceFilterSpace extends TAttribute implements ReferenceFilterSpace {
+  spaceClass!: Ref<Class<Space>>
+  labelKey!: string
 }
 
 @Mixin(view.mixin.AttributeEditor, core.class.Class)
@@ -494,6 +501,7 @@ export function createModel (builder: Builder): void {
     TFilterMode,
     TClassFilters,
     TAttributeFilter,
+    TReferenceFilterSpace,
     TAttributeEditor,
     TAttributePresenter,
     TAttributeFilterPresenter,

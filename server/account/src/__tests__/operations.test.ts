@@ -29,8 +29,10 @@ import serverToken, { decodeToken, decodeTokenVerbose, TokenError } from '@hceng
 import { Analytics } from '@hcengineering/analytics'
 
 import * as utils from '../utils'
+import * as admin from '../admin'
 import { type AccountDB, type SocialId } from '../types'
 import {
+  createWorkspace,
   createInvite,
   createInviteLink,
   sendInvite,
@@ -204,6 +206,189 @@ describe('account operations', () => {
       expect(mockDb.mailboxSecret.findOne).toHaveBeenCalledTimes(1)
       expect(mockDb.mailboxSecret.findOne).toHaveBeenCalledWith({ mailbox })
     })
+  })
+
+  describe('workspace creation policy', () => {
+    const previousPolicy = process.env.WORKSPACE_CREATION
+    const creationDb = {
+      socialId: { find: jest.fn() },
+      person: { findOne: jest.fn() },
+      account: { findOne: jest.fn() },
+      workspace: { find: jest.fn() },
+      assignWorkspace: jest.fn()
+    }
+
+    beforeEach(() => {
+      delete process.env.WORKSPACE_CREATION
+      creationDb.socialId.find.mockResolvedValue([{ _id: 'social-id', personUuid: mockAccount.uuid }])
+      creationDb.person.findOne.mockResolvedValue({ uuid: mockAccount.uuid, firstName: 'Test', lastName: 'User' })
+      creationDb.account.findOne.mockResolvedValue(mockAccount)
+      creationDb.workspace.find.mockResolvedValue([])
+      jest.spyOn(utils, 'createWorkspaceRecord').mockResolvedValue({
+        workspaceUuid: mockWorkspace.uuid,
+        workspaceUrl: mockWorkspace.url
+      })
+      jest.spyOn(utils, 'getEndpoint').mockReturnValue('https://transactor.example.com')
+    })
+
+    afterEach(() => {
+      if (previousPolicy === undefined) {
+        delete process.env.WORKSPACE_CREATION
+      } else {
+        process.env.WORKSPACE_CREATION = previousPolicy
+      }
+      jest.mocked(utils.createWorkspaceRecord).mockRestore()
+      jest.mocked(utils.getEndpoint).mockRestore()
+    })
+
+    test.each([undefined, '', 'all', 'ALL', 'aLl'])(
+      'allows ordinary users when WORKSPACE_CREATION=%p',
+      async (policy) => {
+        if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
+
+        const result = await createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
+          workspaceName: mockWorkspace.name
+        })
+
+        expect(result.workspace).toBe(mockWorkspace.uuid)
+        expect(creationDb.assignWorkspace).toHaveBeenCalledWith(mockAccount.uuid, mockWorkspace.uuid, AccountRole.Owner)
+      }
+    )
+
+    test.each(['admin', 'Admin', 'ADMIN', 'unknown'])('restricts policy %p to admins', async (policy) => {
+      process.env.WORKSPACE_CREATION = policy
+
+      await expect(
+        createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
+          workspaceName: mockWorkspace.name
+        })
+      ).rejects.toMatchObject({ status: { code: platform.status.Forbidden } })
+      expect(utils.createWorkspaceRecord).not.toHaveBeenCalled()
+      expect(creationDb.socialId.find).not.toHaveBeenCalled()
+      expect(creationDb.person.findOne).not.toHaveBeenCalled()
+      expect(creationDb.account.findOne).not.toHaveBeenCalled()
+      expect(creationDb.workspace.find).not.toHaveBeenCalled()
+      expect(creationDb.assignWorkspace).not.toHaveBeenCalled()
+    })
+
+    test.each([undefined, {}, { admin: 'false' }, { admin: 'true', service: 'tool' }])(
+      'enforces admin mode using the signed admin flag: %p',
+      async (extra) => {
+        process.env.WORKSPACE_CREATION = 'admin'
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: mockAccount.uuid, extra })
+
+        const result = createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
+          workspaceName: mockWorkspace.name
+        })
+
+        if (extra?.admin === 'true') {
+          await expect(result).resolves.toMatchObject({ workspace: mockWorkspace.uuid })
+        } else {
+          await expect(result).rejects.toMatchObject({ status: { code: platform.status.Forbidden } })
+          expect(utils.createWorkspaceRecord).not.toHaveBeenCalled()
+          expect(creationDb.socialId.find).not.toHaveBeenCalled()
+          expect(creationDb.assignWorkspace).not.toHaveBeenCalled()
+        }
+      }
+    )
+
+    test.each(['admin', 'Admin', 'ADMIN', 'unknown'])('preserves admin access and flag for %p', async (policy) => {
+      process.env.WORKSPACE_CREATION = policy
+      ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: mockAccount.uuid, extra: { admin: 'true' } })
+
+      const result = await createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
+        workspaceName: mockWorkspace.name
+      })
+
+      expect(result.token).toContain('"admin":"true"')
+      expect(creationDb.assignWorkspace).toHaveBeenCalledWith(mockAccount.uuid, mockWorkspace.uuid, AccountRole.Owner)
+    })
+
+    test.each([
+      [undefined, undefined, true],
+      ['all', {}, true],
+      ['ALL', {}, true],
+      ['admin', undefined, false],
+      ['admin', {}, false],
+      ['admin', { admin: 'false' }, false],
+      ['admin', { admin: 'true' }, true],
+      ['Admin', {}, false],
+      ['ADMIN', { admin: 'true' }, true],
+      ['unknown', undefined, false],
+      ['unknown', {}, false],
+      ['unknown', { admin: 'true' }, true],
+      ['', {}, true]
+    ])('reports workspace creation permission for policy=%p and extra=%p', async (policy, extra, allowed) => {
+      if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
+      ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: mockAccount.uuid, extra })
+
+      const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, extra === undefined ? '' : mockToken)
+
+      expect(result).toMatchObject({ workspaceCreationAllowed: allowed })
+    })
+
+    test.each([undefined, 'all', 'ALL'])('ignores invalid capability tokens for policy %p', async (policy) => {
+      if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
+      jest.mocked(decodeTokenVerbose).mockImplementation(() => {
+        throw new Error('Invalid token')
+      })
+
+      const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, 'invalid-token')
+
+      expect(result.workspaceCreationAllowed).toBe(true)
+      expect(decodeTokenVerbose).not.toHaveBeenCalled()
+    })
+
+    test.each(['admin', 'unknown'])('treats invalid capability tokens as anonymous for %p', async (policy) => {
+      process.env.WORKSPACE_CREATION = policy
+      resetGuestPersonCache()
+      ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
+      jest.mocked(decodeTokenVerbose).mockImplementation(() => {
+        throw new Error('Invalid token')
+      })
+
+      const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, 'invalid-token')
+
+      expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: true, workspaceCreationAllowed: false })
+    })
+
+    test.each(['admin', 'unknown'])('reads signed capability tokens in restricted mode %p', async (policy) => {
+      process.env.WORKSPACE_CREATION = policy
+      jest.mocked(decodeTokenVerbose).mockReturnValue({
+        account: 'account-uuid' as AccountUuid,
+        workspace: mockWorkspace.uuid,
+        extra: { admin: 'true' }
+      })
+
+      const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+      expect(result.workspaceCreationAllowed).toBe(true)
+      expect(decodeTokenVerbose).toHaveBeenCalledWith(mockCtx, mockToken)
+    })
+
+    test.each([undefined, 'all', 'ALL', 'admin', 'Admin', 'unknown', ''])(
+      'warns at startup only for unknown WORKSPACE_CREATION=%p',
+      (policy) => {
+        if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+        try {
+          jest.isolateModules(() => {
+            jest.requireActual('../operations')
+          })
+
+          if (policy === 'unknown') {
+            expect(warn).toHaveBeenCalledWith(
+              'Unknown WORKSPACE_CREATION value; only platform admins can create workspaces',
+              { value: policy }
+            )
+          } else {
+            expect(warn).not.toHaveBeenCalled()
+          }
+        } finally {
+          warn.mockRestore()
+        }
+      }
+    )
   })
 
   describe('createInvite', () => {
@@ -1846,7 +2031,7 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: true, workspaceCreationAllowed: true })
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -1863,7 +2048,7 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false })
+          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false, workspaceCreationAllowed: true })
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -1880,7 +2065,7 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: false, guestLoginAvailable: true })
+          expect(result).toEqual({ signUpEnabled: false, guestLoginAvailable: true, workspaceCreationAllowed: true })
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -1897,7 +2082,7 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false })
+          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false, workspaceCreationAllowed: true })
           expect(mockDb.person.findOne).not.toHaveBeenCalled()
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
@@ -1917,8 +2102,8 @@ describe('account operations', () => {
           const r1 = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
           const r2 = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(r1).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
-          expect(r2).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+          expect(r1).toEqual({ signUpEnabled: true, guestLoginAvailable: true, workspaceCreationAllowed: true })
+          expect(r2).toEqual({ signUpEnabled: true, guestLoginAvailable: true, workspaceCreationAllowed: true })
           // Second call within TTL must be served from cache -> exactly one DB hit.
           expect(mockDb.person.findOne).toHaveBeenCalledTimes(1)
         } finally {
@@ -2048,7 +2233,7 @@ describe('account operations', () => {
     })
 
     describe('signUp', () => {
-      test('should create account when email service not configured', async () => {
+      test.each([true, false])('should set the sign-up token admin flag from the email: %p', async (isAdmin) => {
         const mockSocialId = {
           _id: 'social-id' as PersonId,
           personUuid: mockAccountId,
@@ -2071,6 +2256,7 @@ describe('account operations', () => {
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
         ;(getMetadata as jest.Mock).mockReturnValue('') // No mail service configured
+        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(isAdmin)
 
         const result = await signUp(mockCtx, mockDb, mockBranding, mockToken, {
           email: mockEmail,
@@ -2078,12 +2264,13 @@ describe('account operations', () => {
           firstName: mockFirstName,
           lastName: mockLastName
         })
+        isAdminEmailSpy.mockRestore()
 
         expect(result).toEqual({
           account: mockAccountId,
           name: 'John Doe',
           socialId: mockSocialId._id,
-          token: expect.any(String)
+          token: isAdmin ? expect.stringContaining('"admin":"true"') : expect.not.stringContaining('"admin":"true"')
         })
 
         expect(utils.signUpByEmail).toHaveBeenCalledWith(
@@ -2189,7 +2376,7 @@ describe('account operations', () => {
     })
 
     describe('confirm', () => {
-      test('should confirm email and return login info', async () => {
+      test.each([true, false])('should set the confirmed token admin flag from the email: %p', async (isAdmin) => {
         const mockSocialId = {
           _id: 'social-id' as PersonId,
           personUuid: mockAccountId,
@@ -2212,14 +2399,16 @@ describe('account operations', () => {
         jest.spyOn(utils, 'confirmEmail').mockResolvedValue(mockSocialId._id)
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
+        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(isAdmin)
 
         const result = await confirm(mockCtx, mockDb, mockBranding, mockToken)
+        isAdminEmailSpy.mockRestore()
 
         expect(result).toEqual({
           account: mockAccountId,
           name: 'John Doe',
           socialId: mockSocialId._id,
-          token: expect.any(String)
+          token: isAdmin ? expect.stringContaining('"admin":"true"') : expect.not.stringContaining('"admin":"true"')
         })
 
         expect(utils.confirmEmail).toHaveBeenCalledWith(mockCtx, mockDb, mockAccountId, mockEmail)
