@@ -68,6 +68,7 @@
   import { EditorKitOptions, getEditorKit } from '../../src/kits/editor-kit'
   import { deleteAttachment } from '../command/deleteAttachment'
   import { textEditorCommandHandler } from '../commands'
+  import { observeContentNotices } from '../provider/notices'
   import { Provider } from '../provider/types'
   import { createRemoteProvider } from '../provider/utils'
   import { addTableHandler } from '../utils'
@@ -131,6 +132,12 @@
   let contentError = false
   let synced = false
   let editorReady = false
+
+  const stopObservingContentNotices = observeContentNotices(
+    ydoc,
+    () => synced,
+    (notice) => dispatch('content-notice', notice)
+  )
 
   $: loading = !synced
   $: canEditAsGuestCreator = account.role === AccountRole.Guest && isDocCreatedByAccount(object, account)
@@ -480,6 +487,7 @@
   })
 
   onDestroy(() => {
+    stopObservingContentNotices()
     if (editor !== undefined) {
       try {
         editor.destroy()

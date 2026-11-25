@@ -13,7 +13,11 @@
 // limitations under the License.
 //
 
-import { type CollaboratorClient, getClient as getCollaborator } from '@hcengineering/collaborator-client'
+import {
+  type CollaborationNotice,
+  type CollaboratorClient,
+  getClient as getCollaborator
+} from '@hcengineering/collaborator-client'
 import { type Blob, type CollaborativeDoc, type Markup, type Ref } from '@hcengineering/core'
 import { getMetadata } from '@hcengineering/platform'
 
@@ -44,9 +48,19 @@ export async function createMarkup (doc: CollaborativeDoc, markup: Markup): Prom
 }
 
 /** @public */
-export async function updateMarkup (doc: CollaborativeDoc, markup: Markup): Promise<void> {
+export async function updateMarkup (
+  doc: CollaborativeDoc,
+  markup: Markup,
+  notice?: CollaborationNotice
+): Promise<void> {
   const client = getClient()
-  await client.updateMarkup(doc, markup)
+  await client.updateMarkup(doc, markup, notice)
+}
+
+/** @public */
+export async function deleteMarkup (doc: CollaborativeDoc, content: Ref<Blob>): Promise<void> {
+  const client = getClient()
+  await client.deleteMarkup(doc, content)
 }
 
 /** @public */

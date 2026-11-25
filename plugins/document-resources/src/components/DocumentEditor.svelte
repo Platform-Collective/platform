@@ -67,6 +67,7 @@
   {overflow}
   {editorAttributes}
   {requestSideSpace}
+  on:content-notice
   on:update
   on:loaded
   kitOptions={{

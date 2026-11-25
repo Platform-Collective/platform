@@ -4,7 +4,7 @@ import contact, { type PermissionsStore } from '@hcengineering/contact'
 import { generateId, makeCollabId, makeDocCollabId, type Ref, type TxOperations } from '@hcengineering/core'
 import document, { type Document, type DocumentSnapshot } from '@hcengineering/document'
 import { getResource } from '@hcengineering/platform'
-import { createMarkup, getMarkup, updateMarkup } from '@hcengineering/presentation'
+import { createMarkup, deleteMarkup, getMarkup, updateMarkup } from '@hcengineering/presentation'
 import { canChangeAttribute } from '@hcengineering/view-resources'
 import { get } from 'svelte/store'
 
@@ -34,25 +34,34 @@ async function getEditableDocument (client: TxOperations, doc: Document): Promis
 export async function createDocumentSnapshot (client: TxOperations, doc: Document, title: string): Promise<void> {
   const current = await getEditableDocument(client, doc)
   const id: Ref<DocumentSnapshot> = generateId()
+  const collaborativeDoc = makeCollabId(document.class.DocumentSnapshot, id, 'content')
   const markup = await getMarkup(makeDocCollabId(current, 'content'), current.content)
-  const content = await createMarkup(makeCollabId(document.class.DocumentSnapshot, id, 'content'), markup)
-  await client.createDoc(
-    document.class.DocumentSnapshot,
-    current.space,
-    {
-      title: title.trim(),
-      content,
-      parent: current._id
-    },
-    id
-  )
+  const content = await createMarkup(collaborativeDoc, markup)
+  try {
+    await client.createDoc(
+      document.class.DocumentSnapshot,
+      current.space,
+      {
+        title: title.trim() || new Date().toISOString(),
+        content,
+        parent: current._id
+      },
+      id
+    )
+  } catch (err) {
+    await deleteMarkup(collaborativeDoc, content).catch(() => {})
+    throw err
+  }
 }
+
+export const DOCUMENT_RESTORED_NOTICE = 'document-restored'
 
 export async function restoreDocumentSnapshot (
   client: TxOperations,
   doc: Document,
   snapshot: DocumentSnapshot,
-  backupTitle: string
+  backupTitle: string,
+  restoredBy: string
 ): Promise<void> {
   const current = await getEditableDocument(client, doc)
   if (!canRestoreSnapshot(current, snapshot, false)) {
@@ -60,5 +69,8 @@ export async function restoreDocumentSnapshot (
   }
   const markup = await getMarkup(makeDocCollabId(snapshot, 'content'), snapshot.content)
   await createDocumentSnapshot(client, current, backupTitle)
-  await updateMarkup(makeDocCollabId(current, 'content'), markup)
+  await updateMarkup(makeDocCollabId(current, 'content'), markup, {
+    type: DOCUMENT_RESTORED_NOTICE,
+    params: { title: snapshot.title, name: restoredBy }
+  })
 }

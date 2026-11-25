@@ -13,7 +13,12 @@
 // limitations under the License.
 //
 
-import { type UpdateContentRequest, type UpdateContentResponse } from '@hcengineering/collaborator-client'
+import {
+  CONTENT_NOTICE_KEY,
+  CONTENT_NOTICE_MAP,
+  type UpdateContentRequest,
+  type UpdateContentResponse
+} from '@hcengineering/collaborator-client'
 import { MeasureContext } from '@hcengineering/core'
 import { applyUpdate, encodeStateAsUpdate } from 'yjs'
 import { Context } from '../../context'
@@ -26,7 +31,7 @@ export async function updateContent (
   payload: UpdateContentRequest,
   params: RpcMethodParams
 ): Promise<UpdateContentResponse> {
-  const { content } = payload
+  const { content, notice } = payload
   const { hocuspocus, transformer } = params
 
   const updates = ctx.withSync('transform', {}, () => {
@@ -53,6 +58,9 @@ export async function updateContent (
             fragment.delete(0, fragment.length)
             applyUpdate(document, update)
           })
+          if (notice !== undefined) {
+            document.getMap(CONTENT_NOTICE_MAP).set(CONTENT_NOTICE_KEY, notice)
+          }
         }, connection)
       })
     )

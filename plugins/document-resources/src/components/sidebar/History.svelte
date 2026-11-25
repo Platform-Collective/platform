@@ -15,12 +15,13 @@
 //
 -->
 <script lang="ts">
-  import contact, { type PermissionsStore } from '@hcengineering/contact'
+  import contact, { formatName, type PermissionsStore } from '@hcengineering/contact'
+  import { getPersonByPersonId } from '@hcengineering/contact-resources'
+  import { getCurrentAccount } from '@hcengineering/core'
   import { Document, DocumentSnapshot } from '@hcengineering/document'
   import { getResource, setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
   import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
-  import { addNotification, Button, Label, Lazy, Scroller, showPopup } from '@hcengineering/ui'
-  import { SimpleNotification } from '@hcengineering/view-resources'
+  import { Button, Label, Lazy, Scroller, showPopup } from '@hcengineering/ui'
   import { onMount } from 'svelte'
   import type { Readable } from 'svelte/store'
 
@@ -84,8 +85,11 @@
         restoring = true
         try {
           const title = await translate(document.string.BeforeVersionRestore, { title: snapshot.title })
-          await restoreDocumentSnapshot(client, doc, snapshot, title)
-          addNotification(await translate(document.string.VersionRestored, {}), '', SimpleNotification)
+          const account = getCurrentAccount()
+          const person = await getPersonByPersonId(account.primarySocialId).catch(() => null)
+          const restoredBy =
+            person !== null ? formatName(person.name) || account.primarySocialId : account.primarySocialId
+          await restoreDocumentSnapshot(client, doc, snapshot, title, restoredBy)
         } catch (err) {
           await setPlatformStatus(unknownError(err))
         } finally {
