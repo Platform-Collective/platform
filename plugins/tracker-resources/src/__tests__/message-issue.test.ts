@@ -4,6 +4,8 @@ import type { Attachment } from '@hcengineering/attachment'
 import type { AttachedData, Blob, Markup, Ref } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import presentation, { deleteFile, generateFileId, getFileUrl, uploadFile } from '@hcengineering/presentation'
+import { jsonToMarkup } from '@hcengineering/text'
+import { markdownToMarkup } from '@hcengineering/text-markdown'
 import { copyMessageAttachments, getMessageIssueData, getMessageAttachmentData } from '../message-issue'
 
 jest.mock('@hcengineering/presentation', () => ({
@@ -102,6 +104,37 @@ describe('getMessageIssueData', () => {
       ]
     })
     expect(result.description).not.toContain('"reference"')
+  })
+
+  it('uses visible markdown link text when a reference has no label parameter', () => {
+    const parsed = markdownToMarkup(
+      '[Visible person](ref://?_class=contact%3Aclass%3APerson&_id=person-1) and [Visible team](ref://?_class=contact%3Aclass%3APerson&_id=team-1)'
+    )
+    const result = getMessageIssueData(jsonToMarkup(parsed), sourceUrl, 'Source message', 'New issue')
+
+    expect(result.title).toBe('Visible person and Visible team')
+    expect(JSON.parse(result.description).content[0].content).toEqual([
+      { type: 'text', text: 'Visible person' },
+      { type: 'text', text: ' and ', marks: [] },
+      { type: 'text', text: 'Visible team' }
+    ])
+    expect(result.description).not.toContain('"text":""')
+  })
+
+  it('omits empty references while preserving following text', () => {
+    const message = markup([
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'reference', attrs: { id: 'missing', objectclass: 'class', label: '' } },
+          { type: 'text', text: 'Details remain' }
+        ]
+      }
+    ])
+    const result = getMessageIssueData(message, sourceUrl, 'Source message', 'New issue')
+
+    expect(result.title).toBe('Details remain')
+    expect(JSON.parse(result.description).content[0]).toEqual(paragraph('Details remain'))
   })
 
   it('truncates long titles to 100 characters without splitting Unicode characters', () => {
@@ -227,6 +260,51 @@ describe('copyMessageAttachments', () => {
     expect(fetchFile).toHaveBeenCalledWith('https://files.example/source-blob', expect.anything())
     expect(progress).toHaveBeenNthCalledWith(1, 0, 1)
     expect(progress).toHaveBeenNthCalledWith(2, 1, 1)
+  })
+
+  it.each([0, 1])(
+    'omits an actually oversized file and its inline reference when the declared size is %i',
+    async (declaredSize) => {
+      const oversized = { ...source, file: 'oversized-blob' as Ref<Blob>, size: declaredSize }
+      const inline = markup([
+        paragraph('Before'),
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Keep ' },
+            { type: 'image', attrs: { 'file-id': oversized.file, src: 'old-url' } },
+            { type: 'text', text: 'this text' }
+          ]
+        },
+        paragraph('After')
+      ])
+      fetchFile.mockResolvedValue(new Response(new Uint8Array(25 * 1024 * 1024 + 1)))
+
+      const result = await copyMessageAttachments([oversized], inline)
+
+      expect(result.attachments).toEqual([])
+      expect(JSON.parse(result.description).content).toEqual([
+        paragraph('Before'),
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Keep ' },
+            { type: 'text', text: 'this text' }
+          ]
+        },
+        paragraph('After')
+      ])
+      expect(uploadFile).not.toHaveBeenCalled()
+    }
+  )
+
+  it('copies a small file with an unknown declared size and records its actual size', async () => {
+    const unknownSize = { ...source, size: 0 }
+
+    const result = await copyMessageAttachments([unknownSize], description)
+
+    expect(result.attachments).toEqual([{ ...unknownSize, file: 'copied-blob', size: 3 }])
+    expect(uploadFile).toHaveBeenCalledTimes(1)
   })
 
   it('does not copy files removed from both the preview and the description', async () => {

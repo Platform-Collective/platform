@@ -58,15 +58,17 @@ export async function createIssueFromMessage (message: ChatMessage): Promise<voi
       translate(tracker.string.NewIssue, {}),
       client.findAll(attachment.class.Attachment, { attachedTo: message._id })
     ])
-    const messageAttachments = attachments.filter((file) => isMessageBlobId(file.file))
-    await warnOnOversizedAttachments(messageAttachments)
+    await warnOnOversizedAttachments(attachments)
 
     showPopup(
       tracker.component.CreateIssue,
       {
         shouldSaveDraft: false,
-        initialData: getMessageIssueData(message.message, sourceUrl, sourceLabel, fallbackTitle),
-        initialAttachments: messageAttachments.filter(isMessageAttachmentWithinSizeLimit).map(getMessageAttachmentData)
+        initialData: getMessageIssueData(message.message, sourceUrl, sourceLabel, fallbackTitle, attachments),
+        initialAttachments: attachments
+          .filter((file) => isMessageBlobId(file.file))
+          .filter(isMessageAttachmentWithinSizeLimit)
+          .map(getMessageAttachmentData)
       },
       'top'
     )
@@ -94,10 +96,15 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
         path: [...location.path.slice(0, 2), inboxId, encodeObjectURI(card._id, card._class)],
         query: { message: encodeURIComponent(`${message.id}:${message.created.toISOString()}`) }
       })
-    const messageAttachments = message.attachments
-      .filter(isBlobAttachment)
-      .filter((file) => isMessageBlobId(file.params.blobId))
-    await warnOnOversizedAttachments(messageAttachments.map((file) => ({ size: file.params.size })))
+    const messageAttachments = message.attachments.filter(isBlobAttachment).map((file) => ({
+      file: file.params.blobId,
+      name: file.params.fileName,
+      type: file.mimeType,
+      size: file.params.size,
+      metadata: file.params.metadata,
+      lastModified: (file.modified ?? file.created).getTime()
+    }))
+    await warnOnOversizedAttachments(messageAttachments)
 
     showPopup(
       tracker.component.CreateIssue,
@@ -107,18 +114,12 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
           jsonToMarkup(markdownToMarkup(message.content)),
           sourceUrl,
           sourceLabel,
-          fallbackTitle
+          fallbackTitle,
+          messageAttachments
         ),
         initialAttachments: messageAttachments
-          .filter((file) => isMessageAttachmentWithinSizeLimit({ size: file.params.size }))
-          .map((file) => ({
-            file: file.params.blobId,
-            name: file.params.fileName,
-            type: file.mimeType,
-            size: file.params.size,
-            metadata: file.params.metadata,
-            lastModified: (file.modified ?? file.created).getTime()
-          }))
+          .filter((file) => isMessageBlobId(file.file))
+          .filter(isMessageAttachmentWithinSizeLimit)
       },
       'top'
     )

@@ -4,7 +4,7 @@ import type { MessageActionFunction } from '@hcengineering/communication'
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
 import { getMessageLink } from '@hcengineering/chunter-resources'
 import { MessageType, type Message } from '@hcengineering/communication-types'
-import { AccountRole, setCurrentAccount, type Account } from '@hcengineering/core'
+import { AccountRole, setCurrentAccount, type Account, type AccountUuid, type PersonId } from '@hcengineering/core'
 import { getMetadata, setPlatformStatus, Severity } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import { getCurrentResolvedLocation, locationToUrl, showPopup } from '@hcengineering/ui'
@@ -44,7 +44,26 @@ const legacyMessage = {
   _class: chunter.class.ChatMessage,
   message: markup
 } as unknown as ChatMessage
-const card = { _id: 'card-id', _class: 'card:class:Card' } as unknown as Parameters<MessageActionFunction>[1]
+type MessageCard = Parameters<MessageActionFunction>[1]
+const card: MessageCard = {
+  _id: 'card-id' as MessageCard['_id'],
+  _class: 'card:class:Card' as MessageCard['_class'],
+  space: 'space' as MessageCard['space'],
+  modifiedOn: 0,
+  modifiedBy: 'person-id' as PersonId,
+  title: 'Card',
+  content: 'content' as MessageCard['content'],
+  blobs: {},
+  parentInfo: [],
+  rank: ''
+}
+const account: Account = {
+  uuid: 'account-id' as AccountUuid,
+  role: AccountRole.User,
+  primarySocialId: 'person-id' as PersonId,
+  socialIds: [],
+  fullSocialIds: []
+}
 const message = {
   id: 'message-id',
   cardId: 'card-id',
@@ -60,7 +79,7 @@ describe('create issue message actions', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    setCurrentAccount({ role: AccountRole.User } as unknown as Account)
+    setCurrentAccount(account)
     jest.mocked(getMetadata).mockReturnValue('https://huly.example/')
     jest.mocked(getMessageLink).mockResolvedValue('https://huly.example/source-message')
     jest.mocked(getCurrentResolvedLocation).mockReturnValue({ path: ['workbench', 'workspace', 'tracker'] })
@@ -136,13 +155,31 @@ describe('create issue message actions', () => {
     expect(findAll).not.toHaveBeenCalled()
   })
 
-  it('warns about and omits attachments over 25 MiB from both message actions', async () => {
+  it('warns about and omits oversized attachments and inline references from both message actions', async () => {
     const file = { name: 'file.txt', file: 'blob-id', type: 'text/plain', size: 10, lastModified: 0 }
     const oversized = { ...file, file: 'oversized-blob', size: 25 * 1024 * 1024 + 1 }
     findAll.mockResolvedValue([file, oversized])
+    const inlineMessage = {
+      ...legacyMessage,
+      message: JSON.stringify({
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Fix this' },
+              { type: 'image', attrs: { 'file-id': oversized.file, src: 'old-url' } }
+            ]
+          }
+        ]
+      })
+    }
 
-    await createIssueFromMessage(legacyMessage)
-    expect(jest.mocked(showPopup).mock.calls[0][1]).toMatchObject({ initialAttachments: [file] })
+    await createIssueFromMessage(inlineMessage)
+    expect(jest.mocked(showPopup).mock.calls[0][1]).toMatchObject({
+      initialAttachments: [file],
+      initialData: { description: expect.not.stringContaining(oversized.file) }
+    })
 
     const attachments = [file, oversized].map((source) => ({
       id: source.file,
@@ -150,10 +187,14 @@ describe('create issue message actions', () => {
       created: message.created,
       params: { blobId: source.file, fileName: source.name, size: source.size }
     })) as Message['attachments']
-    await createIssueFromCommunicationMessage({ ...message, attachments }, card)
+    await createIssueFromCommunicationMessage(
+      { ...message, content: 'Fix this\n\n![Oversized](image://oversized-blob?file=oversized-blob)', attachments },
+      card
+    )
 
     expect(jest.mocked(showPopup).mock.calls[1][1]).toMatchObject({
-      initialAttachments: [{ ...file, lastModified: message.created.getTime() }]
+      initialAttachments: [{ ...file, lastModified: message.created.getTime() }],
+      initialData: { description: expect.not.stringContaining(oversized.file) }
     })
     expect(setPlatformStatus).toHaveBeenCalledTimes(2)
     expect(setPlatformStatus).toHaveBeenCalledWith(
@@ -168,14 +209,14 @@ describe('create issue message actions', () => {
   it('hides the actions for guests and non-text activity events', async () => {
     expect(await canCreateIssueFromMessage(undefined)).toBe(false)
     expect(await canCreateIssueFromMessage([legacyMessage])).toBe(false)
-    setCurrentAccount({ role: AccountRole.Guest } as unknown as Account)
+    setCurrentAccount({ ...account, role: AccountRole.Guest })
     expect(await canCreateIssueFromMessage(legacyMessage)).toBe(false)
     expect(canCreateIssueFromCommunicationMessage(message)).toBe(false)
     await createIssueFromMessage(legacyMessage)
     await createIssueFromCommunicationMessage(message, card)
     expect(showPopup).not.toHaveBeenCalled()
 
-    setCurrentAccount({ role: AccountRole.User } as unknown as Account)
+    setCurrentAccount(account)
     isDerived.mockReturnValue(false)
     expect(await canCreateIssueFromMessage(legacyMessage)).toBe(false)
     expect(canCreateIssueFromCommunicationMessage({ ...message, type: MessageType.Activity })).toBe(false)

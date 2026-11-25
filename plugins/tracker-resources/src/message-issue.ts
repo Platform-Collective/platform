@@ -27,11 +27,33 @@ function messageText (node: MarkupNode): string {
     : text
 }
 
-function referencesToText (node: MarkupNode): MarkupNode {
+function referencesToText (node: MarkupNode): MarkupNode[] {
   if (node.type === MarkupNodeType.reference) {
-    return { type: MarkupNodeType.text, text: String(node.attrs?.label ?? '') }
+    const label = String(node.attrs?.label ?? '')
+    const text = label !== '' ? label : (node.content ?? []).map(messageText).join('')
+    return text === '' ? [] : [{ type: MarkupNodeType.text, text }]
   }
-  return { ...node, content: node.content?.map(referencesToText) }
+  return [{ ...node, content: node.content?.flatMap(referencesToText) }]
+}
+
+function updateAttachmentReferences (
+  node: MarkupNode,
+  copies: ReadonlyMap<Ref<Blob>, Ref<Blob>>,
+  omittedFiles: ReadonlySet<Ref<Blob>>
+): MarkupNode | undefined {
+  const fileId = node.attrs?.['file-id']
+  if (typeof fileId === 'string' && omittedFiles.has(fileId as Ref<Blob>)) return undefined
+
+  const file = typeof fileId === 'string' ? copies.get(fileId as Ref<Blob>) : undefined
+  if (file !== undefined && node.attrs !== undefined) {
+    node.attrs['file-id'] = file
+    if (node.attrs.src != null) node.attrs.src = getFileUrl(file)
+    if (node.attrs['data-file-href'] != null) node.attrs['data-file-href'] = getFileUrl(file)
+  }
+  node.content = node.content
+    ?.map((child) => updateAttachmentReferences(child, copies, omittedFiles))
+    .filter((child): child is MarkupNode => child !== undefined)
+  return node
 }
 
 /** Prepare an issue from message markup, preserving its content and a link to the source. */
@@ -39,9 +61,17 @@ export function getMessageIssueData (
   message: Markup,
   sourceUrl: string,
   sourceLabel: string,
-  fallbackTitle: string
+  fallbackTitle: string,
+  sourceAttachments: Array<Pick<AttachedData<Attachment>, 'file' | 'size'>> = []
 ): { title: string, description: Markup } {
-  const doc = referencesToText(markupToJSON(message))
+  const parsed = markupToJSON(message)
+  const doc = { ...parsed, content: parsed.content?.flatMap(referencesToText) }
+  const omittedFiles = new Set(
+    sourceAttachments
+      .filter((attachment) => !isMessageBlobId(attachment.file) || !isMessageAttachmentWithinSizeLimit(attachment))
+      .map((attachment) => attachment.file)
+  )
+  updateAttachmentReferences(doc, new Map<Ref<Blob>, Ref<Blob>>(), omittedFiles)
   const firstLine =
     messageText(doc)
       .split(/\r?\n/)
@@ -86,7 +116,9 @@ export function isMessageBlobId (file: unknown): file is Ref<Blob> {
 }
 
 export function isMessageAttachmentWithinSizeLimit (attachment: Pick<AttachedData<Attachment>, 'size'>): boolean {
-  return attachment.size <= MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT
+  return (
+    Number.isFinite(attachment.size) && attachment.size >= 0 && attachment.size <= MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT
+  )
 }
 
 function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string | undefined {
@@ -105,16 +137,21 @@ function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string 
   return undefined
 }
 
-/** Copy message files and update inline references before saving the issue. */
+/** Copy message files and update or remove inline references before saving the issue. */
 export async function copyMessageAttachments (
-  attachments: AttachedData<Attachment>[],
+  attachments: Array<AttachedData<Attachment>>,
   description: Markup,
-  sourceAttachments: AttachedData<Attachment>[] = attachments,
+  sourceAttachments: Array<AttachedData<Attachment>> = attachments,
   onProgress?: (copied: number, total: number) => void
-): Promise<{ attachments: AttachedData<Attachment>[], description: Markup }> {
+): Promise<{ attachments: Array<AttachedData<Attachment>>, description: Markup }> {
   if (attachments.length === 0 && sourceAttachments.length === 0) return { attachments, description }
 
   const doc = markupToJSON(description)
+  const omittedFiles = new Set(
+    [...attachments, ...sourceAttachments]
+      .filter((attachment) => !isMessageBlobId(attachment.file) || !isMessageAttachmentWithinSizeLimit(attachment))
+      .map((attachment) => attachment.file)
+  )
   const files = new Map(
     attachments
       .filter((attachment) => isMessageBlobId(attachment.file) && isMessageAttachmentWithinSizeLimit(attachment))
@@ -131,19 +168,29 @@ export async function copyMessageAttachments (
     node.content?.forEach(collectInlineFiles)
   }
   collectInlineFiles(doc)
+  for (const file of omittedFiles) files.delete(file)
 
   if (files.size > 0) onProgress?.(0, files.size)
   let copied = 0
   const copies = new Map<Ref<Blob>, Ref<Blob>>()
+  const actualSizes = new Map<Ref<Blob>, number>()
   try {
     for (const attachment of files.values()) {
       const url = getMessageAttachmentUrl(attachment)
-      if (url === undefined) continue
+      if (url === undefined) {
+        omittedFiles.add(attachment.file)
+        continue
+      }
       const response = await fetch(url, {
         headers: authorizationHeaders(getMetadata(presentation.metadata.Token))
       })
       if (!response.ok) throw new Error(`Failed to copy message attachment: ${response.status}`)
       const blob = await response.blob()
+      if (blob.size > MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT) {
+        omittedFiles.add(attachment.file)
+        continue
+      }
+      actualSizes.set(attachment.file, blob.size)
       const file = new File([blob], attachment.name, {
         type: attachment.type,
         lastModified: attachment.lastModified
@@ -155,25 +202,23 @@ export async function copyMessageAttachments (
       onProgress?.(copied, files.size)
     }
 
-    function updateReferences (node: MarkupNode): void {
-      const fileId = node.attrs?.['file-id']
-      const file = typeof fileId === 'string' ? copies.get(fileId as Ref<Blob>) : undefined
-      if (file !== undefined && node.attrs !== undefined) {
-        node.attrs['file-id'] = file
-        if (node.attrs.src != null) node.attrs.src = getFileUrl(file)
-        if (node.attrs['data-file-href'] != null) node.attrs['data-file-href'] = getFileUrl(file)
-      }
-      node.content?.forEach(updateReferences)
-    }
-    updateReferences(doc)
+    updateAttachmentReferences(doc, copies, omittedFiles)
     return {
       attachments: Array.from(files.values())
         .filter((attachment) => copies.has(attachment.file))
-        .map((attachment) => ({ ...attachment, file: copies.get(attachment.file) ?? attachment.file })),
+        .map((attachment) => ({
+          ...attachment,
+          file: copies.get(attachment.file) ?? attachment.file,
+          size: actualSizes.get(attachment.file) ?? attachment.size
+        })),
       description: jsonToMarkup(doc)
     }
   } catch (err: unknown) {
-    await Promise.allSettled(Array.from(copies.values(), (file) => deleteFile(file)))
+    await Promise.allSettled(
+      Array.from(copies.values(), async (file) => {
+        await deleteFile(file)
+      })
+    )
     throw err
   }
 }
