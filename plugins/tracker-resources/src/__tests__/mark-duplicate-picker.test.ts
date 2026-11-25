@@ -14,6 +14,7 @@ import core, {
   type Status,
   type StatusCategory
 } from '@hcengineering/core'
+import type { IntlString } from '@hcengineering/platform'
 import tracker, { type Issue, type Project } from '@hcengineering/tracker'
 import { createDuplicatePickerQuery, createDuplicateTargetFilter } from '../duplicate-issue-utils'
 
@@ -47,12 +48,12 @@ function createStorage (): { db: ModelDb, hierarchy: Hierarchy, factory: TxFacto
     [core.class.Doc, undefined],
     [tracker.class.Issue, core.class.Doc],
     [core.class.Collaborator, core.class.Doc]
-  ] as const) {
+  ]) {
     hierarchy.tx(
       factory.createTxCreateDoc(
         core.class.Class,
         core.space.Model,
-        { kind: ClassifierKind.CLASS, extends: parent, label: _id },
+        { kind: ClassifierKind.CLASS, extends: parent, label: _id as unknown as IntlString },
         _id
       )
     )
