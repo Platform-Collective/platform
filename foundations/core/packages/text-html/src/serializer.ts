@@ -43,7 +43,10 @@ export class HtmlSerializer {
 class NodeBuilder {
   textParts: string[] = []
 
-  constructor (private readonly addTags: boolean, private readonly escapeText = false) {}
+  constructor (
+    private readonly addTags: boolean,
+    private readonly escapeText = false
+  ) {}
 
   addText (text: string): void {
     this.textParts.push(text)
