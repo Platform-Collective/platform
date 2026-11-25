@@ -66,6 +66,10 @@ export function getSelection (focus: FocusSelection, selection: SelectionStore):
   return docs
 }
 
+export function getActionPopupValue (focus: FocusSelection, selection: SelectionStore): Doc | Doc[] {
+  return normalizeActionContext(getSelection(focus, selection)) ?? []
+}
+
 const allActions = new Map<ViewContextType, Action[]>()
 
 addRefreshListener(() => {

@@ -51,7 +51,7 @@
   } from '@hcengineering/ui'
   import { Action, ActionCategory, ViewContext } from '@hcengineering/view'
   import { createEventDispatcher, onMount, tick } from 'svelte'
-  import { filterActions, getSelection, normalizeActionContext } from '../actions'
+  import { filterActions, getActionPopupValue, getSelection, normalizeActionContext } from '../actions'
   import view from '../plugin'
   import { focusStore, selectionStore } from '../selection'
   import { openDoc } from '../utils'
@@ -356,7 +356,7 @@
       is={activeAction?.actionPopup}
       props={{
         ...activeAction.actionProps,
-        value: getSelection($focusStore, $selectionStore),
+        value: getActionPopupValue($focusStore, $selectionStore),
         width: 'full',
         size: 'medium',
         embedded: true

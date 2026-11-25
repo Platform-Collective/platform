@@ -166,7 +166,8 @@
               if (btns[i] !== activeElement) focusTarget(action, btns[i])
             }}
             on:click={() => {
-              focusTarget(action, btns[i])
+              activeElement = btns[i]
+              showActionPopup(action, btns[i])
             }}
           >
             {#if action.icon}

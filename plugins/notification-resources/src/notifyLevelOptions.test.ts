@@ -28,10 +28,10 @@ describe('getDocNotifyLevelValues', () => {
     expect(values.filter(({ isSelected }) => isSelected === true).map(({ id }) => id)).toEqual(['all'])
   })
 
-  it('presents a legacy mentions-only direct message as none', () => {
+  it('shows a saved mentions-only direct message level without changing its meaning', () => {
     const values = getDocNotifyLevelValues(context(chunter.class.DirectMessage, 'mentions'))
 
-    expect(values.map(({ id }) => id)).toEqual(['all', 'none'])
-    expect(values.filter(({ isSelected }) => isSelected === true).map(({ id }) => id)).toEqual(['none'])
+    expect(values.map(({ id }) => id)).toEqual(['all', 'mentions', 'none'])
+    expect(values.filter(({ isSelected }) => isSelected === true).map(({ id }) => id)).toEqual(['mentions'])
   })
 })

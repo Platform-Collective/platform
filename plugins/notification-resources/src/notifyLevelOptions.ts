@@ -15,10 +15,10 @@ export function getDocNotifyLevelValues (
   object: Pick<DocNotifyContext, 'objectClass' | 'notifyLevel'>
 ): SelectPopupValueType[] {
   const isDirectMessage = object.objectClass === chunter.class.DirectMessage
-  const current = isDirectMessage && object.notifyLevel === 'mentions' ? 'none' : (object.notifyLevel ?? 'all')
+  const current = object.notifyLevel ?? 'all'
 
   return docNotifyLevels
-    .filter(({ level }) => !isDirectMessage || level !== 'mentions')
+    .filter(({ level }) => !isDirectMessage || level !== 'mentions' || current === 'mentions')
     .map(({ level, label }) => ({
       id: level,
       label,

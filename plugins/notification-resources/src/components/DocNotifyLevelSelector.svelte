@@ -33,4 +33,10 @@
   }
 </script>
 
-<SelectPopup value={getDocNotifyLevelValues(value)} {loading} onSelect={select} on:changeContent />
+<SelectPopup
+  value={getDocNotifyLevelValues(value)}
+  {loading}
+  onSelect={select}
+  on:close={() => dispatch('close')}
+  on:changeContent
+/>
