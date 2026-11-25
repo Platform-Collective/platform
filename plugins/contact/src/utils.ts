@@ -36,7 +36,13 @@ import {
   TxFactory,
   DocumentUpdate
 } from '@hcengineering/core'
-import platform, { getMetadata, PlatformError } from '@hcengineering/platform'
+import platform, {
+  getMetadata,
+  getNameSearch,
+  getPlainSearch,
+  PlatformError,
+  type NameSearch
+} from '@hcengineering/platform'
 import { ColorDefinition } from '@hcengineering/ui'
 import contact, {
   AvatarProvider,
@@ -292,6 +298,20 @@ export function getName (hierarchy: Hierarchy, value: Contact, lastNameFirst?: s
     return formatName(value.name, lastNameFirst)
   }
   return value.name
+}
+
+/**
+ * Search for a field of a class: person names (`Last,First`) are matched word by word in any order,
+ * any other field keeps the plain `%search%` substring search.
+ * @public
+ */
+export function getFieldSearch (
+  hierarchy: Hierarchy,
+  _class: Ref<Class<Doc>>,
+  field: string,
+  search: string
+): NameSearch {
+  return field === 'name' && isPersonClass(hierarchy, _class) ? getNameSearch(search) : getPlainSearch(search)
 }
 
 function isPerson (hierarchy: Hierarchy, value: Contact): value is Person {

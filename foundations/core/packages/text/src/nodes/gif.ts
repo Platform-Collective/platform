@@ -37,7 +37,11 @@ declare module '@tiptap/core' {
 // 'file-id' carries a workspace blob for a library GIF. 'src' carries an external URL for a
 // third-party source that forbids re-hosting. They are independent and 'file-id' wins, so a
 // serializer must never read 'src' alone.
-export const GifNode = Node.create({
+export interface GifOptions {
+  getFileUrl?: (fileId: Ref<Blob>) => string
+}
+
+export const GifNode = Node.create<GifOptions>({
   name: 'gif',
   group: 'inline',
   inline: true,
@@ -89,7 +93,7 @@ export const GifNode = Node.create({
     const imgAttributes = mergeAttributes({ 'data-type': this.name }, HTMLAttributes)
     const fileId = imgAttributes['file-id']
     if (fileId != null) {
-      imgAttributes.src = `platform://platform/files/workspace/?file=${fileId}`
+      imgAttributes.src = this.options.getFileUrl?.(fileId) ?? `platform://platform/files/workspace/?file=${fileId}`
     }
 
     return ['img', imgAttributes]

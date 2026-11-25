@@ -15,6 +15,7 @@
 <script lang="ts">
   import activity, { ActivityMessage } from '@hcengineering/activity'
   import { Analytics } from '@hcengineering/analytics'
+  import attachment, { type Attachment } from '@hcengineering/attachment'
   import { AttachmentRefInput } from '@hcengineering/attachment-resources'
   import chunter, { ChatMessage, ChunterEvents, ThreadMessage } from '@hcengineering/chunter'
   import { Class, Doc, generateId, getCurrentAccount, Ref, type CommitResult } from '@hcengineering/core'
@@ -22,6 +23,7 @@
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { createEventDispatcher } from 'svelte'
   import { getObjectId } from '@hcengineering/view-resources'
+  import { type DraftContent, keepsUnsentDraft, renewSharedDraft } from './draftSync'
   import { ThrottledCaller } from '@hcengineering/ui'
   import { getSpace, editingMessageStore } from '@hcengineering/activity-resources'
 
@@ -63,25 +65,100 @@
   }
 
   let inputRef: AttachmentRefInput
-  let currentMessage: MessageDraft = chatMessage ?? currentDraft ?? getDefault()
+  let inputAttachments = new Map<Ref<Attachment>, Attachment>()
+  let keepingMessageId: Ref<ChatMessage> | undefined
+  // Copy the stored draft: the object in draftsStore is shared with any other input showing the same draft, and
+  // onUpdate() below mutates currentMessage in place.
+  // Both inputs still save to the same draft key, so the stored draft is the one of the input edited last. When
+  // both inputs were edited, the other input's text is not stored and is gone after a reload.
+  let currentMessage: MessageDraft = chatMessage ?? (currentDraft != null ? { ...currentDraft } : getDefault())
   let _id = currentMessage._id
   let inputContent = currentMessage.message
+  // What this input showed when it loaded the draft; content still equal to it was not edited here.
+  // AttachmentRefInput loads its files from the same draft store entry.
+  let loadedMessage: DraftContent = {
+    ...currentMessage,
+    attachmentIds: Object.keys(($draftsStore[`${_id}_attachments`] as Record<string, Attachment> | undefined) ?? {})
+  }
 
-  $: if (currentDraft != null) {
-    createdMessageQuery.query(_class, { _id, space: getSpace(object) }, (result: ChatMessage[]) => {
-      if (result.length > 0 && _id !== chatMessage?._id) {
-        // Ouch we have got comment with same id created already.
-        clear()
-      }
-    })
+  // The same draft (and message _id) can be open in several inputs at once, e.g. in the channel view and in the
+  // sidebar. Watch for the message being created to clear this input when it was sent from another one.
+  $: hasContent = !isEmptyMarkup(currentMessage.message) || (currentMessage.attachments ?? 0) > 0
+  $: if (currentDraft != null || (shouldSaveDraft && hasContent)) {
+    createdMessageQuery.query(_class, { _id, space: getSpace(object) }, onMessageCreated)
   } else {
     createdMessageQuery.unsubscribe()
   }
 
+  function onMessageCreated(result: ChatMessage[]): void {
+    if (result.length === 0 || _id === chatMessage?._id) return
+    // Ouch we have got comment with same id created already.
+    if (keepsUnsentDraft(shownMessage(), loadedMessage, loadedMessage)) {
+      // Changed here: compare with the sent message and its files, keep what was not sent.
+      void keepDraftAfterSend(result[0])
+    } else {
+      // Stale copy of the draft that was sent
+      clear()
+    }
+  }
+
+  function shownMessage(): DraftContent {
+    return { ...currentMessage, attachmentIds: Array.from(inputAttachments.keys()) }
+  }
+
+  async function keepDraftAfterSend(sent: ChatMessage): Promise<void> {
+    if (keepingMessageId === sent._id) return
+    keepingMessageId = sent._id
+    try {
+      let sentAttachments: Array<Ref<Attachment>> | undefined = []
+      if ((sent.attachments ?? 0) > 0) {
+        try {
+          sentAttachments = (await client.findAll(attachment.class.Attachment, { attachedTo: sent._id })).map(
+            (it) => it._id
+          )
+        } catch (err: unknown) {
+          // Without the sent files, compare by their count and still move the draft to a new ID below.
+          Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+          sentAttachments = undefined
+        }
+      }
+      // The input may have sent or cleared its draft while the attachment query was pending.
+      if (_id !== sent._id) return
+      const sentMessage: DraftContent = {
+        message: sent.message,
+        attachments: sent.attachments,
+        attachmentIds: sentAttachments
+      }
+      if (!keepsUnsentDraft(shownMessage(), loadedMessage, sentMessage)) {
+        clear()
+        return
+      }
+      // Files sent with the message belong to it. Files that came with the loaded copy were sent, or removed and
+      // deleted, by the other input.
+      const excluded = new Set<Ref<Attachment>>([
+        ...(sentAttachments ?? []),
+        ...((loadedMessage.attachmentIds ?? []) as Array<Ref<Attachment>>)
+      ])
+      const renewed = renewSharedDraft(currentMessage, inputAttachments, generateId<ChatMessage>(), excluded)
+      // Store the files under the new ID before AttachmentRefInput switches to it and loads them from there.
+      if (renewed.attachments.size > 0) {
+        DraftController.save(`${renewed.draft._id}_attachments`, Object.fromEntries(renewed.attachments))
+      }
+      DraftController.remove(`${_id}_attachments`)
+      currentMessage = renewed.draft
+      loadedMessage = renewed.loaded
+      inputAttachments = renewed.attachments
+      _id = currentMessage._id
+    } finally {
+      keepingMessageId = undefined
+    }
+  }
+
   function clear(): void {
     currentMessage = getDefault()
+    loadedMessage = { ...currentMessage, attachmentIds: [] }
     _id = currentMessage._id
-    inputContent = EmptyMarkup
+    inputContent = currentMessage.message
     inputRef.removeDraft(false)
   }
 
@@ -237,6 +314,7 @@
 <AttachmentRefInput
   {focusIndex}
   bind:this={inputRef}
+  bind:attachments={inputAttachments}
   bind:content={inputContent}
   docId={object._id}
   docClass={object._class}

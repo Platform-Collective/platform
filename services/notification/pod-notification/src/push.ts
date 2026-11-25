@@ -15,10 +15,15 @@
 
 import type { MeasureContext, Ref } from '@hcengineering/core'
 import { type PushData, type PushSubscription } from '@hcengineering/notification'
-import webpush, { WebPushError } from 'web-push'
+import webpush, { type RequestOptions, WebPushError } from 'web-push'
+import { DEFAULT_PUSH_TTL_SECONDS } from './push-ttl'
 
 /** Push endpoints return these when the subscription should be removed — not actionable server errors. */
 const disposableSubscriptionPatterns = ['expired', 'Unregistered', 'No such subscription']
+
+export function getPushRequestOptions (ttl: number = DEFAULT_PUSH_TTL_SECONDS): RequestOptions {
+  return { TTL: ttl }
+}
 
 export function webPushErrorBodyString (err: WebPushError): string {
   const b = err.body
@@ -38,13 +43,14 @@ export function isDisposableSubscriptionError (err: WebPushError): boolean {
 export async function sendPushToSubscription (
   ctx: MeasureContext,
   subscriptions: PushSubscription[],
-  data: PushData
+  data: PushData,
+  ttl: number = DEFAULT_PUSH_TTL_SECONDS
 ): Promise<Ref<PushSubscription>[]> {
   const result: Ref<PushSubscription>[] = []
+  const options = getPushRequestOptions(ttl)
   for (const subscription of subscriptions) {
     try {
-      // Avoid replaying stale alerts when an offline device reconnects.
-      await webpush.sendNotification(subscription, JSON.stringify(data), { TTL: 300 })
+      await webpush.sendNotification(subscription, JSON.stringify(data), options)
     } catch (err: unknown) {
       if (err instanceof WebPushError) {
         if (isDisposableSubscriptionError(err)) {

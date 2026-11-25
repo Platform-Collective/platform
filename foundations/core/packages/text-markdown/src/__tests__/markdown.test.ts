@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 //
 // Copyright © 2025 Hardcore Engineering Inc.
 //
@@ -1281,8 +1280,6 @@ describe('gif node', () => {
     content: [{ type: MarkupNodeType.paragraph, content: [{ type: MarkupNodeType.gif, attrs }] }]
   })
 
-  // a missing serializer case is NOT silent here. serializer.ts render() throws for an
-  // unregistered type, which fails the WHOLE message, not just the GIF.
   it('serializes without throwing', () => {
     expect(() => markupToMarkdown(gifDoc({ 'file-id': 'blob-1' }), options)).not.toThrow()
   })
@@ -1332,5 +1329,97 @@ describe('gif node', () => {
     const once = markupToMarkdown(gifDoc({ 'file-id': 'blob-1' }), options)
     const twice = markupToMarkdown(markdownToMarkup(once, options), options)
     expect(normalizeMarkdown(twice)).toEqual(normalizeMarkdown(once))
+  })
+})
+
+describe('markupToMarkdown with unsupported content', () => {
+  it('keeps text of inline comments', () => {
+    const markup: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [
+            { type: MarkupNodeType.text, text: 'Hello ' },
+            {
+              type: MarkupNodeType.text,
+              text: 'commented',
+              marks: [{ type: 'inline-comment' as MarkupMarkType, attrs: { thread: '123' } }]
+            },
+            {
+              type: MarkupNodeType.text,
+              text: ' bold',
+              marks: [
+                { type: MarkupMarkType.bold, attrs: {} },
+                { type: 'inline-comment' as MarkupMarkType, attrs: { thread: '123' } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    expect(markupToMarkdown(markup, options)).toEqual('Hello commented **bold**')
+  })
+
+  it('ignores unknown marks', () => {
+    const markup: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [
+            {
+              type: MarkupNodeType.text,
+              text: 'unknown',
+              marks: [{ type: 'unknown-mark' as MarkupMarkType, attrs: {} }]
+            },
+            {
+              type: MarkupNodeType.text,
+              text: ' and italic',
+              marks: [
+                { type: 'unknown-mark' as MarkupMarkType, attrs: {} },
+                { type: MarkupMarkType.em, attrs: {} }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    const warn = jest.fn()
+    expect(markupToMarkdown(markup, { ...options, warn })).toEqual('unknown *and italic*')
+    expect(warn).toHaveBeenCalledTimes(2)
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown mark type', { type: 'unknown-mark' })
+  })
+
+  it('renders content of unknown nodes', () => {
+    const markup: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: 'unknownBlock' as MarkupNodeType,
+          content: [
+            {
+              type: MarkupNodeType.paragraph,
+              content: [{ type: MarkupNodeType.text, text: 'Inside unknown block' }]
+            }
+          ]
+        },
+        {
+          type: MarkupNodeType.paragraph,
+          content: [
+            { type: MarkupNodeType.text, text: 'Before ' },
+            { type: 'unknownInline' as MarkupNodeType, content: [{ type: MarkupNodeType.text, text: 'inner' }] },
+            { type: undefined as unknown as MarkupNodeType },
+            { type: MarkupNodeType.text, text: ' after' }
+          ]
+        }
+      ]
+    }
+    const warn = jest.fn()
+    expect(markupToMarkdown(markup, { ...options, warn })).toEqual('Inside unknown block\n\nBefore inner after')
+    expect(warn).toHaveBeenCalledTimes(3)
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: 'unknownBlock' })
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: 'unknownInline' })
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: undefined })
   })
 })
