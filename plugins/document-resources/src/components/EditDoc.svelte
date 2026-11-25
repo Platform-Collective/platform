@@ -262,7 +262,7 @@
   })
 
   async function handleContentNotice(
-    evt: CustomEvent<{ type: string; params: Record<string, string> }>
+    evt: CustomEvent<{ type: string, params: Record<string, string> }>
   ): Promise<void> {
     if (evt.detail.type !== DOCUMENT_RESTORED_NOTICE) return
     addNotification(await translate(document.string.VersionRestored, evt.detail.params), '', SimpleNotification)

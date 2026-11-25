@@ -48,11 +48,7 @@ export async function createMarkup (doc: CollaborativeDoc, markup: Markup): Prom
 }
 
 /** @public */
-export async function updateMarkup (
-  doc: CollaborativeDoc,
-  markup: Markup,
-  notice?: CollaborationNotice
-): Promise<void> {
+export async function updateMarkup (doc: CollaborativeDoc, markup: Markup, notice?: CollaborationNotice): Promise<void> {
   const client = getClient()
   await client.updateMarkup(doc, markup, notice)
 }
