@@ -19,6 +19,7 @@
   import { NotificationContext } from '@hcengineering/communication-types'
   import { Ref, WithLookup } from '@hcengineering/core'
   import presence from '@hcengineering/presence'
+  import { getResource } from '@hcengineering/platform'
   import {
     ComponentExtensions,
     createNotificationContextsQuery,
@@ -45,8 +46,8 @@
     showPopup
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { handleMissingTabDocument } from '@hcengineering/workbench-resources'
   import { canChangeDoc, showMenu } from '@hcengineering/view-resources'
+  import workbench from '@hcengineering/workbench'
 
   import { permissionsStore } from '@hcengineering/contact-resources'
   import { afterUpdate } from 'svelte'
@@ -92,9 +93,9 @@
         title = doc.title
       }
     } else {
-      // Workbench processes removals after live queries and owns tab navigation,
-      // including keeping pinned tabs in place.
-      if (handleMissingTabDocument(_id)) return
+      // Let workbench move a matching tab; otherwise keep the editor fallback.
+      const handleMissingTabDocument = await getResource(workbench.function.HandleMissingTabDocument)
+      if (handleMissingTabDocument?.(_id) === true) return
       const loc = getCurrentLocation()
       loc.path.length = 3
       navigate(loc)

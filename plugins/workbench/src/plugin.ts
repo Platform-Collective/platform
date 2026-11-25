@@ -94,6 +94,7 @@ export const workbenchPlugin = plugin(workbenchId, {
     CloseWidgetTab: '' as Resource<(widget: Widget, tab: string) => Promise<void>>,
     CloseWidget: '' as Resource<(widget: Ref<Widget>) => Promise<void>>,
     GetSidebarObject: '' as Resource<() => Partial<Pick<Doc, '_id' | '_class'>>>,
+    HandleMissingTabDocument: '' as Resource<(objectId: Ref<Doc>) => boolean>,
     LogIn: '' as Resource<(loginInfo: { account: string, token?: string }) => Promise<void>>,
     LogOut: '' as Resource<() => Promise<void>>,
     OpenInNewTab: '' as Resource<(loc: Location) => Promise<void>>

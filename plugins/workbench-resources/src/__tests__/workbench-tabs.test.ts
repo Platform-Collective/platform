@@ -7,6 +7,7 @@ import { getCurrentLocation, location as locationStore, navigate } from '@hcengi
 import type { Location } from '@hcengineering/ui'
 import { parseLinkId } from '@hcengineering/view-resources'
 import type { LocationData, WorkbenchTab } from '@hcengineering/workbench'
+import type * as SvelteStore from 'svelte/store'
 import { get, type Writable } from 'svelte/store'
 import {
   currentTabStore,
@@ -31,7 +32,12 @@ jest.mock(
     },
     concatLink: (base: string, path: string) => `${base}/${path}`,
     getCurrentAccount: () => ({ uuid: 'account' }),
-    reduceCalls: (fn: () => Promise<void>) => fn
+    reduceCalls:
+      <T extends unknown[]>(fn: (...args: T) => Promise<void>) =>
+      async (...args: T): Promise<void> => {
+        await Promise.resolve()
+        await fn(...args)
+      }
   }),
   { virtual: true }
 )
@@ -59,7 +65,7 @@ jest.mock(
   () => ({
     __esModule: true,
     default: { metadata: { FrontUrl: 'front' } },
-    configurationStore: jest.requireActual<typeof import('svelte/store')>('svelte/store').writable(new Map()),
+    configurationStore: jest.requireActual<typeof SvelteStore>('svelte/store').writable(new Map()),
     getClient: jest.fn(),
     createQuery: jest.fn(),
     addTxListener: jest.fn(),
@@ -71,8 +77,8 @@ jest.mock(
   '@hcengineering/ui',
   () => ({
     getCurrentLocation: jest.fn(() => ({ path: ['workbench', 'workspace'] })),
-    languageStore: jest.requireActual<typeof import('svelte/store')>('svelte/store').writable('en'),
-    location: jest.requireActual<typeof import('svelte/store')>('svelte/store').writable(undefined),
+    languageStore: jest.requireActual<typeof SvelteStore>('svelte/store').writable('en'),
+    location: jest.requireActual<typeof SvelteStore>('svelte/store').writable(undefined),
     locationStorageKeyId: 'location',
     locationToUrl: (loc: Location) => {
       const entries = Object.entries(loc.query ?? {}).map(([key, value]) => [key, value ?? ''])
@@ -117,7 +123,7 @@ jest.mock('../plugin', () => ({
   default: { class: { Application: 'application', WorkbenchTab: 'tab' }, string: { Tab: 'Tab' } }
 }))
 jest.mock('../utils', () => ({
-  locationWorkspaceStore: jest.requireActual<typeof import('svelte/store')>('svelte/store').writable(undefined)
+  locationWorkspaceStore: jest.requireActual<typeof SvelteStore>('svelte/store').writable(undefined)
 }))
 
 interface TestQuery {
@@ -282,8 +288,7 @@ describe('tabs of removed documents', () => {
     tabIdStore.set(tab._id)
     await flush()
 
-    expect(client.update).not.toHaveBeenCalled()
-    expect(client.update).not.toHaveBeenCalled()
+    expect(client.update).toHaveBeenCalledWith(tab, { location: 'workbench/workspace/app', name: 'Home' })
     expect(get(tabsStore)).toEqual([{ ...tab, location: 'workbench/workspace/app', name: 'Home' }, active])
     expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
     expect(client.remove).not.toHaveBeenCalled()
@@ -291,7 +296,7 @@ describe('tabs of removed documents', () => {
     tabIdStore.set(active._id)
     tabIdStore.set(tab._id)
     await flush()
-    expect(client.update).not.toHaveBeenCalled()
+    expect(client.update).toHaveBeenCalledTimes(1)
   })
 
   it('moves a background tab to its application as soon as it is selected, before the click navigates', async () => {
@@ -467,41 +472,40 @@ describe('tabs of removed documents', () => {
     jest.mocked(navigate).mockReset()
   })
 
-  it.each([false, true])(
-    'diffs against the persisted location after an optimistic correction (background=%s)',
-    async (background) => {
-      workspaceStore.set('workspace')
-      const tab = makeTab(`persisted-${String(background)}`)
-      const active = makeTab('persisted-other', 'workbench/workspace/app/other')
-      tabsStore.set([tab, active])
-      tabIdStore.set(background ? active._id : tab._id)
-      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(background ? active : tab))
-      await resolveTab(tab)
-      resolver.mockResolvedValue({ name: 'Home' })
-      jest.mocked(navigate).mockImplementation((loc) => {
-        jest.mocked(getCurrentLocation).mockReturnValue(loc)
-        testLocationStore.set(loc)
-        return true
-      })
+  it.each([false, true])('persists a correction from its original location (background=%s)', async (background) => {
+    workspaceStore.set('workspace')
+    const tab = makeTab(`persisted-${String(background)}`)
+    const active = makeTab('persisted-other', 'workbench/workspace/app/other')
+    tabsStore.set([tab, active])
+    tabIdStore.set(background ? active._id : tab._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(background ? active : tab))
+    await resolveTab(tab)
+    resolver.mockResolvedValue({ name: 'Home' })
+    jest.mocked(navigate).mockImplementation((loc) => {
+      jest.mocked(getCurrentLocation).mockReturnValue(loc)
+      testLocationStore.set(loc)
+      return true
+    })
 
-      try {
-        removeDocs(objectId)
-        if (background) tabIdStore.set(tab._id)
-        await flush()
+    try {
+      removeDocs(objectId)
+      if (background) tabIdStore.set(tab._id)
+      await flush()
 
-        // TxOperations.diffUpdate skips fields equal to its input document. The
-        // optimistic store must not make the persisted old location look current.
+      if (background) {
+        expect(client.update).toHaveBeenCalledWith(tab, { location: 'workbench/workspace/app', name: 'Home' })
+      } else {
         const write = client.diffUpdate.mock.calls.find(
           ([doc, update]) =>
             doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
         )
         expect(write).toBeDefined()
-        expect(get(tabsStore).find((doc) => doc._id === tab._id)?.location).toBe('workbench/workspace/app')
-      } finally {
-        jest.mocked(navigate).mockReset()
       }
+      expect(get(tabsStore).find((doc) => doc._id === tab._id)?.location).toBe('workbench/workspace/app')
+    } finally {
+      jest.mocked(navigate).mockReset()
     }
-  )
+  })
 
   it('persists a selected background panel when its destination URL is already shown', async () => {
     workspaceStore.set('workspace')
@@ -519,11 +523,7 @@ describe('tabs of removed documents', () => {
       tabIdStore.set(tab._id)
       await flush()
 
-      const write = client.diffUpdate.mock.calls.find(
-        ([doc, update]) =>
-          doc._id === tab._id && update.location === active.location && doc.location !== update.location
-      )
-      expect(write).toBeDefined()
+      expect(client.update).toHaveBeenCalledWith(tab, { location: active.location, name: 'App' })
     } finally {
       jest.mocked(navigate).mockReset()
     }
@@ -748,14 +748,14 @@ describe('tabs of removed documents', () => {
       expect(storage.removeItem).toHaveBeenCalledWith('location_app')
     })
 
-    it('keeps a pinned missing document in place', async () => {
+    it('preserves the editor fallback for a pinned missing document', async () => {
       const tab = { ...makeTab('editor-pinned'), isPinned: true }
       tabsStore.set([tab])
       tabIdStore.set(tab._id)
       jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
       await resolveTab(tab)
 
-      expect(handleMissingTabDocument(objectId)).toBe(true)
+      expect(handleMissingTabDocument(objectId)).toBe(false)
       await flush()
 
       expect(navigate).not.toHaveBeenCalled()
@@ -883,6 +883,28 @@ describe('tab document resolution', () => {
       expect(titleProvider).toHaveBeenCalledTimes(hasResolver ? 0 : 1)
     }
   )
+
+  it('preserves the document identity when the title provider fails', async () => {
+    application.locationDataResolver = undefined
+    const titleProvider = jest.fn(async () => {
+      throw new Error('title unavailable')
+    })
+    jest.mocked(getClient).mockReturnValue({
+      ...client,
+      getHierarchy: () => ({
+        hasClass: (cls: string) => cls === objectClass,
+        classHierarchyMixin: () => ({ titleProvider })
+      })
+    } as unknown as ReturnType<typeof getClient>)
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const loc = { path: ['workbench', 'workspace', 'app'], fragment: 'panel|LINK-1|document-class' }
+
+    try {
+      expect(await getTabDataByLocation(loc)).toMatchObject({ objectId, objectClass })
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
 
   it('preserves the document identity returned by an application resolver', async () => {
     expect(await getTabDataByLocation({ path: ['workbench', 'workspace', 'app'] })).toMatchObject(documentData)

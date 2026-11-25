@@ -70,14 +70,11 @@ locationWorkspaceStore.subscribe((workspace) => {
   tabIdStore.set(getTabFromLocalStorage(workspace ?? ''))
 })
 
-// Keep the persisted input for diffUpdate while a deletion correction is shown optimistically.
-const optimisticTabSources = new Map<Ref<WorkbenchTab>, WorkbenchTab>()
-
-const syncTabLoc = reduceCalls(async (): Promise<void> => {
+const syncTabLoc = reduceCalls(async (source?: WorkbenchTab): Promise<void> => {
   const loc = getCurrentLocation()
   const workspace = get(locationWorkspaceStore)
   if (workspace == null || workspace === '') return
-  const tab = get(currentTabStore)
+  const tab = source ?? get(currentTabStore)
   if (tab == null) return
   const tabId = tab._id
   if (tabId == null || tab._id !== tabId) return
@@ -136,20 +133,14 @@ const syncTabLoc = reduceCalls(async (): Promise<void> => {
     // }
 
     const op = getClient().apply(undefined, undefined, true)
-    const source = optimisticTabSources.get(tab._id) ?? tab
-    await op.diffUpdate(source, { location: url, name })
+    await op.diffUpdate(tab, { location: url, name })
     await op.commit()
-    // An older sync must leave the comparison available for the queued current location.
-    if (optimisticTabSources.get(tab._id) === source && locationToUrl(getCurrentLocation()) === url) {
-      optimisticTabSources.delete(tab._id)
-    }
   }
 })
 
-let locationRevision = 0
 locationStore.subscribe(() => {
-  locationRevision++
-  void syncTabLoc()
+  // Capture the persisted tab before a deletion correction updates the local store.
+  void syncTabLoc(get(currentTabStore))
 })
 
 export function syncWorkbenchTab (): void {
@@ -216,6 +207,7 @@ export async function closeTab (tab: WorkbenchTab): Promise<void> {
   if (get(tabIdStore) === tab._id) {
     let newTab: WorkbenchTab | undefined = tabs[index - 1] ?? tabs[index + 1]
     tabIdStore.set(newTab?._id)
+    // Store subscribers run synchronously and may correct the adjacent tab's location.
     newTab = get(tabsStore).find((t) => t._id === newTab?._id)
     if (newTab !== undefined) {
       navigate(getTabLocation(newTab))
@@ -342,38 +334,55 @@ async function leaveRemovedDocument (
   tab: WorkbenchTab,
   loc: Location,
   objectId: Ref<Doc>,
-  expectedLocation = loc
+  expectedLocation = loc,
+  persist = false
 ): Promise<void> {
   const currentUrl = locationToUrl(getCurrentLocation())
-  const revision = locationRevision
   const expectedUrl = locationToUrl(expectedLocation)
-  const tabLocation = get(tabsStore).find((t) => t._id === tab._id)?.location
-  const target = await getLocationWithoutDocument(loc, objectId)
-  const data = await getTabDataByLocation(target)
-  const name = data.name ?? (await translate(data.label, {}, get(languageStore)))
-  // A location resolver or title provider can finish after the user has moved on.
-  const shownUrl = locationToUrl(getCurrentLocation())
-  const currentTab = get(tabsStore).find((t) => t._id === tab._id)
-  if (currentTab === undefined) return
-  if (currentTab.isPinned) return
-  if (get(tabIdStore) !== tab._id || currentTab.location !== tabLocation) return
-  // A return to the previous app must win even when its URL matches the initial one.
-  const unchangedLocation = shownUrl === currentUrl && locationRevision === revision
-  if (shownUrl !== expectedUrl && !unchangedLocation) return
-  if (target.path.length <= 3) forgetApplicationLocation(loc)
-  const location = locationToUrl(target)
-  if (!optimisticTabSources.has(tab._id)) optimisticTabSources.set(tab._id, tab)
-  tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location, name } : t)))
-  if (get(tabIdStore) === tab._id && !navigate(target)) {
-    // Selecting another tab can keep the same URL, so no location event is emitted.
-    void syncTabLoc()
+  let locationChanged = false
+  let initial = true
+  const unsubscribe = locationStore.subscribe(() => {
+    if (initial) {
+      initial = false
+      return
+    }
+    locationChanged = true
+  })
+  try {
+    const tabLocation = get(tabsStore).find((t) => t._id === tab._id)?.location
+    const target = await getLocationWithoutDocument(loc, objectId)
+    const data = await getTabDataByLocation(target)
+    const name = data.name ?? (await translate(data.label, {}, get(languageStore)))
+    // A location resolver or title provider can finish after the user has moved on.
+    const shownUrl = locationToUrl(getCurrentLocation())
+    const currentTab = get(tabsStore).find((t) => t._id === tab._id)
+    if (currentTab === undefined) return
+    if (currentTab.isPinned) return
+    if (get(tabIdStore) !== tab._id || currentTab.location !== tabLocation) return
+    // A return to the previous app must win even when its URL matches the initial one.
+    const unchangedLocation = shownUrl === currentUrl && !locationChanged
+    if (shownUrl !== expectedUrl && !unchangedLocation) return
+    if (target.path.length <= 3) forgetApplicationLocation(loc)
+    const location = locationToUrl(target)
+    if (!navigate(target)) {
+      // Selecting another tab can keep the same URL, so no location event is emitted.
+      void syncTabLoc()
+    }
+    tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location, name } : t)))
+    if (persist) {
+      // The store already contains the target, so persist from the original tab explicitly.
+      await getClient().update(tab, { location, name })
+    }
+    // Active corrections are persisted by the location event, or the explicit sync above.
+  } finally {
+    unsubscribe()
   }
-  // The location event, or the explicit sync above, persists the active tab's location and name.
 }
 
 /** Let an editor hand missing-document navigation to the workbench. */
 export function handleMissingTabDocument (objectId: Ref<Doc>): boolean {
-  if (get(currentTabStore) === undefined) return false
+  const tab = get(currentTabStore)
+  if (tab === undefined || tab.isPinned) return false
   // An unresolved location needs the editor's fallback (for example an already-deleted Card link).
   if (!tabDocuments.has(locationToUrl(getCurrentLocation()))) return false
   onRemovedDocuments(new Set([objectId]))
@@ -409,9 +418,8 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
   const target =
     loc.fragment != null && loc.fragment !== '' ? { ...loc, fragment: undefined } : getApplicationLocation(loc)
   if (target.path.length <= 3) forgetApplicationLocation(loc)
-  if (!optimisticTabSources.has(tab._id)) optimisticTabSources.set(tab._id, tab)
   tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location: locationToUrl(target) } : t)))
-  void leaveRemovedDocument(tab, loc, removed.objectId, target).catch(console.error)
+  void leaveRemovedDocument(tab, loc, removed.objectId, target, true).catch(console.error)
 }
 
 /**
@@ -438,7 +446,6 @@ export function watchTabDocuments (): () => void {
     removeTxListener(listener)
     unsubscribe()
     removedTabDocuments.clear()
-    optimisticTabSources.clear()
   }
 }
 
@@ -533,7 +540,7 @@ async function getDefaultTabData (loc: Location): Promise<LocationData> {
   } catch (err: any) {
     console.error(err)
   }
-  return {}
+  return data
 }
 
 configurationStore.subscribe((config) => {
