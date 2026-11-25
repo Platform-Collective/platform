@@ -353,7 +353,12 @@
         </div>
       {:else if displayedFocus !== undefined}
         <div class="item-box">
-          <ObjectPresenter objectId={displayedFocus._id} _class={displayedFocus._class} value={displayedFocus} disabled />
+          <ObjectPresenter
+            objectId={displayedFocus._id}
+            _class={displayedFocus._class}
+            value={displayedFocus}
+            disabled
+          />
         </div>
       {/if}
       {#if activeAction !== undefined}
