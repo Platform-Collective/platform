@@ -408,8 +408,13 @@ describe('mongo operations', () => {
       links: { $elemMatch: { $or: [linkA, linkB] } }
     })
     expect(translate({ links: { $all: [linkA, linkB] } })).toEqual({
-      links: { $all: [{ $elemMatch: linkA }, { $elemMatch: linkB }] }
+      links: { $type: 'array', $all: [{ $elemMatch: linkA }, { $elemMatch: linkB }] }
     })
+    // $all needs a list, also for a null operand.
+    expect(translate({ links: { $all: [null] } })).toEqual({ links: { $type: 'array', $all: [null] } })
+    // Literal values stay literal.
+    expect(translate({ links: [] })).toEqual({ links: [] })
+    expect(translate({ links: {} })).toEqual({ links: {} })
     // Links are matched by _id and _class only.
     expect(translate({ links: { $in: [{ ...linkA, title: 'extra' }] } })).toEqual({
       links: { $elemMatch: { $or: [linkA] } }

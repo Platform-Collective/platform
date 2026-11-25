@@ -314,9 +314,9 @@ abstract class MongoAdapterBase implements DbAdapter {
           translated[tkey.key] = translateLikeQuery(value.$like as string)
           continue
         }
-        if (isLinkListAttribute(this.hierarchy, clazz, key)) {
+        if (this.isLinkListKey(clazz, key, options)) {
           const { field, and } = translateLinkListQuery(tkey.key, value)
-          if (Object.keys(field).length > 0) {
+          if (field !== undefined) {
             translated[tkey.key] = field
           }
           if (and.length > 0) {
@@ -811,6 +811,27 @@ abstract class MongoAdapterBase implements DbAdapter {
       this.stripHash(v)
     }
     return obj
+  }
+
+  /**
+   * Checks if a query key is a link list, also through a `$lookup`: there the attribute is resolved on the
+   * looked-up class given in the find options.
+   */
+  private isLinkListKey<T extends Doc> (clazz: Ref<Class<T>>, key: string, options?: ServerFindOptions<T>): boolean {
+    if (!key.startsWith('$lookup.')) {
+      return isLinkListAttribute(this.hierarchy, clazz, key)
+    }
+    const parts = key.split('.')
+    let lookup: any = options?.lookup
+    let target: Ref<Class<Doc>> | undefined
+    let i = 0
+    while (parts[i] === '$lookup' && i + 2 < parts.length) {
+      const value = lookup?.[parts[i + 1]]
+      target = Array.isArray(value) ? value[0] : value
+      lookup = Array.isArray(value) ? value[1] : undefined
+      i += 2
+    }
+    return typeof target === 'string' && isLinkListAttribute(this.hierarchy, target, parts.slice(i).join('.'))
   }
 
   private translateKey<T extends Doc> (
@@ -1879,9 +1900,9 @@ function splitLinks (values: any[]): { links: Array<Record<string, any>>, others
 function translateLinkListQuery (
   key: string,
   value: Record<string, any>
-): { field: Record<string, any>, and: Array<Record<string, any>> } {
+): { field: Record<string, any> | undefined, and: Array<Record<string, any>> } {
   if (!Object.keys(value).some((it) => it.startsWith('$'))) {
-    // A single link: the list holds it.
+    // A single link: the list holds it. Other values, such as a literal empty list or object, stay literal.
     const identity = getLinkIdentity(value)
     return { field: identity !== undefined ? { $elemMatch: identity } : value, and: [] }
   }
@@ -1914,20 +1935,19 @@ function translateLinkListQuery (
   }
   if (Array.isArray($all)) {
     const { links } = splitLinks($all)
-    if ($all.length === 0) {
-      field.$type = 'array'
-    } else if (links.length === 0) {
+    // As in the in-memory matcher and SQL, $all needs a list: `$all: [null]` alone would also match a missing
+    // or null field. An empty $all matches every list.
+    field.$type = 'array'
+    if (links.length > 0) {
+      field.$all = $all.map((it) => ({ $elemMatch: getLinkIdentity(it) ?? { $eq: it } }))
+    } else if ($all.length > 0) {
       field.$all = $all
-    } else {
-      field.$all = $all.map((it) => {
-        const identity = getLinkIdentity(it)
-        return { $elemMatch: identity ?? { $eq: it } }
-      })
     }
   } else if ($all !== undefined) {
     field.$all = $all
   }
-  return { field, and }
+  // The field is absent only when its whole condition moved into `and`.
+  return { field: Object.keys(field).length === 0 && and.length > 0 ? undefined : field, and }
 }
 
 function translateLikeQuery (pattern: string): { $regex: string, $options: string } {

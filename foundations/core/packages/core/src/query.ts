@@ -30,7 +30,9 @@ export function findProperty (objects: Doc[], propertyKey: string, value: any, s
 }
 
 function isArrayValueCheck<T, P> (val: T, value: P, same: ValueMatcher): boolean {
-  return Array.isArray(val) && !Array.isArray(value) && includesValue(val, value, same)
+  if (!Array.isArray(val)) return false
+  // A literal list matches an equal list, as in the databases; another value matches an item of the list.
+  return Array.isArray(value) ? isSameValue(val, value) : includesValue(val, value, same)
 }
 
 /**
@@ -59,10 +61,32 @@ export function isLinkListAttribute (hierarchy: Hierarchy, _class: Ref<Class<Doc
 }
 
 /**
+ * For a `$lookup.<field>[.$lookup.<field>...].<key>` query key, the looked-up document's class and the
+ * attribute key on it, read from the `$lookup` the document carries. Undefined for other keys, or when the
+ * document has no single looked-up document there.
+ */
+function getLookupTarget (doc: Doc, key: string): { _class: Ref<Class<Doc>>, key: string } | undefined {
+  const parts = key.split('.')
+  let target: any = doc
+  let i = 0
+  while (parts[i] === '$lookup' && i + 2 < parts.length) {
+    target = target?.$lookup?.[parts[i + 1]]
+    i += 2
+  }
+  if (i === 0 || target == null || Array.isArray(target) || typeof target._class !== 'string') return undefined
+  return { _class: target._class, key: parts.slice(i).join('.') }
+}
+
+/**
  * The value matcher for an attribute: link identity for link lists, literal matching otherwise.
+ * A `$lookup` key is resolved on the class of the looked-up document, so `doc` must be given for it.
  * @public
  */
-export function getValueMatcher (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, key: string): ValueMatcher {
+export function getValueMatcher (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, key: string, doc?: Doc): ValueMatcher {
+  if (key.startsWith('$lookup.')) {
+    const target = doc !== undefined ? getLookupTarget(doc, key) : undefined
+    return target !== undefined && isLinkListAttribute(hierarchy, target._class, target.key) ? isSameLink : isSameValue
+  }
   return isLinkListAttribute(hierarchy, _class, key) ? isSameLink : isSameValue
 }
 
@@ -202,7 +226,14 @@ export function matchQuery<T extends Doc> (
     }
     const value = (query as any)[key]
     const tkey = checkMixinKey(key, clazz, hierarchy)
-    result = findProperty(result, tkey, value, getValueMatcher(hierarchy, clazz, key))
+    if (key.startsWith('$lookup.')) {
+      // The attribute belongs to each document's looked-up document.
+      result = result.filter(
+        (doc) => findProperty([doc], tkey, value, getValueMatcher(hierarchy, clazz, key, doc)).length > 0
+      )
+    } else {
+      result = findProperty(result, tkey, value, getValueMatcher(hierarchy, clazz, key))
+    }
     if (result.length === 0) {
       break
     }

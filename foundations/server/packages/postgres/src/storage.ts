@@ -1228,6 +1228,14 @@ abstract class PostgresAdapterBase implements DbAdapter {
       const value = query[_key]
       if (value === undefined) continue
       const key = escape(_key)
+      if (this.isLookupLinkList(key, joins)) {
+        // A link list of a looked-up document, kept as JSONB like on the document itself.
+        const translated = this.translateLinkListValue(vars, this.getKey(_class, baseDomain, key, joins, true), value)
+        if (translated !== undefined) {
+          res.push(translated)
+        }
+        continue
+      }
       const valueType = this.getValueType(_class, key)
       const tkey = this.getKey(_class, baseDomain, key, joins, valueType === 'dataArray')
       const translated =
@@ -1239,6 +1247,20 @@ abstract class PostgresAdapterBase implements DbAdapter {
       }
     }
     return res.join(' AND ')
+  }
+
+  /**
+   * Checks if a `$lookup.<path>.<key>` query key is a link list of the looked-up class, the class the join
+   * for `<path>` leads to. The attribute has to be resolved there, not on the queried class.
+   */
+  private isLookupLinkList (key: string, joins: JoinProps[]): boolean {
+    if (!key.startsWith('$lookup')) return false
+    const arr = key.split('.').filter((p) => p !== '$lookup')
+    const tKey = arr.pop() ?? ''
+    const path = arr.join('.')
+    const join = joins.find((p) => p.path === path)
+    if (join === undefined || join.isReverse || join.toClass === undefined) return false
+    return isDataField(join.table, tKey) && isLinkListAttribute(this.hierarchy, join.toClass, tKey)
   }
 
   private getValueType<T extends Doc> (_class: Ref<Class<T>>, key: string): ValueType {
@@ -1403,19 +1425,26 @@ abstract class PostgresAdapterBase implements DbAdapter {
    * of their `_id` and `_class`, so extra stored fields do not matter. `?|` would only check string items.
    * In `$in` / `$nin`, null matches a missing field, a null field and a null item, as in the in-memory
    * matcher and MongoDB. `$nin` is the complement of `$in`. `$all: []` matches every list.
+   * Literal values stay literal: a list matches an equal list, another object a list item equal to it.
    * Other operators are translated as for any JSONB list.
    */
   private translateLinkListValue (vars: ValuesVariables, tkey: string, value: any): string | undefined {
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    if (Array.isArray(value)) {
+      return `${tkey} = ${vars.add(JSON.stringify(value), '::text::jsonb')}`
+    }
+    if (value === null || typeof value !== 'object') {
       return this.translateQueryValue(vars, tkey, value, 'dataArray')
     }
     const contains = (items: any[]): string =>
       `${tkey} @> ${vars.add(JSON.stringify(items.map((it) => getLinkIdentity(it) ?? it)), '::text::jsonb')}`
     if (!Object.keys(value).some((it) => it.startsWith('$'))) {
-      // A single link: the list holds it.
-      return getLinkIdentity(value) !== undefined
-        ? contains([value])
-        : this.translateQueryValue(vars, tkey, value, 'dataArray')
+      if (getLinkIdentity(value) !== undefined) {
+        // A single link: the list holds it.
+        return contains([value])
+      }
+      // Containment would accept any object holding these fields, so an item has to be equal to the value.
+      const items = `jsonb_array_elements(CASE WHEN jsonb_typeof(${tkey}) = 'array' THEN ${tkey} ELSE '[]'::jsonb END)`
+      return `EXISTS (SELECT 1 FROM ${items} AS item WHERE item = ${vars.add(JSON.stringify(value), '::text::jsonb')})`
     }
     const membership = (items: any[]): string => {
       const parts = items.filter((it) => it != null).map((it) => contains([it]))

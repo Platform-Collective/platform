@@ -565,6 +565,57 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         // Empty operands: $in matches nothing, $all every list.
         expect(await findNames({ $in: [] })).toEqual([])
         expect(await findNames({ $all: [] })).toEqual(['t1', 't2', 't3', 't4', 't6', 't8'])
+
+        // $all needs a list: a null operand matches a null item, not a missing or null field.
+        expect(await findNames({ $all: [null] })).toEqual(['t8'])
+        expect(await findNames({ $all: [null, linkC] })).toEqual(['t8'])
+
+        // Literal values stay literal: an empty list matches only the empty list.
+        expect(await findNames([])).toEqual(['t4'])
+        expect(await findNames({})).toEqual([])
+      })
+
+      it('should match links of a looked-up document', async () => {
+        const { operations, client, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const createTask = async (name: string, links: any[]): Promise<Ref<Doc>> =>
+          await operations.createDoc(taskPlugin.class.Task, space, { name, description: '', rate: 0, links })
+        const createComment = async (message: string, attachedTo: Ref<Doc>): Promise<void> => {
+          await operations.addCollection(
+            taskPlugin.class.TaskComment,
+            space,
+            attachedTo,
+            taskPlugin.class.Task,
+            'tasks',
+            {
+              message,
+              date: new Date()
+            }
+          )
+        }
+
+        // The parent's link to linkA is stored with an extra field.
+        await createComment('on-parent', await createTask('parent', [{ ...linkA, title: 'extra' }, linkB]))
+        await createComment('on-other', await createTask('other', [linkB]))
+
+        async function findMessages (linksQuery: any): Promise<string[]> {
+          const query: DocumentQuery<Doc> = { '$lookup.attachedTo.links': linksQuery }
+          const options = { lookup: { attachedTo: taskPlugin.class.Task } as any }
+          const found: any[] = await client.findAll(taskPlugin.class.TaskComment, query, options)
+          const messages = found.map((it) => it.message).sort((a, b) => a.localeCompare(b))
+
+          // The live query matches the comments with the parent they carry in $lookup.
+          const all = await client.findAll<Doc>(taskPlugin.class.TaskComment, {}, options)
+          const matched: any[] = matchQuery(all, query, taskPlugin.class.TaskComment, client.getHierarchy())
+          expect(matched.map((it) => it.message).sort((a, b) => a.localeCompare(b))).toEqual(messages)
+          return messages
+        }
+
+        expect(await findMessages({ $in: [linkA] })).toEqual(['on-parent'])
+        expect(await findMessages({ $in: [linkA, linkB] })).toEqual(['on-other', 'on-parent'])
+        expect(await findMessages({ $all: [linkA, linkB] })).toEqual(['on-parent'])
+        expect(await findMessages({ $all: [linkB] })).toEqual(['on-other', 'on-parent'])
+        expect(await findMessages({ $nin: [linkA] })).toEqual(['on-other'])
       })
     })
 
