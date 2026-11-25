@@ -9,6 +9,53 @@ export type IssueTimerWarning = 'long' | 'pastMidnight'
 
 const longTimerThreshold = 10 * 60 * 60 * 1000
 
+interface TimerStorage {
+  getItem: (key: string) => string | null
+  removeItem: (key: string) => void
+}
+
+export function readStoredIssueTimer (storage: TimerStorage, key: string): Data<IssueTimer> | undefined {
+  const value = storage.getItem(key)
+  if (value === null) return
+  try {
+    const timer = JSON.parse(value) as Partial<Data<IssueTimer>> | null
+    if (
+      timer === null ||
+      typeof timer !== 'object' ||
+      typeof timer.issueId !== 'string' ||
+      typeof timer.identifier !== 'string' ||
+      typeof timer.reportId !== 'string' ||
+      typeof timer.startedAt !== 'number' ||
+      !Number.isFinite(timer.startedAt) ||
+      timer.startedAt < 0 ||
+      (timer.stoppedAt !== undefined &&
+        (typeof timer.stoppedAt !== 'number' || !Number.isFinite(timer.stoppedAt) || timer.stoppedAt < timer.startedAt))
+    ) {
+      return
+    }
+    return {
+      issueId: timer.issueId,
+      identifier: timer.identifier,
+      reportId: timer.reportId,
+      startedAt: timer.startedAt,
+      stoppedAt: timer.stoppedAt
+    }
+  } catch {}
+}
+
+export async function migrateStoredIssueTimer (
+  client: TxOperations,
+  storage: TimerStorage,
+  key: string,
+  space: Ref<PersonSpace>,
+  id: Ref<IssueTimer>
+): Promise<void> {
+  const stored = readStoredIssueTimer(storage, key)
+  if (stored === undefined) return
+  await startIssueTimer(client, space, id, stored)
+  storage.removeItem(key)
+}
+
 /** Calculate elapsed milliseconds from timestamps, including time spent outside the issue view. */
 export function getElapsedTime (startedAt: number, now: number): number {
   return Number.isFinite(startedAt) && Number.isFinite(now) ? Math.max(0, now - startedAt) : 0

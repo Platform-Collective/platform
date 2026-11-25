@@ -6,7 +6,7 @@
   import type { Ref } from '@hcengineering/core'
   import { setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
   import type { IntlString } from '@hcengineering/platform'
-  import { createQuery, getClient } from '@hcengineering/presentation'
+  import { createQuery, getClient, getCurrentWorkspaceUuid } from '@hcengineering/presentation'
   import type { Issue, IssueTimer, TimeSpendReport } from '@hcengineering/tracker'
   import { addNotification, Button, Label, navigate, NotificationSeverity, showPopup } from '@hcengineering/ui'
   import { canCreateObject } from '@hcengineering/view-resources'
@@ -22,6 +22,7 @@
     getElapsedTime,
     getIssueTimerWarnings,
     getStoppedTimerHours,
+    migrateStoredIssueTimer,
     startIssueTimer,
     stopIssueTimer
   } from './issue-timer'
@@ -49,6 +50,8 @@
       timer = result[0]
       now = Date.now()
     })
+    const legacyKey = `tracker:issue-timer:${getCurrentWorkspaceUuid()}:${account.uuid}`
+    await migrateStoredIssueTimer(client, localStorage, legacyKey, space._id, timerId)
   }
 
   async function notify(label: IntlString, params: Record<string, any> = {}): Promise<void> {

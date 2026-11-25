@@ -9,15 +9,12 @@ import {
   getIssueTimerWarnings,
   getReportHours,
   getStoppedTimerHours,
+  migrateStoredIssueTimer,
+  readStoredIssueTimer,
   saveReportOnce,
   startIssueTimer,
   stopIssueTimer
 } from '../issue-timer'
-
-jest.mock('../../../../plugin', () => ({
-  __esModule: true,
-  default: { class: { IssueTimer: 'tracker:class:IssueTimer' } }
-}))
 
 describe('issue timer duration', () => {
   it('uses timestamps so elapsed time survives reloads and suspended tabs', () => {
@@ -114,7 +111,7 @@ function matchesQuery (timer: IssueTimer | undefined, query: TimerQuery): boolea
 
 function createClient (state: TimerState): TxOperations {
   const client = {
-    findOne: async (_class: string, query: TimerQuery) => matchesQuery(state.timer, query) ? state.timer : undefined,
+    findOne: async (_class: string, query: TimerQuery) => (matchesQuery(state.timer, query) ? state.timer : undefined),
     apply: () => {
       const matches: TimerQuery[] = []
       const notMatches: TimerQuery[] = []
@@ -239,6 +236,65 @@ describe('persisted issue timer', () => {
     await start(client, timer)
     const stopped = await stopIssueTimer(client, timer._id, timer.reportId, timer.startedAt)
     expect(getStoppedTimerHours(stopped as IssueTimer)).toBe(0)
+  })
+})
+
+describe('legacy browser timer migration', () => {
+  interface MemoryStorage {
+    getItem: (key: string) => string | null
+    removeItem: (key: string) => void
+    has: (key: string) => boolean
+  }
+
+  function createStorage (value: string): MemoryStorage {
+    const values = new Map([['legacy', value]])
+    return {
+      getItem: (key) => values.get(key) ?? null,
+      removeItem: (key) => {
+        values.delete(key)
+      },
+      has: (key) => values.has(key)
+    }
+  }
+
+  it('moves a locally running timer into the personal timer document', async () => {
+    const state: TimerState = { timer: undefined }
+    const stored = makeTimer()
+    const storage = createStorage(JSON.stringify(timerData(stored)))
+
+    await migrateStoredIssueTimer(createClient(state), storage, 'legacy', stored.space, stored._id)
+
+    expect(state.timer).toMatchObject({ ...timerData(stored), space: stored.space })
+    expect(state.timer?.stoppedAt).toBeUndefined()
+    expect(storage.has('legacy')).toBe(false)
+  })
+
+  it('retains the stopped time of a locally stopped timer', async () => {
+    const state: TimerState = { timer: undefined }
+    const stored = makeTimer()
+    stored.stoppedAt = 3601000
+    const storage = createStorage(JSON.stringify(timerData(stored)))
+
+    await migrateStoredIssueTimer(createClient(state), storage, 'legacy', stored.space, stored._id)
+
+    expect(state.timer?.stoppedAt).toBe(3601000)
+    expect(storage.has('legacy')).toBe(false)
+  })
+
+  it('keeps the synchronized timer when another device already migrated one', async () => {
+    const state: TimerState = { timer: makeTimer('remote-report') }
+    const stored = makeTimer('legacy-report')
+    const storage = createStorage(JSON.stringify(timerData(stored)))
+
+    await migrateStoredIssueTimer(createClient(state), storage, 'legacy', stored.space, stored._id)
+
+    expect(state.timer?.reportId).toBe('remote-report')
+    expect(storage.has('legacy')).toBe(false)
+  })
+
+  it('ignores malformed legacy data', () => {
+    expect(readStoredIssueTimer(createStorage('{broken'), 'legacy')).toBeUndefined()
+    expect(readStoredIssueTimer(createStorage('{"issueId":"issue"}'), 'legacy')).toBeUndefined()
   })
 })
 
