@@ -6,23 +6,20 @@ const { compile, preprocess } = require('svelte/compiler')
 const { preprocess: preprocessor } = require('./svelte.config')
 const ts = require('typescript')
 
-async function compileComponent (filename) {
-  const { code } = await preprocess(readFileSync(filename, 'utf8'), preprocessor, { filename })
-  return compile(code, { filename, generate: 'dom', css: 'external' }).js.code
-}
-
 if (require.main === module) {
-  void compileComponent(process.argv[2]).then(
-    (code) => process.stdout.write(code),
-    (error) => {
+  const filename = process.argv[2]
+  void preprocess(readFileSync(filename, 'utf8'), preprocessor, { filename })
+    .then(({ code }) => {
+      process.stdout.write(compile(code, { filename, generate: 'dom', css: 'external' }).js.code)
+    })
+    .catch((error) => {
       console.error(error)
       process.exitCode = 1
-    }
-  )
+    })
 }
 
 module.exports = {
-  process (source, filename) {
+  process(source, filename) {
     // Jest loads CommonJS synchronously, while the Svelte preprocessor is asynchronous.
     const code = filename.endsWith('.svelte')
       ? execFileSync(process.execPath, [__filename, filename], { encoding: 'utf8', timeout: 30000 })
