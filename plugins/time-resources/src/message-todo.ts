@@ -27,7 +27,8 @@ export function getMessageToDoContent (
   }
 
   const firstLine = getText(markupToJSON(message)).trim().split(/\r?\n/, 1)[0].trim() || fallback
-  const title = firstLine.length > 100 ? `${firstLine.slice(0, 100).trimEnd()}…` : firstLine
+  const characters = Array.from(firstLine)
+  const title = characters.length > 100 ? `${characters.slice(0, 100).join('').trimEnd()}…` : firstLine
   return {
     title,
     description: jsonToMarkup(nodeDoc(nodeParagraph(markLink({ href: link, title }, nodeText(link)))))

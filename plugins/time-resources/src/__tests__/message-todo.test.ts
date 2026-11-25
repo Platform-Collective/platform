@@ -52,6 +52,12 @@ describe('message ToDo content', () => {
     expect(getMessageToDoContent('a'.repeat(100), LINK, 'Action Item').title).toBe('a'.repeat(100))
   })
 
+  it('truncates between Unicode code points without splitting a surrogate pair', () => {
+    const message = `${'a'.repeat(99)}😀${'b'.repeat(20)}`
+    expect(getMessageToDoContent(message, LINK, 'Action Item').title).toBe(`${'a'.repeat(99)}😀…`)
+    expect(getMessageToDoContent('😀'.repeat(100), LINK, 'Action Item').title).toBe('😀'.repeat(100))
+  })
+
   it('creates valid link markup with the full thread URL and no message body', () => {
     const link = `${LINK}&thread=parent&quote="quoted"`
     const { description } = getMessageToDoContent('Title\nPrivate body', link, 'Action Item')

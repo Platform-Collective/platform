@@ -137,6 +137,28 @@ it('uses the configured public front URL for the message link', async () => {
   expect(description).not.toContain('https://example.com')
 })
 
+it('keeps truncated Unicode titles intact in the ToDo, WorkSlot and link', async () => {
+  const title = `${'a'.repeat(99)}😀…`
+  const unicodeMessage = { ...message, message: `${'a'.repeat(99)}😀${'b'.repeat(20)}` }
+  await createMessageToDo(unicodeMessage, Date.UTC(2026, 10, 12, 14, 30))
+  expect(addCollection).toHaveBeenCalledWith(
+    time.class.ToDo,
+    time.space.ToDos,
+    time.ids.NotAttached,
+    time.class.ToDo,
+    'todos',
+    expect.objectContaining({ title, description: expect.stringContaining(title) })
+  )
+  expect(addCollection).toHaveBeenCalledWith(
+    time.class.WorkSlot,
+    expect.anything(),
+    'todo',
+    time.class.ToDo,
+    'workslots',
+    expect.objectContaining({ title, description: expect.stringContaining(title) })
+  )
+})
+
 it('uses the selected duration and the slot end as the ToDo due date', async () => {
   const start = Date.UTC(2026, 10, 12, 14, 30)
   const duration = 60 * 60 * 1000
