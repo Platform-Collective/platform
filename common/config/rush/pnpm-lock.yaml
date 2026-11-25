@@ -41734,6 +41734,9 @@ importers:
       eslint-plugin-svelte:
         specifier: ^3.23.0
         version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
       sharp:
         specifier: ~0.35.3
         version: 0.35.5(@types/node@24.13.6)

@@ -3,19 +3,17 @@
 /**
  * Safe publish script that rejects older releases and skips already published versions.
  *
- * Packages are developed as @hcengineering/* and published as @platformcollective/*. Dependencies on
- * other published packages keep their source names as npm aliases (for example
- * "@hcengineering/core": "npm:@platformcollective/core@^0.8.0"), so the published code resolves them unchanged.
- *
  * Usage:
  *   node safe-publish.js [--include <package-name>] [--check-types | --pack <dir>]
  *   node safe-publish.js --publish-packed <dir>
+ *   node safe-publish.js --check-environment <environment.json> <policies.json>
  *
  * Options:
  *   --include <name>  Only consider packages whose name includes <name>
  *   --check-types     Check packed declaration entry points without publishing
  *   --pack <dir>      Prepare and check tarballs for a separate publishing job
  *   --publish-packed <dir>  Publish prepared tarballs without installing or building
+ *   --check-environment  Verify reviewers and v* tag deployment rules
  */
 
 const { execSync, execFileSync } = require('child_process')
@@ -23,18 +21,6 @@ const fs = require('fs')
 const path = require('path')
 const https = require('https')
 const http = require('http')
-
-const SOURCE_SCOPE = '@hcengineering/'
-const NPM_SCOPE = '@platformcollective/'
-
-/**
- * Name under which a package is published on npm.
- */
-function publishedName(name) {
-  if (name.startsWith(NPM_SCOPE)) return name
-  if (!name.startsWith(SOURCE_SCOPE)) throw new Error(`Unexpected package name ${name}`)
-  return NPM_SCOPE + name.slice(SOURCE_SCOPE.length)
-}
 
 /**
  * Read a package version from npm. Only a 404 means it is absent.
@@ -136,7 +122,7 @@ function getPublishablePackages(includePattern) {
         return false
       }
 
-      if (!shouldPublish || !project.name.startsWith(SOURCE_SCOPE)) return false
+      if (!shouldPublish || !project.name.startsWith('@hcengineering/')) return false
       const manifest = JSON.parse(fs.readFileSync(path.join(project.fullPath, 'package.json'), 'utf8'))
       if (manifest.private === true) {
         console.log(`⊘ Skipping ${project.name} (private)`)
@@ -191,12 +177,10 @@ function checkPackedTypes(pkg, packed) {
 /**
  * Normalize workspace: dependency ranges in package.json to plain semver
  * so that consumers without workspace support can install the package.
- * Rename the package to its npm scope, and point dependencies on other published
- * packages to that scope through npm aliases that keep their source names.
  * Set repository metadata to the publishing repository for GitHub provenance.
  * Returns the original package.json string so it can be restored.
  */
-function normalizeWorkspaceDeps(packagePath, publishedSourceNames) {
+function normalizeWorkspaceDeps(packagePath) {
   const packageJsonPath = path.join(packagePath, 'package.json')
   let original = null
 
@@ -206,20 +190,16 @@ function normalizeWorkspaceDeps(packagePath, publishedSourceNames) {
 
     const depFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
 
-    pkg.name = publishedName(pkg.name)
+    let changed = false
     for (const field of depFields) {
       const deps = pkg[field]
       if (!deps || typeof deps !== 'object') continue
 
       for (const [name, range] of Object.entries(deps)) {
-        if (typeof range !== 'string') continue
-        const normalized = range.replace(/^workspace:/, '')
-        if (publishedSourceNames.has(name)) {
-          deps[name] = `npm:${publishedName(name)}@${normalized}`
-        } else if (name.startsWith(SOURCE_SCOPE) && field !== 'devDependencies') {
-          throw new Error(`${pkg.name} depends on ${name}, which is not published`)
-        } else {
+        if (typeof range === 'string' && range.startsWith('workspace:')) {
+          const normalized = range.replace(/^workspace:/, '')
           deps[name] = normalized
+          changed = true
         }
       }
     }
@@ -230,9 +210,12 @@ function normalizeWorkspaceDeps(packagePath, publishedSourceNames) {
         url: `git+https://github.com/${process.env.GITHUB_REPOSITORY}.git`,
         directory: path.relative(process.env.GITHUB_WORKSPACE, packagePath).split(path.sep).join('/')
       }
+      changed = true
     }
 
-    fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
+    if (changed) {
+      fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
+    }
   } catch (err) {
     throw new Error(`Could not prepare package.json for ${packagePath}: ${err.message}`)
   }
@@ -243,12 +226,12 @@ function normalizeWorkspaceDeps(packagePath, publishedSourceNames) {
 /**
  * Publish a single package
  */
-function publishPackage(packagePath, packageName, tarball, publishedSourceNames) {
+function publishPackage(packagePath, packageName, tarball) {
   if (!tarball && JSON.parse(fs.readFileSync(path.join(packagePath, 'package.json'), 'utf8')).private === true) {
     console.log(`⊘ Skipping ${packageName} (private)`)
     return true
   }
-  const originalPackageJson = tarball ? null : normalizeWorkspaceDeps(packagePath, publishedSourceNames)
+  const originalPackageJson = tarball ? null : normalizeWorkspaceDeps(packagePath)
 
   try {
     if (!tarball) {
@@ -269,8 +252,11 @@ function publishPackage(packagePath, packageName, tarball, publishedSourceNames)
       encoding: 'utf-8'
     }
     if (tarball) {
-      execFileSync('npm', ['publish', tarball, '--ignore-scripts', '--access', 'public',
-        ...(withProvenance ? ['--provenance'] : [])], options)
+      execFileSync(
+        'npm',
+        ['publish', tarball, '--ignore-scripts', '--access', 'public', ...(withProvenance ? ['--provenance'] : [])],
+        options
+      )
     } else {
       execSync(withProvenance ? 'npm publish --provenance' : 'npm publish', options)
     }
@@ -292,6 +278,64 @@ function publishPackage(packagePath, packageName, tarball, publishedSourceNames)
 }
 
 /**
+ * Return internal runtime dependencies that are part of this release.
+ */
+function getInternalDependencies(pkg, packageNames) {
+  if (Array.isArray(pkg.dependencies)) {
+    return pkg.dependencies.filter((name) => packageNames.has(name))
+  }
+  if (!pkg.fullPath) return []
+  const manifest = JSON.parse(fs.readFileSync(path.join(pkg.fullPath, 'package.json'), 'utf8'))
+  return Object.keys({ ...manifest.dependencies, ...manifest.optionalDependencies }).filter((name) =>
+    packageNames.has(name)
+  )
+}
+
+/**
+ * Sort packages so internal dependencies are published before their dependents.
+ */
+function sortPackagesByDependencies(packages) {
+  const packageNames = new Set(packages.map((pkg) => pkg.name))
+  const packagesByName = new Map(packages.map((pkg) => [pkg.name, pkg]))
+  const ordered = []
+  const visiting = new Set()
+  const visited = new Set()
+
+  function visit(pkg) {
+    if (visited.has(pkg.name) || visiting.has(pkg.name)) return
+    visiting.add(pkg.name)
+    for (const name of getInternalDependencies(pkg, packageNames)) {
+      visit(packagesByName.get(name))
+    }
+    visiting.delete(pkg.name)
+    visited.add(pkg.name)
+    ordered.push(pkg)
+  }
+
+  for (const pkg of packages) visit(pkg)
+  return ordered
+}
+
+/**
+ * Verify that npm publishing cannot use an automatically created, unprotected environment.
+ */
+function checkPublishEnvironment(environmentFile, policiesFile) {
+  const environment = JSON.parse(fs.readFileSync(environmentFile, 'utf8'))
+  const hasReviewers = environment.protection_rules?.some(
+    (rule) => rule.type === 'required_reviewers' && Array.isArray(rule.reviewers) && rule.reviewers.length > 0
+  )
+  if (!hasReviewers) {
+    throw new Error('The npm-publish environment must exist and have required reviewers')
+  }
+
+  const policies = JSON.parse(fs.readFileSync(policiesFile, 'utf8'))
+  const hasTagPolicy = policies.branch_policies?.some((policy) => policy.name === 'v*')
+  if (!hasTagPolicy) {
+    throw new Error('The npm-publish environment must restrict deployments to v* tags')
+  }
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -300,6 +344,7 @@ async function main() {
   let checkTypes = false
   let packDirectory = null
   let publishDirectory = null
+  let environmentFiles = null
 
   // Parse arguments
   for (let i = 0; i < args.length; i++) {
@@ -312,34 +357,43 @@ async function main() {
       packDirectory = path.resolve(args[++i])
     } else if (args[i] === '--publish-packed' && args[i + 1] && !args[i + 1].startsWith('--')) {
       publishDirectory = path.resolve(args[++i])
+    } else if (args[i] === '--check-environment' && i + 2 < args.length) {
+      environmentFiles = [path.resolve(args[++i]), path.resolve(args[++i])]
     } else {
       throw new Error(`Unknown or incomplete argument: ${args[i]}`)
     }
   }
-  if ([checkTypes, packDirectory, publishDirectory].filter(Boolean).length > 1 || (publishDirectory && includePattern)) {
-    throw new Error('Use only one of --check-types, --pack or --publish-packed')
+  const modes = [checkTypes, packDirectory, publishDirectory, environmentFiles]
+  if (modes.filter(Boolean).length > 1 || ((publishDirectory || environmentFiles) && includePattern)) {
+    throw new Error('Use only one of --check-types, --pack, --publish-packed or --check-environment')
+  }
+  if (environmentFiles) {
+    checkPublishEnvironment(...environmentFiles)
+    console.log('✓ The npm-publish environment is protected')
+    return
   }
 
   console.log('Fetching publishable packages...')
-  const packages = publishDirectory
-    ? JSON.parse(fs.readFileSync(path.join(publishDirectory, 'packages.json'), 'utf8')).map((pkg) => {
-      if (!pkg.name.startsWith(NPM_SCOPE) || path.basename(pkg.filename) !== pkg.filename ||
-          !pkg.filename.endsWith('.tgz') || !fs.statSync(path.join(publishDirectory, pkg.filename)).isFile()) {
-        throw new Error('Invalid packed package metadata')
-      }
-      return { ...pkg, tarball: path.join(publishDirectory, pkg.filename) }
-    })
-    : getPublishablePackages(includePattern)
+  const packages = sortPackagesByDependencies(
+    publishDirectory
+      ? JSON.parse(fs.readFileSync(path.join(publishDirectory, 'packages.json'), 'utf8')).map((pkg) => {
+          if (
+            !pkg.name.startsWith('@hcengineering/') ||
+            path.basename(pkg.filename) !== pkg.filename ||
+            !pkg.filename.endsWith('.tgz') ||
+            !fs.statSync(path.join(publishDirectory, pkg.filename)).isFile()
+          ) {
+            throw new Error('Invalid packed package metadata')
+          }
+          return { ...pkg, tarball: path.join(publishDirectory, pkg.filename) }
+        })
+      : getPublishablePackages(includePattern)
+  )
 
   if (packages.length === 0) {
     throw new Error('No packages found to publish')
   }
-
-  // Dependencies on these packages become aliases to their npm scope. Use all publishable packages, also with
-  // --include, since a release publishes all of them.
-  const publishedSourceNames = new Set(
-    publishDirectory ? [] : (includePattern ? getPublishablePackages(null) : packages).map((pkg) => pkg.name)
-  )
+  const packageNames = new Set(packages.map((pkg) => pkg.name))
 
   console.log(`Found ${packages.length} package(s) to check`)
   console.log('='.repeat(80))
@@ -353,13 +407,22 @@ async function main() {
     fs.mkdirSync(packDirectory, { recursive: true })
     const packedPackages = []
     for (const pkg of packages) {
-      const original = normalizeWorkspaceDeps(pkg.fullPath, publishedSourceNames)
+      const original = normalizeWorkspaceDeps(pkg.fullPath)
       try {
-        const [packed] = JSON.parse(execFileSync('npm', [
-          'pack', '--json', '--ignore-scripts', '--pack-destination', packDirectory
-        ], { cwd: pkg.fullPath, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }))
+        const [packed] = JSON.parse(
+          execFileSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', packDirectory], {
+            cwd: pkg.fullPath,
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'inherit']
+          })
+        )
         checkPackedTypes(pkg, packed)
-        packedPackages.push({ name: packed.name, version: packed.version, filename: packed.filename })
+        packedPackages.push({
+          name: packed.name,
+          version: packed.version,
+          filename: packed.filename,
+          dependencies: getInternalDependencies(pkg, packageNames)
+        })
       } finally {
         fs.writeFileSync(path.join(pkg.fullPath, 'package.json'), original, 'utf8')
       }
@@ -375,7 +438,7 @@ async function main() {
 
   // Complete every registry/version check before publishing the first package.
   for (const pkg of packages) {
-    const packageName = publishedName(pkg.name)
+    const packageName = pkg.name
     const version = pkg.version
 
     console.log(`\nChecking ${packageName}@${version}...`)
@@ -396,11 +459,12 @@ async function main() {
   }
 
   for (const pkg of pending) {
-    const success = publishPackage(pkg.fullPath, publishedName(pkg.name), pkg.tarball, publishedSourceNames)
+    const success = publishPackage(pkg.fullPath, pkg.name, pkg.tarball)
     if (success) {
       published++
     } else {
       failed++
+      break
     }
   }
 
@@ -412,6 +476,10 @@ async function main() {
   console.log('='.repeat(80))
 
   if (failed > 0) {
+    const resumeCommand = publishDirectory
+      ? `node common/scripts/safe-publish.js --publish-packed ${JSON.stringify(publishDirectory)}`
+      : `node common/scripts/safe-publish.js${includePattern ? ` --include ${JSON.stringify(includePattern)}` : ''}`
+    console.error(`Resume with: ${resumeCommand}`)
     process.exit(1)
   }
 }

@@ -13,6 +13,7 @@ concurrency:
 jobs:
   build:
     permissions:
+      actions: read
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -33,17 +34,29 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           package-manager-cache: false
+      - name: Verify protected publishing environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh api "repos/$GITHUB_REPOSITORY/environments/npm-publish" > "$RUNNER_TEMP/npm-environment.json"; then
+            echo "::error::Create and protect the npm-publish environment before running a release."
+            exit 1
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/environments/npm-publish/deployment-branch-policies" \
+            > "$RUNNER_TEMP/npm-environment-policies.json"
+          node common/scripts/safe-publish.js --check-environment \
+            "$RUNNER_TEMP/npm-environment.json" "$RUNNER_TEMP/npm-environment-policies.json"
       - name: Install npm with Trusted Publishing support
         run: npm install --global npm@11.19.1 --ignore-scripts
       - name: Installing...
         run: node common/scripts/install-run-rush.js install
       - name: Verify release version
-        # Before tagging, run: node common/scripts/bump.js <version> (see README.md).
+        # Before tagging, run: node common/scripts/bump.js <version> (see docs/RELEASING.md).
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           node common/scripts/bump.js --check "$VERSION"
-          if ! printf '%s\n' 0.8.0 "$VERSION" | sort -V -C; then
-            echo "::error::The release version must be at least 0.8.0, the first version published as @platformcollective/*."
+          if [[ "$VERSION" == "0.7.423" ]] || ! printf '%s\n' 0.7.423 "$VERSION" | sort -V -C; then
+            echo "::error::The release version must be greater than 0.7.423."
             exit 1
           fi
       - name: Building...
