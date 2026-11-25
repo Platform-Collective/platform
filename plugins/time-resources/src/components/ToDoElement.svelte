@@ -98,10 +98,7 @@
       {/if}
     </div>
     <WorkItemPresenter {todo} kind={'todo-line'} withoutSpace />
-    <div
-      class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label"
-      style:opacity={isUnavailable ? 0.55 : 1}
-    >
+    <div class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label">
       {todo.title}
     </div>
     {#if isUnavailable}
