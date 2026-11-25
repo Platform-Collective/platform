@@ -7,7 +7,6 @@ import core, {
   ModelDb,
   TxFactory,
   type Account,
-  type Data,
   type Doc,
   type PersonId,
   type Ref,
@@ -65,7 +64,7 @@ async function addDoc<T extends Doc> (db: ModelDb, factory: TxFactory, doc: T): 
   const tx = factory.createTxCreateDoc(
     doc._class,
     doc.space,
-    doc as unknown as Data<T>,
+    doc,
     doc._id,
     undefined,
     doc.createdBy
