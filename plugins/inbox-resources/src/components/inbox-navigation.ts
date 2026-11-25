@@ -19,8 +19,33 @@ function getContextId (item: NavigationItem): string {
   return item.type === 'modern' ? item.context.id : item.context._id
 }
 
-function isSameItem (item: NavigationItem, other: NavigationItem): boolean {
+export function isSameNavigationItem (item: NavigationItem, other: NavigationItem): boolean {
   return item.type === other.type && getContextId(item) === getContextId(other)
+}
+
+export function shouldReselectNavigationItem (
+  item: NavigationItem,
+  fromKeyboard: boolean,
+  selectedByRemoval: NavigationItem | undefined,
+  doc: Doc | undefined,
+  legacyContext: DocNotifyContext | undefined
+): boolean {
+  return (
+    fromKeyboard ||
+    (selectedByRemoval != null && isSameNavigationItem(selectedByRemoval, item)) ||
+    isOpenedNavigationItem(item, doc, legacyContext)
+  )
+}
+
+export function isNavigationItemRemovalPending (
+  item: NavigationItem,
+  removing: NavigationItem | undefined,
+  queued: NavigationItem[]
+): boolean {
+  return (
+    (removing != null && isSameNavigationItem(removing, item)) ||
+    queued.some((queuedItem) => isSameNavigationItem(queuedItem, item))
+  )
 }
 
 function clampSelection (selection: number, itemCount: number): number {
@@ -44,7 +69,7 @@ export function getRemovalSelection (
   currentSelection: number,
   shouldReselect: boolean
 ): RemovalSelection {
-  const removedIndex = originalItems.findIndex((item) => isSameItem(item, removedItem))
+  const removedIndex = originalItems.findIndex((item) => isSameNavigationItem(item, removedItem))
   if (removedIndex < 0) {
     return {
       items: currentItems,
@@ -54,13 +79,13 @@ export function getRemovalSelection (
   }
 
   const adjacentItem = originalItems[removedIndex + 1] ?? originalItems[removedIndex - 1]
-  const items = currentItems.filter((item) => !isSameItem(item, removedItem))
+  const items = currentItems.filter((item) => !isSameNavigationItem(item, removedItem))
   if (!shouldReselect) {
     const selection = removedIndex < currentSelection ? currentSelection - 1 : currentSelection
     return { items, selection: clampSelection(selection, items.length), nextItem: undefined }
   }
 
-  const adjacentIndex = adjacentItem == null ? -1 : items.findIndex((item) => isSameItem(item, adjacentItem))
+  const adjacentIndex = adjacentItem == null ? -1 : items.findIndex((item) => isSameNavigationItem(item, adjacentItem))
   const selection = clampSelection(adjacentIndex < 0 ? removedIndex : adjacentIndex, items.length)
   return { items, selection, nextItem: items[selection] }
 }
@@ -77,13 +102,18 @@ export class NavigationRemovalQueue {
   private active: NavigationRemovalRequest | undefined
   private readonly pending: NavigationRemovalRequest[] = []
 
-  constructor(
+  constructor (
     private readonly remove: (item: NavigationItem, fromKeyboard: boolean) => Promise<void>,
     private readonly onChange: (removing: NavigationItem | undefined, queued: NavigationItem[]) => void
   ) {}
 
-  async enqueue(item: NavigationItem, fromKeyboard: boolean): Promise<void> {
-    if (this.active?.item === item || this.pending.some((request) => request.item === item)) return
+  async enqueue (item: NavigationItem, fromKeyboard: boolean): Promise<void> {
+    if (
+      (this.active != null && isSameNavigationItem(this.active.item, item)) ||
+      this.pending.some((request) => isSameNavigationItem(request.item, item))
+    ) {
+      return
+    }
 
     this.pending.push({ item, fromKeyboard })
     this.notify()
@@ -103,7 +133,7 @@ export class NavigationRemovalQueue {
     }
   }
 
-  private notify(): void {
+  private notify (): void {
     this.onChange(
       this.active?.item,
       this.pending.map((request) => request.item)

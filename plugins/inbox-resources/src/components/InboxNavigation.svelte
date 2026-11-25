@@ -30,7 +30,13 @@
   import { NavigationItem } from '../type'
   import { NavigationClient } from '../client'
   import InboxCard from './InboxCard.svelte'
-  import { getRemovalSelection, isOpenedNavigationItem, NavigationRemovalQueue } from './inbox-navigation'
+  import {
+    getRemovalSelection,
+    isNavigationItemRemovalPending,
+    isSameNavigationItem,
+    NavigationRemovalQueue,
+    shouldReselectNavigationItem
+  } from './inbox-navigation'
 
   export let doc: Doc | undefined = undefined
   export let legacyContext: DocNotifyContext | undefined = undefined
@@ -87,8 +93,7 @@
 
   async function removeNavigationItem(navItem: NavigationItem, fromKeyboard: boolean): Promise<void> {
     const originalItems = navItems
-    const shouldReselect =
-      fromKeyboard || selectedByRemoval === navItem || isOpenedNavigationItem(navItem, doc, legacyContext)
+    const shouldReselect = shouldReselectNavigationItem(navItem, fromKeyboard, selectedByRemoval, doc, legacyContext)
 
     try {
       await navClient.remove(navItem)
@@ -129,7 +134,7 @@
   })
 
   async function handleRemove(navItem: NavigationItem, fromKeyboard = false): Promise<void> {
-    if (!navItems.includes(navItem)) return
+    if (!navItems.some((item) => isSameNavigationItem(item, navItem))) return
     await removalQueue.enqueue(navItem, fromKeyboard)
   }
 
@@ -210,7 +215,7 @@
             <InboxCard
               {navItem}
               {viewlets}
-              isRemoving={removingItem === navItem || queuedRemovals.includes(navItem)}
+              isRemoving={isNavigationItemRemovalPending(navItem, removingItem, queuedRemovals)}
               selected={navItem._id === legacyContext?.objectId || navItem._id === doc?._id}
               on:remove={() => handleRemove(navItem)}
               on:doc={(e) => {

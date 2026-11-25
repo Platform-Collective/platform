@@ -7,9 +7,11 @@ import type { DocNotifyContext } from '@hcengineering/notification'
 import type { NavigationItem } from '../type'
 import {
   getRemovalSelection,
+  isNavigationItemRemovalPending,
   isOpenedNavigationItem,
   NavigationRemovalQueue,
   shouldLookupLegacyContext,
+  shouldReselectNavigationItem,
   type RemovalSelection
 } from './inbox-navigation'
 
@@ -255,6 +257,30 @@ interface RemovalState {
   queued: NavigationItem[]
 }
 
+describe('recreated navigation rows', () => {
+  test('keeps automatic successor selection by type and context ID', () => {
+    const first = legacy('shared', 'first')
+    const second = legacy('shared', 'second')
+    const items = [modern('a'), first, second]
+    const refreshed = [modern('a'), legacy('shared', 'first'), legacy('shared', 'second')]
+    const openedDoc = documentFor(first)
+
+    expect(shouldReselectNavigationItem(refreshed[0], false, items[0], documentFor(items[0]), undefined)).toBe(true)
+    expect(shouldReselectNavigationItem(refreshed[1], false, first, openedDoc, first.context)).toBe(true)
+    expect(shouldReselectNavigationItem(refreshed[2], false, first, openedDoc, first.context)).toBe(false)
+  })
+
+  test('keeps removal progress on active and queued rows', () => {
+    const active = legacy('shared', 'first')
+    const queued = [legacy('shared', 'second')]
+
+    expect(isNavigationItemRemovalPending(legacy('shared', 'first'), active, queued)).toBe(true)
+    expect(isNavigationItemRemovalPending(legacy('shared', 'second'), active, queued)).toBe(true)
+    expect(isNavigationItemRemovalPending(modern('a'), active, queued)).toBe(false)
+    expect(isNavigationItemRemovalPending(modern('a'), modern('a'), [])).toBe(true)
+  })
+})
+
 describe('NavigationRemovalQueue', () => {
   test('queues fast removals and runs them in click order', async () => {
     const items = [modern('a'), legacy('b'), modern('c')]
@@ -297,6 +323,36 @@ describe('NavigationRemovalQueue', () => {
     complete()
     await Promise.all([first, duplicate])
     expect(remove).toHaveBeenCalledTimes(1)
+  })
+
+  test('deduplicates recreated rows without merging legacy contexts for the same document', async () => {
+    const items = [modern('a'), legacy('shared', 'first'), legacy('shared', 'second')]
+    const refreshed = [modern('a'), legacy('shared', 'first'), legacy('shared', 'second')]
+    let completeFirst: () => void = () => {}
+    const remove = jest.fn(async (item: NavigationItem) => {
+      if (item._id === items[0]._id) {
+        await new Promise<void>((resolve) => {
+          completeFirst = resolve
+        })
+      }
+    })
+    const states: RemovalState[] = []
+    const queue = new NavigationRemovalQueue(remove, (removing, queued) => {
+      states.push({ removing, queued })
+    })
+
+    const removals = items.map(async (item) => {
+      await queue.enqueue(item, false)
+    })
+    const duplicates = refreshed.map(async (item) => {
+      await queue.enqueue(item, true)
+    })
+    expect(remove).toHaveBeenCalledTimes(1)
+    expect(states[states.length - 1]).toEqual({ removing: items[0], queued: items.slice(1) })
+
+    completeFirst()
+    await Promise.all([...removals, ...duplicates])
+    expect(remove.mock.calls.map(([item]) => item)).toEqual(items)
   })
 
   test('preserves the keyboard origin of a queued removal', async () => {
