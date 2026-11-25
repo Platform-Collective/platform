@@ -4,8 +4,9 @@
   import core from '@hcengineering/core'
   import type { AccountUuid } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
-  import { Label } from '@hcengineering/ui'
+  import { Button, Label } from '@hcengineering/ui'
   import view from '@hcengineering/view'
+  import { openDoc } from '@hcengineering/view-resources'
   import type { SpaceAccess } from '../access-overview'
   import setting from '../plugin'
   import AccessAccount from './AccessAccount.svelte'
@@ -27,7 +28,16 @@
         expanded = !expanded
       }}
     />
-    <strong>{entry.space.name}</strong>
+    <Button
+      kind="link"
+      size="small"
+      padding="0"
+      on:click={() => {
+        void openDoc(hierarchy, entry.space)
+      }}
+    >
+      <strong slot="content">{entry.space.name}</strong>
+    </Button>
     <span class="type"><Label label={hierarchy.getClass(entry.space._class).label} /></span>
     {#if entry.type !== undefined}<span>{entry.type.name}</span>{/if}
     <span>
