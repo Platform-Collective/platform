@@ -13,6 +13,7 @@
     DropdownLabelsIntl,
     Header,
     Label,
+    Lazy,
     Loading,
     ModernToggle,
     Scroller,
@@ -20,7 +21,12 @@
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
   import { onDestroy, onMount } from 'svelte'
-  import { collectPersonAccess, collectSpaceAccess, filterSpaceAccess } from '../access-overview'
+  import {
+    collectPersonAccess,
+    collectSpaceAccess,
+    filterSpaceAccess,
+    getSpaceAccessQueryOptions
+  } from '../access-overview'
   import setting from '../plugin'
   import { getAccountClient } from '../utils'
   import AccessAccount from './AccessAccount.svelte'
@@ -74,18 +80,19 @@
   let expandedPeople: Record<AccountUuid, boolean> = {}
 
   onMount(() => {
-    spacesQuery.query(
-      core.class.Space,
-      {},
-      (result) => {
-        spaces = result
-        spacesLoaded = true
-      },
-      { showArchived: true }
-    )
     typesQuery.query(core.class.SpaceType, {}, (result) => {
       types = result
       typesLoaded = true
+      // Owners see all private and archived spaces only when showArchived is set.
+      spacesQuery.query(
+        core.class.Space,
+        {},
+        (result) => {
+          spaces = result
+          spacesLoaded = true
+        },
+        getSpaceAccessQueryOptions(types)
+      )
     })
     rolesQuery.query(core.class.Role, {}, (result) => {
       roles = result
@@ -201,7 +208,9 @@
           </div>
           {#if mode === 'spaces'}
             {#each filteredSpaces as entry (entry.space._id)}
-              <AccessSpace {entry} {employees} />
+              <Lazy>
+                <AccessSpace {entry} {employees} />
+              </Lazy>
             {:else}
               <Label label={setting.string.AccessNoResults} />
             {/each}
@@ -225,7 +234,7 @@
                     <div class="membership">
                       {#if membership.owner}<Label label={setting.string.Owner} />{/if}
                       {#if membership.member}<Label label={setting.string.AccessMember} />{/if}
-                      {#each membership.roles as role}<span>{role.name}</span>{/each}
+                      {#each membership.roles as role (role._id)}<span>{role.name}</span>{/each}
                       <AccessSpace entry={membership.entry} {employees} />
                     </div>
                   {:else}

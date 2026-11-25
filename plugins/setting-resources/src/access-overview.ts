@@ -4,6 +4,7 @@ import core, { AccountRole } from '@hcengineering/core'
 import type {
   AccountUuid,
   Class,
+  FindOptions,
   Hierarchy,
   Ref,
   Role,
@@ -42,6 +43,28 @@ export interface SpaceAccessFilter {
   spaceClass?: Ref<Class<Space>>
   private?: boolean
   archived?: boolean
+}
+
+export function getSpaceAccessQueryOptions (types: SpaceType[]): FindOptions<Space> {
+  const projection: Record<string, 1> = {
+    _id: 1,
+    _class: 1,
+    space: 1,
+    modifiedOn: 1,
+    modifiedBy: 1,
+    name: 1,
+    description: 1,
+    private: 1,
+    archived: 1,
+    members: 1,
+    owners: 1,
+    autoJoin: 1,
+    type: 1
+  }
+  for (const type of types) {
+    projection[type.targetClass] = 1
+  }
+  return { showArchived: true, projection }
 }
 
 /** Collect direct memberships and type-specific role assignments without inferring effective access. */

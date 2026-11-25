@@ -12,7 +12,12 @@ import type {
   SpaceTypeDescriptor,
   TypedSpace
 } from '@hcengineering/core'
-import { collectPersonAccess, collectSpaceAccess, filterSpaceAccess } from '../access-overview'
+import {
+  collectPersonAccess,
+  collectSpaceAccess,
+  filterSpaceAccess,
+  getSpaceAccessQueryOptions
+} from '../access-overview'
 import type { SpaceAccess } from '../access-overview'
 
 const alice = 'alice' as AccountUuid
@@ -213,5 +218,29 @@ describe('person access inventory', () => {
 
   it.each([AccountRole.Guest, AccountRole.ReadOnlyGuest, AccountRole.DocGuest])('identifies guest role %s', (role) => {
     expect(collectPersonAccess([], [{ person: guest, role }])[0].guest).toBe(true)
+  })
+})
+
+describe('space access query', () => {
+  it('keeps the Owner inventory unfiltered and projects required fields and role mixins', () => {
+    expect(getSpaceAccessQueryOptions([type])).toEqual({
+      showArchived: true,
+      projection: {
+        _id: 1,
+        _class: 1,
+        space: 1,
+        modifiedOn: 1,
+        modifiedBy: 1,
+        name: 1,
+        description: 1,
+        private: 1,
+        archived: 1,
+        members: 1,
+        owners: 1,
+        autoJoin: 1,
+        type: 1,
+        [targetClass]: 1
+      }
+    })
   })
 })
