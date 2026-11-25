@@ -206,7 +206,7 @@ test('environment validation requires reviewers and the v* tag policy', async ()
       protection_rules: [{ type: 'required_reviewers', reviewers: [{ type: 'User' }] }]
     })
   )
-  fs.writeFileSync(policies, JSON.stringify({ branch_policies: [{ name: 'v*' }] }))
+  fs.writeFileSync(policies, JSON.stringify({ branch_policies: [{ name: 'v*', type: 'tag' }] }))
 
   expect((await runScript('safe-publish.js', ['--check-environment', environment, policies])).status).toBe(0)
   fs.writeFileSync(environment, JSON.stringify({ protection_rules: [] }))
@@ -217,8 +217,28 @@ test('environment validation requires reviewers and the v* tag policy', async ()
       protection_rules: [{ type: 'required_reviewers', reviewers: [{ type: 'User' }] }]
     })
   )
-  fs.writeFileSync(policies, JSON.stringify({ branch_policies: [{ name: 'develop', type: 'branch' }] }))
+  fs.writeFileSync(policies, JSON.stringify({ branch_policies: [{ name: 'v*', type: 'branch' }] }))
   expect((await runScript('safe-publish.js', ['--check-environment', environment, policies])).status).toBe(1)
+})
+
+test('environment validation checks deployment rules on every page', async () => {
+  const environment = path.join(fixture, 'environment.json')
+  const policies = path.join(fixture, 'policies.json')
+  fs.writeFileSync(
+    environment,
+    JSON.stringify({
+      protection_rules: [{ type: 'required_reviewers', reviewers: [{ type: 'User' }] }]
+    })
+  )
+  fs.writeFileSync(
+    policies,
+    JSON.stringify([
+      { branch_policies: [{ name: 'develop', type: 'branch' }] },
+      { branch_policies: [{ name: 'v*', type: 'tag' }] }
+    ])
+  )
+
+  expect((await runScript('safe-publish.js', ['--check-environment', environment, policies])).status).toBe(0)
 })
 
 test('bump checks only packages inside the exact source scope', async () => {

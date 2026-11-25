@@ -9,8 +9,8 @@ The legacy local `bump.js --publish` option remains available but bypasses this 
 
 Before merging the workflow, a repository administrator must create the `npm-publish` GitHub environment, configure
 required maintainer reviewers, and add a `v*` tag deployment rule. GitHub can auto-create a missing environment without
-protection; referencing it in YAML does not enable reviews. The build job checks these settings before building and
-fails if the environment is missing or unprotected. Protect release tags as well.
+protection; referencing it in YAML does not enable reviews. The build job checks these settings across all deployment
+rule pages before building and fails if the environment is missing or unprotected. Protect release tags as well.
 
 The npm scope owner must enable one of these access options for every package being released:
 

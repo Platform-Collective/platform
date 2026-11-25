@@ -328,8 +328,11 @@ function checkPublishEnvironment(environmentFile, policiesFile) {
     throw new Error('The npm-publish environment must exist and have required reviewers')
   }
 
-  const policies = JSON.parse(fs.readFileSync(policiesFile, 'utf8'))
-  const hasTagPolicy = policies.branch_policies?.some((policy) => policy.name === 'v*')
+  const policyPages = JSON.parse(fs.readFileSync(policiesFile, 'utf8'))
+  const policies = (Array.isArray(policyPages) ? policyPages : [policyPages]).flatMap(
+    (page) => page.branch_policies ?? []
+  )
+  const hasTagPolicy = policies.some((policy) => policy.name === 'v*' && policy.type === 'tag')
   if (!hasTagPolicy) {
     throw new Error('The npm-publish environment must restrict deployments to v* tags')
   }

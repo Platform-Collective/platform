@@ -42,7 +42,7 @@ jobs:
             echo "::error::Create and protect the npm-publish environment before running a release."
             exit 1
           fi
-          gh api "repos/$GITHUB_REPOSITORY/environments/npm-publish/deployment-branch-policies" \
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/environments/npm-publish/deployment-branch-policies" \
             > "$RUNNER_TEMP/npm-environment-policies.json"
           node common/scripts/safe-publish.js --check-environment \
             "$RUNNER_TEMP/npm-environment.json" "$RUNNER_TEMP/npm-environment-policies.json"
