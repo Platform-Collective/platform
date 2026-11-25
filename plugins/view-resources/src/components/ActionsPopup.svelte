@@ -88,6 +88,20 @@
   let supportedActions: Array<WithLookup<Action>> = []
   let filteredActions: Array<WithLookup<Action>> = []
 
+  interface ActionContextSnapshot {
+    actions: Array<WithLookup<Action>>
+    docs: Doc[]
+    application: ViewContext['application']
+  }
+
+  let actionContext: ActionContextSnapshot
+  let supportedContext: ActionContextSnapshot | undefined
+  $: actionContext = {
+    actions,
+    docs: [...getSelection($focusStore, $selectionStore)],
+    application: viewContext?.application
+  }
+
   async function filterVisibleActions(
     actions: Array<WithLookup<Action>>,
     docs: Doc[]
@@ -110,15 +124,14 @@
 
   const client = getClient()
 
-  const getSupportedActions = reduceCalls(async (actions: Array<WithLookup<Action>>): Promise<void> => {
-    const docs = getSelection($focusStore, $selectionStore)
-    let fActions: Array<WithLookup<Action>> = actions
+  const getSupportedActions = reduceCalls(async (context: ActionContextSnapshot): Promise<void> => {
+    const { actions, docs, application } = context
 
     // We need to filter application based actions first, to prevent override for globals
-    fActions = fActions.filter(
+    let fActions = actions.filter(
       (it) =>
         (it.$lookup?.category?.visible ?? true) &&
-        (it.context.application === viewContext?.application || it.context.application === undefined)
+        (it.context.application === application || it.context.application === undefined)
     )
     for (const d of docs) {
       fActions = filterActions(client, d, fActions)
@@ -135,11 +148,14 @@
       fActions = fActions.filter((it) => !overrideRemove.includes(it._id))
     }
     fActions = await filterVisibleActions(fActions, docs)
+    if (context !== actionContext) return
+
     // Sort by category.
     supportedActions = fActions.sort((a, b) => a.category.localeCompare(b.category))
+    supportedContext = context
   })
 
-  $: void getSupportedActions(actions)
+  $: void getSupportedActions(actionContext)
 
   const filterSearchActions = reduceCalls(async (actions: Array<WithLookup<Action>>, search: string): Promise<void> => {
     const res: Array<WithLookup<Action>> = []
@@ -154,9 +170,9 @@
           res.push(a)
         }
       }
-      filteredActions = res
-    } else {
-      filteredActions = actions
+    }
+    if (actions === supportedActions) {
+      filteredActions = preparedSearch.length > 0 ? res : actions
     }
   })
   $: void filterSearchActions(supportedActions, search)
@@ -165,7 +181,9 @@
   let list: ListView
   /* eslint-disable no-undef */
 
-  let activeAction: Action | undefined
+  let activeAction: { action: Action, docs: Doc[], selectedCount: number } | undefined
+  $: displayedFocus = activeAction === undefined ? $focusStore.focus : activeAction.docs[0]
+  $: selectedCount = activeAction?.selectedCount ?? $selectionStore.docs.length
 
   async function handleSelection(evt: Event, selection: number): Promise<void> {
     const item = items[selection]
@@ -181,29 +199,36 @@
       })
     } else if (item.action !== undefined) {
       const action = item.action
-      if (action.actionPopup !== undefined) {
-        activeAction = action
+      const docs = getSelection($focusStore, $selectionStore)
+      // The list may still show actions evaluated for the previous selection.
+      if (
+        supportedContext !== actionContext ||
+        supportedContext.actions !== actions ||
+        supportedContext.application !== viewContext?.application ||
+        supportedContext.docs.length !== docs.length ||
+        docs.some((doc, index) => doc !== actionContext.docs[index]) ||
+        !supportedActions.includes(action)
+      ) {
         return
       }
-      const docs = getSelection($focusStore, $selectionStore)
-      if (action.input === 'focus') {
-        const impl = await getResource(action.action)
-        if (impl !== undefined) {
-          closePopup()
-          void impl(docs[0], evt, { ...action.actionProps, action })
-        }
+
+      if (action.actionPopup !== undefined) {
+        activeAction = { action, docs: supportedContext.docs, selectedCount: $selectionStore.docs.length }
+        return
       }
-      if (action.input === 'selection' || action.input === 'any' || action.input === 'none') {
-        const impl = await getResource(action.action)
-        if (impl !== undefined) {
-          closePopup()
-          void impl(docs, evt, { ...action.actionProps, action })
-        }
+
+      const target = action.input === 'focus' ? supportedContext.docs[0] : supportedContext.docs
+      const impl = await getResource(action.action)
+      if (impl !== undefined) {
+        closePopup()
+        await impl(target, evt, { ...action.actionProps, action })
       }
     }
   }
 
   function onKeydown(key: KeyboardEvent): void {
+    if (activeAction !== undefined) return
+
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()
@@ -320,23 +345,18 @@
   on:keydown={onKeydown}
   use:resizeObserver={() => dispatch('changeContent')}
 >
-  {#if $selectionStore.docs.length > 0 || $focusStore.focus !== undefined || activeAction?.actionPopup !== undefined}
+  {#if selectedCount > 0 || displayedFocus !== undefined || activeAction !== undefined}
     <div class="actionsDoc flex-between flex-no-shrink">
-      {#if $selectionStore.docs.length > 0}
+      {#if selectedCount > 0}
         <div class="item-box">
-          <Label label={view.string.NumberItems} params={{ count: $selectionStore.docs.length }} />
+          <Label label={view.string.NumberItems} params={{ count: selectedCount }} />
         </div>
-      {:else if $focusStore.focus !== undefined}
+      {:else if displayedFocus !== undefined}
         <div class="item-box">
-          <ObjectPresenter
-            objectId={$focusStore.focus._id}
-            _class={$focusStore.focus._class}
-            value={$focusStore.focus}
-            disabled
-          />
+          <ObjectPresenter objectId={displayedFocus._id} _class={displayedFocus._class} value={displayedFocus} disabled />
         </div>
       {/if}
-      {#if activeAction?.actionPopup !== undefined}
+      {#if activeAction !== undefined}
         <div class="mr-2">
           <Button
             icon={IconArrowLeft}
@@ -352,12 +372,12 @@
       {/if}
     </div>
   {/if}
-  {#if activeAction?.actionPopup !== undefined}
+  {#if activeAction?.action.actionPopup !== undefined}
     <Component
-      is={activeAction?.actionPopup}
+      is={activeAction.action.actionPopup}
       props={{
-        ...activeAction.actionProps,
-        value: getActionPopupValue(getSelection($focusStore, $selectionStore)),
+        ...activeAction.action.actionProps,
+        value: getActionPopupValue(activeAction.docs),
         width: 'full',
         size: 'medium',
         embedded: true
