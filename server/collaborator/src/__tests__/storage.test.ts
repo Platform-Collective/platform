@@ -416,3 +416,46 @@ it.each([false, true])('persists Yjs bytes when markup conversion fails (at load
   expect(save).toHaveBeenCalledTimes(1)
   document.destroy()
 })
+
+it('persists Yjs bytes without activity when a deferred boundary conversion fails', async () => {
+  const document = new Document('doc', undefined, { gc: false })
+  document.isLoading = false
+  const fromYdoc = jest.fn((doc: Doc) => {
+    if (doc !== document) throw new Error('unsupported shared type')
+    return { content: doc.getText('content').toString() }
+  })
+  const save = jest.fn().mockImplementation(async (_ctx, _name, _bytes, _context, markup) => markup.curr())
+  const extension = new StorageExtension({
+    ctx,
+    transformer: { fromYdoc, toYdoc: () => new Doc() },
+    adapter: { loadDocument: async () => undefined, saveDocument: save }
+  })
+  document.getText('content').insert(0, 'old')
+  await extension.afterLoadDocument({ context: A, document, documentName: 'doc' } as unknown as Parameters<
+    StorageExtension['afterLoadDocument']
+  >[0])
+  document.transact(
+    () => {
+      document.getText('content').insert(3, 'a')
+    },
+    { context: A }
+  )
+  document.transact(
+    () => {
+      document.getText('content').insert(4, 'b')
+    },
+    { context: B }
+  )
+  await extension.onChange({ context: B, document, documentName: 'doc' } as unknown as Parameters<
+    StorageExtension['onChange']
+  >[0])
+  await extension.onStoreDocument({ context: B, document, documentName: 'doc' } as unknown as Parameters<
+    StorageExtension['onStoreDocument']
+  >[0])
+  expect(save).toHaveBeenCalledTimes(1)
+  expect(storedContent(save.mock.calls[0][2])).toBe('oldab')
+  expect(save.mock.calls[0][4].curr()).toEqual({ content: 'old' })
+  expect(save.mock.calls[0][5].segments).toHaveLength(1)
+  expect(save.mock.calls[0][5].segments[0].curr).toEqual(save.mock.calls[0][5].segments[0].prev)
+  document.destroy()
+})

@@ -13,9 +13,9 @@ const A = author('A')
 const B = author('B')
 
 describe('author runs', () => {
-  it.each([false, true])('bounds alternating runs and conversions with gc:%s, including no-op sync', (gc) => {
-    const doc = new Doc({ gc })
-    const getMarkup = jest.fn(() => ({ content: doc.getText('content').toString() }))
+  it('defers bounded alternating run conversions until save with gc disabled', () => {
+    const doc = new Doc({ gc: false })
+    const getMarkup = jest.fn((current: Doc = doc) => ({ content: current.getText('content').toString() }))
     const runs = new AuthorRuns(doc, getMarkup)
     const baseline = getMarkup()
     for (let i = 0; i < 40; i++) {
@@ -29,11 +29,12 @@ describe('author runs', () => {
       applyUpdate(doc, encodeStateAsUpdate(doc, encodeStateVector(doc)), { context: author('C') })
       applyUpdate(doc, encodeStateAsUpdate(doc), { context: author('C') })
     }
+    expect(getMarkup).toHaveBeenCalledTimes(1)
     const segments = runs.drain(baseline, getMarkup())
     expect(segments.length).toBeLessThanOrEqual(16)
     expect(segments.length).toBeGreaterThan(1)
-    // Fifteen boundaries plus the explicit baseline and final reads.
-    expect(getMarkup.mock.calls.length).toBeLessThanOrEqual(17)
+    // One deferred conversion per closed run plus the explicit baseline and final reads.
+    expect(getMarkup).toHaveBeenCalledTimes(segments.length + 1)
     segments.forEach((segment, index) => {
       const last = index === segments.length - 1
       expect(segment.context).toBe(last ? B : index % 2 === 0 ? A : B)
@@ -46,8 +47,10 @@ describe('author runs', () => {
   })
 
   it('combines tabs of the same account and retains the baseline after a drain', () => {
-    const doc = new Doc()
-    const getMarkup = (): Record<string, string> => ({ content: doc.getText('content').toString() })
+    const doc = new Doc({ gc: false })
+    const getMarkup = (current: Doc = doc): Record<string, string> => ({
+      content: current.getText('content').toString()
+    })
     const runs = new AuthorRuns(doc, getMarkup)
     doc.transact(
       () => {
@@ -93,7 +96,7 @@ describe('author runs', () => {
     paragraph.insert(0, [text])
     doc.getXmlFragment('content').insert(0, [paragraph])
     const transformer = new MarkupTransformer()
-    const getMarkup = (): Record<string, string> => transformer.fromYdoc(doc)
+    const getMarkup = (current: Doc = doc): Record<string, string> => transformer.fromYdoc(current)
     const baseline = getMarkup()
     const runs = new AuthorRuns(doc, getMarkup)
     const originA = { context: A }
@@ -133,7 +136,7 @@ describe('author runs', () => {
   })
 
   it('ignores origins without authenticated context', () => {
-    const doc = new Doc()
+    const doc = new Doc({ gc: false })
     const runs = new AuthorRuns(doc, () => ({}))
     doc.getText('content').insert(0, 'system')
     expect(runs.drain({}, {})).toEqual([])
@@ -150,7 +153,9 @@ it('attributes merged reconnect and buffered dependent updates to the authentica
   source.getText('content').insert(1, 'b')
   const second = encodeStateAsUpdate(source, vector)
   const server = new Doc()
-  const getMarkup = (): Record<string, string> => ({ content: server.getText('content').toString() })
+  const getMarkup = (current: Doc = server): Record<string, string> => ({
+    content: current.getText('content').toString()
+  })
   const runs = new AuthorRuns(server, getMarkup)
   applyUpdate(server, second, { context: B }) // Missing dependencies: no applied edit yet.
   expect(runs.drain({ content: '' }, getMarkup())).toEqual([])
@@ -162,7 +167,9 @@ it('attributes merged reconnect and buffered dependent updates to the authentica
   server.destroy()
 
   const reconnect = new Doc()
-  const reconnectedRuns = new AuthorRuns(reconnect, () => ({ content: reconnect.getText('content').toString() }))
+  const reconnectedRuns = new AuthorRuns(reconnect, (current: Doc = reconnect) => ({
+    content: current.getText('content').toString()
+  }))
   applyUpdate(reconnect, encodeStateAsUpdate(source), { context: B })
   expect(reconnectedRuns.drain({ content: '' }, { content: 'ab' })[0].context).toBe(B)
   reconnectedRuns.destroy()
@@ -170,9 +177,9 @@ it('attributes merged reconnect and buffered dependent updates to the authentica
   source.destroy()
 })
 
-it('contains failed boundary captures without stranding Yjs transactions and resumes tracking', () => {
-  const doc = new Doc()
-  const getMarkup = jest.fn(() => ({ content: doc.getText('content').toString() }))
+it('reports failed deferred conversions and discards the drained runs', () => {
+  const doc = new Doc({ gc: false })
+  const getMarkup = jest.fn((current: Doc = doc) => ({ content: current.getText('content').toString() }))
   const warn = jest.fn()
   const runs = new AuthorRuns(doc, getMarkup, warn)
   const updates = jest.fn()
@@ -186,28 +193,17 @@ it('contains failed boundary captures without stranding Yjs transactions and res
     )
   }
   edit(A, 'a')
+  edit(B, 'b')
+  edit(A, 'c')
+  expect(updates).toHaveBeenCalledTimes(3)
+  expect(warn).not.toHaveBeenCalled()
+  const curr = getMarkup()
   getMarkup.mockImplementationOnce(() => {
     throw new Error('unsupported shared type')
   })
-  expect(() => {
-    edit(B, 'b')
-  }).not.toThrow()
-  getMarkup.mockImplementationOnce(() => {
-    throw new Error('unsupported shared type')
-  })
-  expect(() => {
-    edit(B, 'c')
-  }).not.toThrow()
-  edit(B, 'd')
-  edit(A, 'e')
-  expect(updates).toHaveBeenCalledTimes(5)
+  expect(() => runs.drain({ content: '' }, curr)).toThrow('unsupported shared type')
   expect(warn).toHaveBeenCalledTimes(1)
-  const segments = runs.drain({ content: '' }, getMarkup())
-  expect(segments.map(({ context, prev, curr }) => [context.account, prev.content, curr.content])).toEqual([
-    ['A', '', 'abc'],
-    ['B', 'abc', 'abcd'],
-    ['A', 'abcd', 'abcde']
-  ])
+  expect(runs.drain({ content: '' }, getMarkup())).toEqual([])
   runs.destroy()
   doc.destroy()
 })

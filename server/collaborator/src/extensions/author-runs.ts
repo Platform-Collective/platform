@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { generateId } from '@hcengineering/core'
-import { Doc, Transaction } from 'yjs'
+import { createDocFromSnapshot, Doc, snapshot, Snapshot, Transaction } from 'yjs'
 import type { Context } from '../context'
 import type { AuthorSegment } from '../storage/adapter'
 
 interface Run {
   context: Context
   timestamp: number
-  curr?: Record<string, string>
+  curr?: Snapshot
 }
 
-// Bound full markup conversions, retained snapshots and activity writes per save.
+// Bound deferred markup conversions, retained snapshots and activity writes per save.
 export const MAX_AUTHOR_RUNS = 16
 
 /** Tracks authenticated submitting authors in server arrival order, including RPC edits. */
@@ -21,11 +21,11 @@ export class AuthorRuns {
   private timestamp = 0
   private captureFailed = false
   private captures = 0
-  private readonly candidates = new Map<Transaction, Record<string, string>>()
+  private readonly candidates = new Map<Transaction, Snapshot>()
 
   constructor (
     private readonly document: Doc,
-    private readonly getMarkup: () => Record<string, string>,
+    private readonly getMarkup: (document: Doc) => Record<string, string>,
     private readonly onCaptureError: (error: unknown) => void = () => {}
   ) {
     document.on('beforeTransaction', this.beforeTransaction)
@@ -38,10 +38,9 @@ export class AuthorRuns {
       if (this.captures >= MAX_AUTHOR_RUNS - 1) return
       this.captures++
       // Capture before the edit, but commit the boundary only for a real update.
-      // Count attempted captures too: no-op updates must not bypass the CPU bound.
-      // Never let a capture error escape: Yjs emits beforeTransaction outside its cleanup guard.
+      // Count attempted captures too: no-op updates must not bypass the snapshot bound.
       try {
-        this.candidates.set(transaction, this.getMarkup())
+        this.candidates.set(transaction, snapshot(this.document))
       } catch (error) {
         if (!this.captureFailed) {
           this.captureFailed = true
@@ -83,16 +82,32 @@ export class AuthorRuns {
 
   drain (prev: Record<string, string>, curr: Record<string, string>): AuthorSegment[] {
     const runs = [...this.closed]
-    if (this.current !== undefined) runs.push({ ...this.current, curr })
+    if (this.current !== undefined) runs.push({ ...this.current })
     this.closed.length = 0
     this.current = undefined
     this.captures = 0
-    return runs.map((run) => {
-      const end = run.curr ?? curr
-      const segment = { ...run, id: generateId(), prev, curr: end }
-      prev = end
-      return segment
-    })
+    try {
+      return runs.map((run) => {
+        let end = curr
+        if (run.curr !== undefined) {
+          const boundary = createDocFromSnapshot(this.document, run.curr)
+          try {
+            end = this.getMarkup(boundary)
+          } finally {
+            boundary.destroy()
+          }
+        }
+        const segment = { ...run, id: generateId(), prev, curr: end }
+        prev = end
+        return segment
+      })
+    } catch (error) {
+      if (!this.captureFailed) {
+        this.captureFailed = true
+        this.onCaptureError(error)
+      }
+      throw error
+    }
   }
 
   destroy (): void {

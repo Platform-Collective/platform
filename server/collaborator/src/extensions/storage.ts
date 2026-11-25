@@ -29,7 +29,7 @@ import {
 import { Transformer } from '@hocuspocus/transformer'
 import { Doc as YDoc, encodeStateAsUpdate } from 'yjs'
 import { Context, withContext } from '../context'
-import { CollabStorageAdapter, type DocumentSaveBatch } from '../storage/adapter'
+import { CollabStorageAdapter, type AuthorSegment, type DocumentSaveBatch } from '../storage/adapter'
 import { AuthorRuns } from './author-runs'
 
 export interface StorageConfiguration {
@@ -122,7 +122,7 @@ export class StorageExtension implements Extension {
       documentName,
       new AuthorRuns(
         document,
-        () => this.configuration.transformer.fromYdoc(document),
+        (doc) => this.configuration.transformer.fromYdoc(doc),
         (error) => {
           ctx.warn('failed to capture author boundary', { documentName, error })
         }
@@ -253,16 +253,15 @@ export class StorageExtension implements Extension {
     const prev = this.markups.get(documentName) ?? {}
     const runs = this.runs.get(documentName)
     let curr = prev
-    let markupFailed = false
+    let segments: AuthorSegment[] = []
     try {
       curr = this.configuration.transformer.fromYdoc(document)
+      segments = runs?.drain(prev, curr) ?? []
     } catch (error) {
       // Persist the Yjs bytes even when this document cannot be converted to markup.
-      markupFailed = true
+      curr = prev
       ctx.warn('document is not of a markup type', { documentName, error })
     }
-    const segments = runs?.drain(prev, curr) ?? []
-    if (markupFailed) segments.length = 0
     if (segments.length === 0) {
       segments.push({
         context: this.updates.get(documentName)?.context ?? context,
