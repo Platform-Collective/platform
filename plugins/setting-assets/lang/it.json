@@ -17,6 +17,7 @@
     "AccessAdmin": "Amministratore",
     "AccessYes": "Sì",
     "AccessNo": "No",
+    "AccessUnknownUser": "Utente sconosciuto",
     "AccessOverviewHint": "Inventario in sola lettura delle appartenenze dirette agli spazi e dei ruoli. La visibilità pubblica e le altre regole di accesso non sono incluse.",
     "IdentificationColor": "Colore identificativo",
     "ColorDefault": "Predefinito",

@@ -17,6 +17,7 @@
     "AccessAdmin": "Administrador",
     "AccessYes": "Sim",
     "AccessNo": "Não",
+    "AccessUnknownUser": "Utilizador desconhecido",
     "AccessOverviewHint": "Inventário só de leitura das participações diretas nos espaços e funções. A visibilidade pública e outras regras de acesso não estão incluídas.",
     "IdentificationColor": "Cor de identificação",
     "ColorDefault": "Predefinido",

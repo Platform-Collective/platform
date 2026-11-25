@@ -17,6 +17,7 @@
     "AccessAdmin": "管理员",
     "AccessYes": "是",
     "AccessNo": "否",
+    "AccessUnknownUser": "未知用户",
     "AccessOverviewHint": "直接空间成员身份和角色的只读清单。不包含公开可见性及其他访问规则。",
     "IdentificationColor": "识别色",
     "ColorDefault": "默认",

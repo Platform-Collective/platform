@@ -17,6 +17,7 @@
     "AccessAdmin": "管理者",
     "AccessYes": "はい",
     "AccessNo": "いいえ",
+    "AccessUnknownUser": "不明なユーザー",
     "AccessOverviewHint": "スペースへの直接の所属とロールを表示する読み取り専用の一覧です。公開範囲やその他のアクセス規則は含まれません。",
     "IdentificationColor": "識別色",
     "ColorDefault": "デフォルト",

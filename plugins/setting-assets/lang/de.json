@@ -17,6 +17,7 @@
     "AccessAdmin": "Administrator",
     "AccessYes": "Ja",
     "AccessNo": "Nein",
+    "AccessUnknownUser": "Unbekannter Benutzer",
     "AccessOverviewHint": "Schreibgeschützte Übersicht der direkten Bereichsmitgliedschaften und Rollen. Öffentliche Sichtbarkeit und andere Zugriffsregeln sind nicht enthalten.",
     "IdentificationColor": "Erkennungsfarbe",
     "ColorDefault": "Standard",

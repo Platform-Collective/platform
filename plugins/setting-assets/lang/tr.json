@@ -17,6 +17,7 @@
     "AccessAdmin": "Yönetici",
     "AccessYes": "Evet",
     "AccessNo": "Hayır",
+    "AccessUnknownUser": "Bilinmeyen kullanıcı",
     "AccessOverviewHint": "Doğrudan alan üyeliklerinin ve rollerin salt okunur envanteri. Herkese açık görünürlük ve diğer erişim kuralları dahil değildir.",
     "IdentificationColor": "Ayırt edici renk",
     "ColorDefault": "Varsayılan",

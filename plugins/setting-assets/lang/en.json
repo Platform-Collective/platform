@@ -17,6 +17,7 @@
     "AccessAdmin": "Admin",
     "AccessYes": "Yes",
     "AccessNo": "No",
+    "AccessUnknownUser": "Unknown user",
     "AccessOverviewHint": "Read-only inventory of direct space membership and roles. Public visibility and other access rules are not included.",
     "IdentificationColor": "Identification color",
     "ColorDefault": "Default",

@@ -44,6 +44,7 @@ export default mergeIds(settingId, setting, {
     AccessGuestsOnly: '' as IntlString,
     AccessMember: '' as IntlString,
     AccessNone: '' as IntlString,
+    AccessUnknownUser: '' as IntlString,
     AccessNoResults: '' as IntlString,
     AccessNoSpaces: '' as IntlString,
     AccessLoadError: '' as IntlString,

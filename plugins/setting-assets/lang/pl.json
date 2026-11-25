@@ -17,6 +17,7 @@
     "AccessAdmin": "Administrator",
     "AccessYes": "Tak",
     "AccessNo": "Nie",
+    "AccessUnknownUser": "Nieznany użytkownik",
     "AccessOverviewHint": "Zestawienie bezpośredniego członkostwa w przestrzeniach i ról tylko do odczytu. Nie obejmuje widoczności publicznej ani innych reguł dostępu.",
     "IdentificationColor": "Kolor identyfikacyjny",
     "ColorDefault": "Domyślny",
