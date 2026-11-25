@@ -74,11 +74,11 @@
     {/if}
   {:else if node.type === MarkupNodeType.text}
     {#if parsedTextWithEmojis === undefined}
-      <span style:white-space={preview ? null : 'pre-wrap'}>{node.text}</span>
+      {node.text}
     {:else}
       {#each parsedTextWithEmojis.nodes as textOrEmoji}
         {#if typeof textOrEmoji === 'string'}
-          <span style:white-space={preview ? null : 'pre-wrap'}>{textOrEmoji}</span>
+          {textOrEmoji}
         {:else}
           <span
             class="emoji"

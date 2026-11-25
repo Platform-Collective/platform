@@ -30,6 +30,6 @@
   })
 </script>
 
-<div class="text-markup-view">
+<div class="text-markup-view" style:white-space={preview ? null : 'pre-wrap'}>
   <Node {parseEmojisFunction} {node} {preview} />
 </div>
