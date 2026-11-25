@@ -21,13 +21,19 @@
   export let params: Record<string, any> = {}
 
   let _value: string | undefined
+  let translationRequest = 0
 
-  $: if (label !== undefined) {
-    translateCB(label, params ?? {}, $themeStore.language, (r) => {
-      _value = r
-    })
-  } else {
-    _value = label
+  $: {
+    const request = ++translationRequest
+    if (label !== undefined) {
+      translateCB(label, params ?? {}, $themeStore.language, (r) => {
+        if (request === translationRequest) {
+          _value = r
+        }
+      })
+    } else {
+      _value = label
+    }
   }
 </script>
 
