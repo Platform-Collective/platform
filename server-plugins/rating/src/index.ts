@@ -14,122 +14,81 @@
 // limitations under the License.
 //
 
-import core, {
-  TxProcessor,
-  type Doc,
-  type MeasureContext,
-  type Tx,
-  type TxCreateDoc,
-  type TxCUD,
-  type TxRemoveDoc,
-  type TxUpdateDoc
-} from '@hcengineering/core'
-import type { Plugin } from '@hcengineering/platform'
-import { plugin } from '@hcengineering/platform'
+import core, { type TxCreateDoc, type TxUpdateDoc } from '@hcengineering/core'
+import { PlatformError, plugin, unknownStatus, type Plugin, type Resource } from '@hcengineering/platform'
 import rating, { ReactionKind, type DocReaction } from '@hcengineering/rating'
-import {
-  BaseMiddleware,
-  type Middleware,
-  type PipelineContext,
-  type TxMiddlewareResult
-} from '@hcengineering/server-core'
+import type { TxValidatorControl, TxValidatorFunc } from '@hcengineering/server-core'
 
 /**
  * @public
  */
 export const serverRatingId = 'server-rating' as Plugin
 
-export class RatingMiddleware extends BaseMiddleware {
-  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
-    return new RatingMiddleware(context, next)
-  }
+function reject (message: string): never {
+  throw new PlatformError(unknownStatus(message))
+}
 
-  async tx (ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
-    for (const t of tx) {
-      if (TxProcessor.isExtendsCUD(t._class)) {
-        const cud = t as TxCUD<Doc>
-
-        if (cud.objectClass === rating.class.DocRating || cud.objectClass === rating.class.PersonRating) {
-          throw new Error('Direct modifications of ratings are not allowed.')
-        }
-        const c = rating.class.DocReaction
-        if (cud.objectClass === c) {
-          // Star/Like,Rate values could only be used one per user.
-          switch (cud._class) {
-            case core.class.TxCreateDoc:
-              // Check for duplicate of like, rate value, Emojii
-              await this.validateNewReaction(ctx, cud as TxCreateDoc<DocReaction>)
-              break
-            case core.class.TxUpdateDoc:
-              // Disallow update for Emojii, Star, Like, Usefull
-              // Allow only for RateValue
-              await this.validateReactionUpdate(ctx, cud as TxUpdateDoc<DocReaction>)
-              break
-            case core.class.TxRemoveDoc:
-              await this.validateReactionRemove(ctx, cud as TxRemoveDoc<DocReaction>)
-              break
-          }
-        }
-      }
+export async function validateRatings (
+  txes: Parameters<TxValidatorFunc>[0],
+  control: TxValidatorControl
+): Promise<void> {
+  for (const tx of txes) {
+    if (tx.objectClass === rating.class.DocRating || tx.objectClass === rating.class.PersonRating) {
+      reject('Direct modifications of ratings are not allowed.')
     }
-    return await this.provideTx(ctx, tx)
-  }
+    if (tx.objectClass !== rating.class.DocReaction) continue
 
-  private async validateNewReaction (ctx: MeasureContext, create: TxCreateDoc<DocReaction>): Promise<void> {
-    // Should allow only one reaction per document per user for Emoji, Like, Usefull
-    const current = await this.provideFindAll(ctx, rating.class.DocReaction, {
-      attachedTo: create.attachedTo,
-      attachedToClass: create.objectClass
+    switch (tx._class) {
+      case core.class.TxCreateDoc:
+        await validateNewReaction(tx as TxCreateDoc<DocReaction>, control)
+        break
+      case core.class.TxUpdateDoc:
+        await validateReactionUpdate(tx as TxUpdateDoc<DocReaction>, control)
+        break
+    }
+  }
+}
+
+async function validateNewReaction (create: TxCreateDoc<DocReaction>, control: TxValidatorControl): Promise<void> {
+  const current = await control.findAllUnfiltered(control.ctx, rating.class.DocReaction, {
+    attachedTo: create.attachedTo,
+    attachedToClass: create.objectClass
+  })
+  if (
+    current.some(
+      (it) =>
+        it.reactionType === create.attributes.reactionType &&
+        (it.value === create.attributes.value ||
+          (create.attributes.reactionType === ReactionKind.Emoji && it.emoji === create.attributes.emoji))
+    )
+  ) {
+    reject('Duplicate emoji reaction is not allowed.')
+  }
+}
+
+async function validateReactionUpdate (update: TxUpdateDoc<DocReaction>, control: TxValidatorControl): Promise<void> {
+  if (update.operations.reactionType !== undefined) {
+    reject('Modifications of reaction type are not allowed.')
+  }
+  const current = (
+    await control.findAllUnfiltered(control.ctx, rating.class.DocReaction, {
+      _id: update.objectId,
+      _class: update.objectClass
     })
-    if (
-      current.some(
-        (it) =>
-          it.reactionType === create.attributes.reactionType &&
-          (it.value === create.attributes.value ||
-            (create.attributes.reactionType === ReactionKind.Emoji && it.emoji === create.attributes.emoji))
-      )
-    ) {
-      throw new Error('Duplicate emoji reaction is not allowed.')
-    }
+  ).shift()
+  if (current === undefined) {
+    reject('Reaction not found.')
   }
-
-  private async validateReactionUpdate (ctx: MeasureContext, upd: TxUpdateDoc<DocReaction>): Promise<void> {
-    if (upd.operations.reactionType !== undefined) {
-      throw new Error('Modifications of reaction type are not allowed.')
-    }
-    // Find current reaction tried to be modified
-    const current = (
-      await this.provideFindAll(ctx, rating.class.DocReaction, {
-        _id: upd.objectId,
-        _class: upd.objectClass
-      })
-    ).shift()
-    if (current === undefined) {
-      throw new Error('Reaction not found.')
-    }
-    if (upd.operations.value === undefined || upd.operations.value < 0 || upd.operations.value > 10) {
-      throw new Error('Reaction value modification is required.')
-    }
-  }
-
-  private async validateReactionRemove (ctx: MeasureContext, upd: TxRemoveDoc<DocReaction>): Promise<void> {
-    // Find current reaction tried to be modified
-    // const current = (
-    //   await this.provideFindAll(ctx, rating.class.DocReaction, {
-    //     _id: upd.objectId,
-    //     _class: upd.objectClass
-    //   })
-    // ).shift()
-    // if (current === undefined) {
-    // No error, already removed
-    // }
-    // if (current.reactionType === ReactionKind.Star) {
-    //   throw new Error('Star reactions could not be removed.')
-    // }
+  if (update.operations.value === undefined || update.operations.value < 0 || update.operations.value > 10) {
+    reject('Reaction value modification is required.')
   }
 }
 
 /**
  * @public
  */
-export default plugin(serverRatingId, {})
+export default plugin(serverRatingId, {
+  validator: {
+    ValidateRatings: '' as Resource<TxValidatorFunc>
+  }
+})

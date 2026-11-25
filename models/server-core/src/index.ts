@@ -25,7 +25,9 @@ import type {
   ObjectDDParticipantFunc,
   SearchPresenter,
   Trigger,
-  TriggerFunc
+  TriggerFunc,
+  TxValidator,
+  TxValidatorFunc
 } from '@hcengineering/server-core'
 import serverCore from '@hcengineering/server-core'
 
@@ -34,6 +36,12 @@ export { serverCoreId } from '@hcengineering/server-core'
 @Model(serverCore.class.Trigger, core.class.Doc, DOMAIN_MODEL)
 export class TTrigger extends TDoc implements Trigger {
   trigger!: Resource<TriggerFunc>
+}
+
+@Model(serverCore.class.TxValidator, core.class.Doc, DOMAIN_MODEL)
+export class TTxValidator extends TDoc implements TxValidator {
+  validator!: Resource<TxValidatorFunc>
+  objectClass!: TxValidator['objectClass']
 }
 
 @Model(serverCore.mixin.ObjectDDParticipant, core.class.Class)
@@ -47,5 +55,5 @@ export class TSearchPresenter extends TClass implements SearchPresenter {
 }
 
 export function createModel (builder: Builder): void {
-  builder.createModel(TTrigger, TObjectDDParticipant, TSearchPresenter)
+  builder.createModel(TTrigger, TTxValidator, TObjectDDParticipant, TSearchPresenter)
 }

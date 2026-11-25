@@ -46,6 +46,7 @@ import { serverTelegramId } from '@hcengineering/server-telegram'
 import { serverTimeId } from '@hcengineering/server-time'
 import { serverTrackerId } from '@hcengineering/server-tracker'
 import { serverViewId } from '@hcengineering/server-view'
+import { serverRatingId } from '@hcengineering/server-rating'
 
 addLocation(serverActivityId, () => import('@hcengineering/server-activity-resources'))
 addLocation(serverAttachmentId, () => import('@hcengineering/server-attachment-resources'))
@@ -72,6 +73,7 @@ addLocation(serverTimeId, () => import('@hcengineering/server-time-resources'))
 addLocation(serverGuestId, () => import('@hcengineering/server-guest-resources'))
 addLocation(serverDriveId, () => import('@hcengineering/server-drive-resources'))
 addLocation(serverAiBotId, () => import('@hcengineering/server-ai-bot-resources'))
+addLocation(serverRatingId, () => import('@hcengineering/server-rating-resources'))
 
 function prepareTools (): {
   dbUrl: string
