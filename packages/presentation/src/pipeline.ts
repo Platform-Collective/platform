@@ -100,7 +100,7 @@ export class PresentationPipelineImpl implements PresentationPipeline {
     await this.head?.notifyTx(...tx)
   }
 
-  static create (client: Client, constructors: PresentationMiddlewareCreator[]): PresentationPipeline {
+  static create (client: Client, constructors: PresentationMiddlewareCreator[]): PresentationPipelineImpl {
     const pipeline = new PresentationPipelineImpl(client)
     pipeline.head = pipeline.buildChain(constructors)
     return pipeline
@@ -214,11 +214,7 @@ export class PresentationPipelineImpl implements PresentationPipeline {
 
   async tx (tx: Tx): Promise<TxResult> {
     try {
-      if (this.head === undefined) {
-        return await this.client.tx(tx)
-      } else {
-        return await this.head.tx(tx)
-      }
+      return await this.txOrThrow(tx)
     } catch (err) {
       if (err instanceof PlatformError) {
         if (err.status.code === platform.status.ConnectionClosed) {
@@ -229,6 +225,10 @@ export class PresentationPipelineImpl implements PresentationPipeline {
       await setPlatformStatus(status)
       return {}
     }
+  }
+
+  async txOrThrow (tx: Tx): Promise<TxResult> {
+    return await (this.head ?? this.client).tx(tx)
   }
 
   async close (): Promise<void> {

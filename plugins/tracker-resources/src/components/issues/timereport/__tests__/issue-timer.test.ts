@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Data, DocumentUpdate, TxOperations } from '@hcengineering/core'
+import core, { Hierarchy, TxOperations } from '@hcengineering/core'
+import type { Client, Data, DocumentUpdate } from '@hcengineering/core'
 import type { IssueTimer } from '@hcengineering/tracker'
 import {
   discardIssueTimer,
@@ -290,6 +291,22 @@ describe('legacy browser timer migration', () => {
 
     expect(state.timer?.reportId).toBe('remote-report')
     expect(storage.has('legacy')).toBe(false)
+  })
+
+  it('keeps the local timer when the write outcome is missing', async () => {
+    const tx = jest.fn(async () => ({}))
+    const hierarchy = new Hierarchy()
+    const transport: Partial<Client> = { tx, getHierarchy: () => hierarchy }
+    const client = new TxOperations(transport as Client, core.account.System)
+    const stored = makeTimer()
+    const storage = createStorage(JSON.stringify(timerData(stored)))
+
+    await expect(migrateStoredIssueTimer(client, storage, 'legacy', stored.space, stored._id)).rejects.toThrow(
+      'The timer transaction could not be confirmed'
+    )
+
+    expect(tx).toHaveBeenCalledTimes(1)
+    expect(storage.has('legacy')).toBe(true)
   })
 
   it('ignores malformed legacy data', () => {

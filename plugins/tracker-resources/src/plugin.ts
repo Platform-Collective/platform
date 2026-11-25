@@ -284,6 +284,7 @@ export default mergeIds(trackerId, tracker, {
     TimerPastMidnight: '' as IntlString,
     LogTimerToAnotherIssue: '' as IntlString,
     TimeReportAlreadySaved: '' as IntlString,
+    TimeReportSaveFailed: '' as IntlString,
     TimeSpendDays: '' as IntlString,
     TimeSpendHours: '' as IntlString,
     TimeSpendMinutes: '' as IntlString,

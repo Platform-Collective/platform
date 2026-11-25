@@ -70,7 +70,7 @@ import { onDestroy } from 'svelte'
 import { get, writable } from 'svelte/store'
 
 import { type KeyedAttribute } from '..'
-import { OptimizeQueryMiddleware, type PresentationPipeline, PresentationPipelineImpl } from './pipeline'
+import { OptimizeQueryMiddleware, PresentationPipelineImpl } from './pipeline'
 import plugin, { type ClientHook } from './plugin'
 
 export { reduceCalls } from '@hcengineering/core'
@@ -78,7 +78,8 @@ export { reduceCalls } from '@hcengineering/core'
 let liveQuery: LQ
 let rawLiveQuery: LQ
 let client: TxOperations & Client
-let pipeline: PresentationPipeline
+let clientWithTxErrors: TxOperations & Client
+let pipeline: PresentationPipelineImpl
 
 export type TxListener = (tx: Tx[]) => void
 const txListeners: TxListener[] = []
@@ -110,10 +111,11 @@ export const pendingCreatedDocs = writable<Record<Ref<Doc>, boolean>>({})
 
 class UIClient extends TxOperations implements Client {
   constructor (
-    client: Client,
-    private readonly liveQuery: Pick<Client, 'findAll' | 'findOne'>
+    private readonly pipeline: PresentationPipelineImpl,
+    private readonly liveQuery: Pick<Client, 'findAll' | 'findOne'>,
+    private readonly propagateTxErrors = false
   ) {
-    super(client, getCurrentAccount().primarySocialId)
+    super(pipeline, getCurrentAccount().primarySocialId)
   }
 
   protected pendingTxes = new Set<Ref<Tx>>()
@@ -179,6 +181,7 @@ class UIClient extends TxOperations implements Client {
   }
 
   override async tx (tx: Tx): Promise<TxResult> {
+    if (this.propagateTxErrors) return await this.pipeline.txOrThrow(tx)
     void this.notifyEarly(tx).catch((err) => {
       console.error(err)
     })
@@ -240,22 +243,32 @@ const hierarchyProxy = new Proxy(
 ) as TxOperations & Client
 
 // We need a proxy to handle all the calls to the proper client.
-const clientProxy = new Proxy(
-  {},
-  {
-    get (target, p, receiver) {
-      if (p === 'getHierarchy') {
-        return () => hierarchyProxy
+function createClientProxy (current: () => TxOperations & Client): TxOperations & Client {
+  return new Proxy(
+    {},
+    {
+      get (_target, property) {
+        if (property === 'getHierarchy') {
+          return () => hierarchyProxy
+        }
+        return Reflect.get(current(), property)
       }
-      return Reflect.get(client, p)
     }
-  }
-) as TxOperations & Client
+  ) as TxOperations & Client
+}
+
+const clientProxy = createClientProxy(() => client)
+const clientWithTxErrorsProxy = createClientProxy(() => clientWithTxErrors)
 /**
  * @public
  */
 export function getClient (): TxOperations & Client {
   return clientProxy
+}
+
+/** Use for writes that need to handle transaction failures before updating the UI. */
+export function getClientWithTxErrors (): TxOperations {
+  return clientWithTxErrorsProxy
 }
 
 export function isDisabled (feature?: string): boolean {
@@ -412,6 +425,7 @@ export async function setClient (_client: Client): Promise<void> {
   const uiClient = new UIClient(pipeline, liveQuery)
 
   client = uiClient
+  clientWithTxErrors = new UIClient(pipeline, liveQuery, true)
 
   const notifyCaller = reduceCalls(async () => {
     const t = txQueue

@@ -281,6 +281,7 @@
     "TimerPastMidnight": "Der Timer lief über Mitternacht. Prüfen Sie vor dem Speichern Datum und gemessene Zeit des Zeitberichts.",
     "LogTimerToAnotherIssue": "Zeit bei anderer Aufgabe erfassen…",
     "TimeReportAlreadySaved": "Dieser Zeitbericht wurde bereits gespeichert",
+    "TimeReportSaveFailed": "Der Zeitbericht konnte nicht gespeichert werden",
     "TimeSpendDays": "{value}T",
     "TimeSpendHours": "{value}Std",
     "TimeSpendMinutes": "{value}Min",

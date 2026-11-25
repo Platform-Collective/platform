@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { PersonSpace } from '@hcengineering/contact'
-import type { Data, Ref, TxOperations } from '@hcengineering/core'
+import type { ApplyOperations, Data, Ref, TxOperations } from '@hcengineering/core'
 import type { IssueTimer } from '@hcengineering/tracker'
 import tracker from '../../../plugin'
 
@@ -93,6 +93,15 @@ export function getIssueTimerWarnings (startedAt: number, stoppedAt: number): Is
   return warnings
 }
 
+/** A scoped write must return an explicit outcome before we act on it. */
+export async function commitTimerWrite (ops: ApplyOperations): Promise<boolean> {
+  const { result } = await ops.commit()
+  if (typeof result !== 'boolean') {
+    throw new Error('The timer transaction could not be confirmed')
+  }
+  return result
+}
+
 /** Create the user's single timer atomically in their personal space. */
 export async function startIssueTimer (
   client: TxOperations,
@@ -102,7 +111,7 @@ export async function startIssueTimer (
 ): Promise<boolean> {
   const ops = client.apply(`tracker:issue-timer:${id}`).notMatch(tracker.class.IssueTimer, { _id: id })
   await ops.createDoc(tracker.class.IssueTimer, space, timer, id)
-  return (await ops.commit()).result
+  return await commitTimerWrite(ops)
 }
 
 /** Remove only the displayed timer, after its report is saved or to discard it. */
@@ -111,7 +120,7 @@ export async function discardIssueTimer (client: TxOperations, timer: IssueTimer
     .apply(`tracker:issue-timer:${timer._id}`)
     .match(tracker.class.IssueTimer, { _id: timer._id, reportId: timer.reportId })
   await ops.remove(timer)
-  return (await ops.commit()).result
+  return await commitTimerWrite(ops)
 }
 
 /** Freeze the elapsed time atomically so another device cannot move the stop time or replace the timer. */
@@ -131,7 +140,7 @@ export async function stopIssueTimer (
     stoppedAt: { $exists: false }
   })
   await ops.update(timer, { stoppedAt })
-  if (!(await ops.commit()).result) return
+  if (!(await commitTimerWrite(ops))) return
   return { ...timer, stoppedAt }
 }
 

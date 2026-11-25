@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { AttachedData, Ref, Space, TxOperations } from '@hcengineering/core'
-import { executeCardAction } from '@hcengineering/presentation/src/card-error'
-import { setPlatformStatus } from '@hcengineering/platform'
+import core, { Hierarchy, TxOperations } from '@hcengineering/core'
+import type { AttachedData, Client, Ref, Space } from '@hcengineering/core'
 import type { Issue, TimeSpendReport } from '@hcengineering/tracker'
 import tracker from '../../../../plugin'
 import {
@@ -12,51 +11,21 @@ import {
 } from '../create-time-spend-report'
 
 jest.mock('@hcengineering/analytics', () => ({ Analytics: { handleError: jest.fn(), handleEvent: jest.fn() } }))
-jest.mock('@hcengineering/platform', () => ({
-  ...jest.requireActual('@hcengineering/platform'),
-  setPlatformStatus: jest.fn()
-}))
 
 interface FakeServer {
   reports: Set<string>
   reportedTime: number
   scopes: string[]
-  failNextWrite: boolean
 }
 
 function createClient (server: FakeServer): TxOperations {
   const client = {
     findOne: async (_class: string, query: { _id: string }) =>
       server.reports.has(query._id) ? { _id: query._id } : undefined,
-    addCollection: async (
-      _class: string,
-      space: string,
-      attachedTo: string,
-      attachedToClass: string,
-      collection: string,
-      data: { value: number },
-      id?: string
-    ) => {
-      if (server.failNextWrite) {
-        server.failNextWrite = false
-        throw new Error('Offline')
-      }
-      const reportId = id ?? 'manual-report'
-      server.reports.add(reportId)
-      server.reportedTime += data.value
-      return reportId
-    },
-    update: async () => {
-      if (server.failNextWrite) {
-        server.failNextWrite = false
-        throw new Error('Offline')
-      }
-      return {}
-    },
     apply: (scope: string) => {
       server.scopes.push(scope)
       const notMatches: Array<{ _id: string }> = []
-      const pending: Array<{ id: string; value: number }> = []
+      const pending: Array<{ id: string, value: number }> = []
       const ops = {
         notMatch: (_class: string, query: { _id: string }) => {
           notMatches.push(query)
@@ -76,10 +45,6 @@ function createClient (server: FakeServer): TxOperations {
         },
         commit: async () => {
           await Promise.resolve()
-          if (server.failNextWrite) {
-            server.failNextWrite = false
-            throw new Error('Offline')
-          }
           if (notMatches.some((query) => server.reports.has(query._id))) return { result: false }
           for (const { id, value } of pending) {
             server.reports.add(id)
@@ -102,15 +67,11 @@ const issue: NonNullable<SaveTimeSpendReportOptions['target']> = {
 }
 const data: AttachedData<TimeSpendReport> = { employee: null, date: 0, value: 2, description: '' }
 
-async function flushAction (): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0))
-}
-
 describe('conditional time report creation', () => {
   let server: FakeServer
 
   beforeEach(() => {
-    server = { reports: new Set(), reportedTime: 0, scopes: [], failNextWrite: false }
+    server = { reports: new Set(), reportedTime: 0, scopes: [] }
   })
 
   it('creates the report once when two dialogs submit concurrently and adds the time once', async () => {
@@ -135,55 +96,31 @@ describe('conditional time report creation', () => {
   })
 })
 
-describe('time report dialog action failures', () => {
-  let server: FakeServer
-  let onAlreadySaved: jest.Mock
-  let onSaveFailed: jest.Mock
-  let onProcessing: jest.Mock
-  let onClose: jest.Mock
+describe('time report write failures', () => {
+  const offline = new Error('Offline')
+  const tx = jest.fn(async () => {
+    throw offline
+  })
+  const findOne = jest.fn(async () => undefined)
+  const hierarchy = new Hierarchy()
+  const transport: Partial<Client> = { tx, findOne, getHierarchy: () => hierarchy }
+  const client = new TxOperations(transport as Client, core.account.System)
+  const onAlreadySaved = jest.fn(async () => {})
+  const onSaveFailed = jest.fn(async () => {})
+  const options = { target: issue, data, onAlreadySaved, onSaveFailed }
 
   beforeEach(() => {
     jest.clearAllMocks()
-    server = { reports: new Set(), reportedTime: 0, scopes: [], failNextWrite: true }
-    onAlreadySaved = jest.fn(async () => {})
-    onSaveFailed = jest.fn(async () => {})
-    onProcessing = jest.fn()
-    onClose = jest.fn()
   })
 
-  async function runDialogAction (options: Partial<SaveTimeSpendReportOptions>, retryOnError: boolean): Promise<void> {
-    const client = createClient(server)
-    executeCardAction(
-      async () => {
-        await saveTimeSpendReport(client, {
-          target: issue,
-          data,
-          onAlreadySaved: async () => {
-            onAlreadySaved()
-          },
-          onSaveFailed: async () => {
-            onSaveFailed()
-          },
-          ...options
-        })
-      },
-      retryOnError,
-      { onProcessing, onClose }
-    )
-    await flushAction()
-  }
-
-  it('shows a manual create failure and closes without repeating the write', async () => {
-    await runDialogAction({}, false)
+  it('handles a manual create failure without repeating the write', async () => {
+    await saveTimeSpendReport(client, options)
 
     expect(onSaveFailed).toHaveBeenCalledTimes(1)
-    expect(onProcessing.mock.calls).toEqual([[true], [false]])
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(setPlatformStatus).not.toHaveBeenCalled()
-    expect(server.reportedTime).toBe(0)
+    expect(tx).toHaveBeenCalledTimes(1)
   })
 
-  it('shows a manual edit failure and closes without repeating the write', async () => {
+  it('handles a manual edit failure without repeating the write', async () => {
     const value: TimeSpendReport = {
       ...data,
       _id: 'report' as Ref<TimeSpendReport>,
@@ -193,25 +130,35 @@ describe('time report dialog action failures', () => {
       attachedToClass: issue._class,
       collection: 'reports',
       modifiedOn: 0,
-      modifiedBy: 'user' as TimeSpendReport['modifiedBy'],
+      modifiedBy: core.account.System,
       value: 1
     }
-    await runDialogAction({ value }, false)
+    await saveTimeSpendReport(client, { ...options, value })
 
     expect(onSaveFailed).toHaveBeenCalledTimes(1)
-    expect(onProcessing.mock.calls).toEqual([[true], [false]])
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(setPlatformStatus).not.toHaveBeenCalled()
+    expect(tx).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps a failed timer report open for a safe manual retry', async () => {
-    await runDialogAction({ reportId: 'report' as Ref<TimeSpendReport> }, true)
+  it('propagates a failed timer write to the dialog without repeating it', async () => {
+    await expect(saveTimeSpendReport(client, { ...options, reportId: 'report' as Ref<TimeSpendReport> })).rejects.toBe(
+      offline
+    )
 
     expect(onSaveFailed).not.toHaveBeenCalled()
-    expect(onProcessing.mock.calls).toEqual([[true], [false]])
-    expect(onClose).not.toHaveBeenCalled()
-    expect(setPlatformStatus).toHaveBeenCalledTimes(1)
-    expect(server.scopes).toEqual(['tracker:time-report:report'])
-    expect(server.reportedTime).toBe(0)
+    expect(tx).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not treat an unconfirmed timer write as an existing report', async () => {
+    const reportId = 'report' as Ref<TimeSpendReport>
+    const commit = jest.fn(async () => ({}))
+    const transport: Partial<Client> = { tx: commit, findOne }
+    const client = new TxOperations(transport as Client, core.account.System)
+
+    await expect(saveTimeSpendReport(client, { ...options, reportId })).rejects.toThrow(
+      'The timer transaction could not be confirmed'
+    )
+
+    expect(commit).toHaveBeenCalledTimes(1)
+    expect(onAlreadySaved).not.toHaveBeenCalled()
   })
 })

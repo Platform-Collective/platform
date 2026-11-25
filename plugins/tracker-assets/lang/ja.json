@@ -237,6 +237,7 @@
     "TimerPastMidnight": "タイマーが日付をまたいで実行されていました。保存する前にレポートの日付と計測時間を確認してください。",
     "LogTimerToAnotherIssue": "別の課題に時間を記録…",
     "TimeReportAlreadySaved": "この時間レポートは既に保存されています",
+    "TimeReportSaveFailed": "時間レポートを保存できませんでした",
     "TimeSpendDays": "{value}日",
     "TimeSpendHours": "{value}時間",
     "TimeSpendMinutes": "{value}分",

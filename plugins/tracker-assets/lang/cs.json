@@ -240,6 +240,7 @@
     "TimerPastMidnight": "Časovač běžel přes půlnoc. Před uložením zkontrolujte datum a naměřený čas výkazu.",
     "LogTimerToAnotherIssue": "Zapsat čas k jinému úkolu…",
     "TimeReportAlreadySaved": "Tento výkaz času již byl uložen",
+    "TimeReportSaveFailed": "Výkaz času se nepodařilo uložit",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",
     "TimeSpendMinutes": "{value}m",

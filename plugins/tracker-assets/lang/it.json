@@ -237,6 +237,7 @@
     "TimerPastMidnight": "Il timer ha superato la mezzanotte. Controlla la data del report e il tempo misurato prima di salvare.",
     "LogTimerToAnotherIssue": "Registra il tempo su un altro ticket…",
     "TimeReportAlreadySaved": "Questo report del tempo è già stato salvato",
+    "TimeReportSaveFailed": "Impossibile salvare il report del tempo",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",
     "TimeSpendMinutes": "{value}m",

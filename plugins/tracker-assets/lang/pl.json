@@ -247,6 +247,7 @@
     "TimerPastMidnight": "Licznik działał po północy. Przed zapisaniem sprawdź datę raportu i zmierzony czas.",
     "LogTimerToAnotherIssue": "Zapisz czas w innym zadaniu…",
     "TimeReportAlreadySaved": "Ten raport czasu został już zapisany",
+    "TimeReportSaveFailed": "Nie udało się zapisać raportu czasu",
     "TimeSpendDays": "{value, plural, =1 {1 dzień} other {# dni}}",
     "TimeSpendHours": "{value, plural, =1 {1 godzina} few {# godziny} many {# godzin} other {# godziny}}",
     "TimeSpendMinutes": "{value, plural, =1 {1 minuta} few {# minuty} many {# minut} other {# minuty}}",

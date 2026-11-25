@@ -254,6 +254,7 @@
     "TimerPastMidnight": "Zamanlayıcı gece yarısını geçti. Kaydetmeden önce rapor tarihini ve ölçülen süreyi kontrol edin.",
     "LogTimerToAnotherIssue": "Süreyi başka bir göreve kaydet…",
     "TimeReportAlreadySaved": "Bu süre raporu zaten kaydedildi",
+    "TimeReportSaveFailed": "Süre raporu kaydedilemedi",
     "TimeSpendDays": "{value}g",
     "TimeSpendHours": "{value}s",
     "TimeSpendMinutes": "{value}dk",

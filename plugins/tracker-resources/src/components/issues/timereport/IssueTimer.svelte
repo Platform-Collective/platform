@@ -6,10 +6,10 @@
   import type { Ref } from '@hcengineering/core'
   import { setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
   import type { IntlString } from '@hcengineering/platform'
-  import { createQuery, getClient, getCurrentWorkspaceUuid } from '@hcengineering/presentation'
+  import { createQuery, getClientWithTxErrors, getCurrentWorkspaceUuid } from '@hcengineering/presentation'
   import type { Issue, IssueTimer, TimeSpendReport } from '@hcengineering/tracker'
   import { addNotification, Button, Label, navigate, NotificationSeverity, showPopup } from '@hcengineering/ui'
-  import { canCreateObject } from '@hcengineering/view-resources'
+  import { canCreateObject, SimpleNotification } from '@hcengineering/view-resources'
   import { onDestroy, onMount } from 'svelte'
   import { get } from 'svelte/store'
   import { generateIssueShortLink, issueLinkFragmentProvider } from '../../../issues'
@@ -29,7 +29,7 @@
 
   export let issue: Issue
 
-  const client = getClient()
+  const client = getClientWithTxErrors()
   const employee = getCurrentEmployee()
   const account = getCurrentAccount()
   const timerId = account.uuid as Ref<IssueTimer>
@@ -54,8 +54,8 @@
     await migrateStoredIssueTimer(client, localStorage, legacyKey, space._id, timerId)
   }
 
-  async function notify(label: IntlString, params: Record<string, any> = {}): Promise<void> {
-    addNotification(await translate(label, params), '', undefined as any, undefined, NotificationSeverity.Warning)
+  async function notify(label: IntlString, params: Record<string, string> = {}): Promise<void> {
+    addNotification(await translate(label, params), '', SimpleNotification, undefined, NotificationSeverity.Warning)
   }
 
   onMount(() => {
@@ -187,13 +187,13 @@
   }
 
   async function openTimedIssue(): Promise<void> {
-    const timedIssueId = timer?.issueId
-    if (timedIssueId === undefined) return
-    const timedIssue = await client.findOne(tracker.class.Issue, { _id: timedIssueId })
+    const timed = timer
+    if (timed === undefined) return
+    const timedIssue = await client.findOne(tracker.class.Issue, { _id: timed.issueId })
     if (timedIssue === undefined) {
       await notify(tracker.string.TimerIssueUnavailable, {
-        issue: timer?.identifier,
-        time: timer === undefined ? '' : formatElapsedTime(getElapsedTime(timer.startedAt, timer.stoppedAt ?? now))
+        issue: timed.identifier,
+        time: formatElapsedTime(getElapsedTime(timed.startedAt, timed.stoppedAt ?? now))
       })
       return
     }

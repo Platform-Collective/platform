@@ -1,81 +1,66 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { Analytics } from '@hcengineering/analytics'
-import { setPlatformStatus, unknownError } from '@hcengineering/platform'
-import { executeCardAction, reportCardError } from '../card-error'
+import { unknownError } from '@hcengineering/platform'
+import { executeCardAction } from '../card-error'
 
 jest.mock('@hcengineering/analytics', () => ({ Analytics: { handleError: jest.fn() } }))
-jest.mock('@hcengineering/platform', () => ({
-  setPlatformStatus: jest.fn(),
-  unknownError: jest.fn()
-}))
 
-describe('Card errors', () => {
+describe('Card actions', () => {
+  const onProcessing = jest.fn()
+  const onClose = jest.fn()
+  const onError = jest.fn()
+  const callbacks = { onProcessing, onClose, onError }
+
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(unknownError as jest.Mock).mockImplementation((err) => ({ code: 'unknown', params: { err } }))
   })
 
-  it('shows a rejected retryable action to the user and reports it to analytics', () => {
+  it('shows a rejection, resets processing and retains dialog state without repeating the action', async () => {
     const error = new Error('Offline')
-    const status = { code: 'unknown', params: {} }
-    ;(unknownError as jest.Mock).mockReturnValue(status)
-
-    reportCardError(error)
-
-    expect(unknownError).toHaveBeenCalledWith(error)
-    expect(setPlatformStatus).toHaveBeenCalledWith(status)
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(Analytics.handleError).toHaveBeenCalledWith(error)
-  })
-
-  it('unblocks and closes a non-retryable action after a rejection', async () => {
-    const onProcessing = jest.fn()
-    const onClose = jest.fn()
-    executeCardAction(
-      async () => {
-        throw new Error('Offline')
-      },
-      false,
-      { onProcessing, onClose }
-    )
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(onProcessing.mock.calls).toEqual([[true], [false]])
-    expect(onClose).toHaveBeenCalledTimes(1)
-    expect(setPlatformStatus).toHaveBeenCalledTimes(1)
-  })
-
-  it('unblocks a retryable action without closing or repeating it', async () => {
     const action = jest.fn(async () => {
-      throw new Error('Offline')
+      throw error
     })
-    const onProcessing = jest.fn()
-    const onClose = jest.fn()
-    executeCardAction(action, true, { onProcessing, onClose })
-    await Promise.resolve()
+    executeCardAction(action, callbacks)
     await Promise.resolve()
 
     expect(action).toHaveBeenCalledTimes(1)
     expect(onProcessing.mock.calls).toEqual([[true], [false]])
     expect(onClose).not.toHaveBeenCalled()
-    expect(setPlatformStatus).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith(unknownError(error))
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(Analytics.handleError).toHaveBeenCalledWith(error)
   })
 
-  it('handles a synchronous action failure like a rejection', () => {
-    const onProcessing = jest.fn()
-    const onClose = jest.fn()
-    executeCardAction(
-      () => {
-        throw new Error('Offline')
-      },
-      true,
-      { onProcessing, onClose }
-    )
+  it('shows a synchronous failure and leaves the dialog open', () => {
+    const error = new Error('Offline')
+    executeCardAction(() => {
+      throw error
+    }, callbacks)
 
     expect(onProcessing.mock.calls).toEqual([[true], [false]])
     expect(onClose).not.toHaveBeenCalled()
-    expect(setPlatformStatus).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith(unknownError(error))
+  })
+
+  it('closes after an explicitly resubmitted action succeeds', async () => {
+    const action = jest.fn().mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce(undefined)
+    executeCardAction(action, callbacks)
+    await Promise.resolve()
+    executeCardAction(action, callbacks)
+    await Promise.resolve()
+
+    expect(action).toHaveBeenCalledTimes(2)
+    expect(onProcessing.mock.calls).toEqual([[true], [false], [true], [false]])
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes immediately after a synchronous action succeeds', () => {
+    executeCardAction(() => {}, callbacks)
+
+    expect(onProcessing.mock.calls).toEqual([[true], [false]])
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onError).not.toHaveBeenCalled()
   })
 })

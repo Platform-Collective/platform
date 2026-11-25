@@ -267,6 +267,7 @@
     "TimerPastMidnight": "This timer ran past midnight. Check the report date and measured time before saving.",
     "LogTimerToAnotherIssue": "Log time to another issue…",
     "TimeReportAlreadySaved": "This time report was already saved",
+    "TimeReportSaveFailed": "Could not save the time report",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",
     "TimeSpendMinutes": "{value}m",

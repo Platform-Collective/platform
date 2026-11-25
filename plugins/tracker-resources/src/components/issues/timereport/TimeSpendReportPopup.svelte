@@ -17,10 +17,11 @@
   import { AttachedData, Class, Ref, Space } from '@hcengineering/core'
   import { translate } from '@hcengineering/platform'
   import type { IntlString } from '@hcengineering/platform'
-  import presentation, { Card, getClient } from '@hcengineering/presentation'
+  import presentation, { Card, getClientWithTxErrors } from '@hcengineering/presentation'
   import { UserBox } from '@hcengineering/contact-resources'
   import { Issue, TimeReportDayType, TimeSpendReport } from '@hcengineering/tracker'
   import { addNotification, Button, DatePresenter, EditBox, Label, NotificationSeverity } from '@hcengineering/ui'
+  import { SimpleNotification } from '@hcengineering/view-resources'
   import tracker from '../../../plugin'
   import { getTimeReportDate, getTimeReportDayType } from '../../../utils'
   import TitlePresenter from '../TitlePresenter.svelte'
@@ -55,10 +56,10 @@
     return true
   }
 
-  const client = getClient()
+  const client = getClientWithTxErrors()
 
   async function notify(label: IntlString, severity: NotificationSeverity): Promise<void> {
-    addNotification(await translate(label, {}), '', undefined as any, undefined, severity)
+    addNotification(await translate(label, {}), '', SimpleNotification, undefined, severity)
   }
 
   async function save(): Promise<void> {
@@ -83,7 +84,6 @@
   label={value === undefined ? tracker.string.TimeSpendReportAdd : tracker.string.TimeSpendReportValue}
   {canSave}
   okAction={save}
-  retryOnError={value === undefined && reportId !== undefined}
   gap={'gapV-4'}
   on:close
   okLabel={value === undefined ? presentation.string.Create : presentation.string.Save}

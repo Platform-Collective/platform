@@ -14,7 +14,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import type { IntlString } from '@hcengineering/platform'
+  import type { IntlString, Status as ActionStatus } from '@hcengineering/platform'
   import { executeCardAction } from '../card-error'
   import {
     Button,
@@ -24,7 +24,8 @@
     deviceOptionsStore as deviceInfo,
     resizeObserver,
     IconBack,
-    getFocusManager
+    getFocusManager,
+    Status
   } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import presentation from '..'
@@ -51,14 +52,13 @@
   export let gap: string | undefined = undefined
   export let width: 'large' | 'medium' | 'small' | 'x-small' | 'menu' = 'large'
   export let noFade = false
-  // Opt-in for idempotent okActions: on rejection unblock OK and keep the dialog open instead of staying blocked.
-  export let retryOnError = false
 
   const dispatch = createEventDispatcher()
 
   const focusManager = getFocusManager()
 
   let okProcessing = false
+  let actionError: ActionStatus | undefined
   $: headerDivide = hideContent && numberOfBlocks > 1
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -83,9 +83,11 @@
       if (okProcessing) {
         return
       }
-      executeCardAction(okAction, retryOnError, {
+      actionError = undefined
+      executeCardAction(okAction, {
         onProcessing: (processing) => (okProcessing = processing),
-        onClose: () => dispatch('close')
+        onClose: () => dispatch('close'),
+        onError: (status) => (actionError = status)
       })
     }
   }
@@ -184,6 +186,11 @@
           <slot name="attachments" />
         </div>
       </Scroller>
+    </div>
+  {/if}
+  {#if actionError !== undefined}
+    <div role="alert">
+      <Status status={actionError} overflow={false} />
     </div>
   {/if}
   {#if !hideFooter}

@@ -237,6 +237,7 @@
     "TimerPastMidnight": "Le minuteur a dépassé minuit. Vérifiez la date du rapport et le temps mesuré avant d’enregistrer.",
     "LogTimerToAnotherIssue": "Enregistrer le temps sur un autre ticket…",
     "TimeReportAlreadySaved": "Ce rapport de temps a déjà été enregistré",
+    "TimeReportSaveFailed": "Impossible d’enregistrer le rapport de temps",
     "TimeSpendDays": "{value}j",
     "TimeSpendHours": "{value}h",
     "TimeSpendMinutes": "{value}m",

@@ -5,7 +5,7 @@ import type { AttachedData, DocumentUpdate, Ref, Space, TxOperations } from '@hc
 import { TrackerEvents } from '@hcengineering/tracker'
 import type { Issue, TimeSpendReport } from '@hcengineering/tracker'
 import tracker from '../../../plugin'
-import { saveReportOnce } from './issue-timer'
+import { commitTimerWrite, saveReportOnce } from './issue-timer'
 
 interface TimeReportIssue extends Pick<Issue, '_id' | '_class'> {
   space: Ref<Space>
@@ -45,7 +45,7 @@ export async function createTimeSpendReportOnce (
 ): Promise<boolean> {
   const ops = client.apply(`tracker:time-report:${id}`).notMatch(tracker.class.TimeSpendReport, { _id: id })
   await ops.addCollection(tracker.class.TimeSpendReport, issue.space, issue._id, issue._class, 'reports', data, id)
-  const { result } = await ops.commit()
+  const result = await commitTimerWrite(ops)
   if (result) Analytics.handleEvent(TrackerEvents.IssueTimeSpentAdded, { issue: issue.identifier ?? issue._id })
   return result
 }

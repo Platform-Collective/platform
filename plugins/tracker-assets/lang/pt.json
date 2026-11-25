@@ -237,6 +237,7 @@
     "TimerPastMidnight": "O temporizador passou da meia-noite. Verifique a data do relatório e o tempo medido antes de guardar.",
     "LogTimerToAnotherIssue": "Registar tempo noutra tarefa…",
     "TimeReportAlreadySaved": "Este relatório de tempo já foi guardado",
+    "TimeReportSaveFailed": "Não foi possível guardar o relatório de tempo",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",
     "TimeSpendMinutes": "{value}m",
