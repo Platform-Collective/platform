@@ -36,6 +36,7 @@
     "NoHistory": "没有历史记录",
     "Untitled": "无标题",
     "Subpage": "子页面",
+    "SubpageCreationUnconfirmed": "无法确认子页面是否已创建。",
     "SubpageLinkFailed": "子页面“{title}”已创建，但无法插入其链接。请在导航器中找到它。",
 
     "Description": "描述",

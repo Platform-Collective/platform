@@ -36,6 +36,7 @@
     "NoHistory": "Žádná předchozí historie",
     "Untitled": "Bez názvu",
     "Subpage": "Podstránka",
+    "SubpageCreationUnconfirmed": "Vytvoření podstránky se nepodařilo ověřit.",
     "SubpageLinkFailed": "Podstránka \"{title}\" byla vytvořena, ale její odkaz se nepodařilo vložit. Najdete ji v navigátoru.",
 
     "Description": "Popis",

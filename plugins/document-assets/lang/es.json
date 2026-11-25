@@ -36,6 +36,7 @@
     "NoHistory": "Sin historial anterior",
     "Untitled": "Sin título",
     "Subpage": "Subpágina",
+    "SubpageCreationUnconfirmed": "No se pudo confirmar la creación de la subpágina.",
     "SubpageLinkFailed": "La subpágina \"{title}\" se creó, pero no se pudo insertar su enlace. Búscala en el panel de navegación.",
     "Description": "Descripción",
     "CopyDocumentUrl": "Copiar URL del documento al portapapeles",

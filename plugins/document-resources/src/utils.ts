@@ -104,10 +104,12 @@ export async function createEmptyDocument (
   await client.createDoc(document.class.Document, space, object, id)
 }
 
-async function notifySubpageLinkFailure (title: string): Promise<void> {
+async function notifySubpageFailure (doc: Document | undefined): Promise<void> {
   const [heading, message] = await Promise.all([
     translate(document.string.Subpage, {}),
-    translate(document.string.SubpageLinkFailed, { title })
+    doc === undefined
+      ? translate(document.string.SubpageCreationUnconfirmed, {})
+      : translate(document.string.SubpageLinkFailed, { title: doc.title })
   ])
   addNotification(heading, message, SimpleNotification, undefined, NotificationSeverity.Warning)
 }
@@ -122,17 +124,10 @@ export async function createSubpage (editor: Editor, pos: number, parent: Docume
   const resolvePosition = captureEditorPosition(editor, Math.min(pos, editor.state.doc.content.size))
   const title = await translate(document.string.Untitled, {})
 
-  try {
-    await createEmptyDocument(client, id, parent.space, parent._id, { title })
-  } catch (err: any) {
-    console.error(err)
-    Analytics.handleError(err)
-    return
-  }
-
   let doc: Document | undefined
   let inserted = false
   try {
+    await createEmptyDocument(client, id, parent.space, parent._id, { title })
     doc = await client.findOne(document.class.Document, { _id: id })
     if (doc !== undefined && !editor.isDestroyed) {
       const at = resolvePosition()
@@ -145,12 +140,12 @@ export async function createSubpage (editor: Editor, pos: number, parent: Docume
           .run()
       }
     }
-  } catch (err: any) {
-    Analytics.handleError(err)
+  } catch (err) {
+    Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
   }
 
   if (!inserted || doc === undefined) {
-    await notifySubpageLinkFailure(doc?.title ?? title)
+    await notifySubpageFailure(doc)
     return
   }
   await openDoc(client.getHierarchy(), doc)

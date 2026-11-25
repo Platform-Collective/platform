@@ -3,9 +3,19 @@
  */
 // SPDX-License-Identifier: EPL-2.0
 
+import { Analytics } from '@hcengineering/analytics'
+import core, {
+  type Client,
+  Hierarchy,
+  systemAccount,
+  type Tx,
+  type TxCreateDoc,
+  type TxResult,
+  TxOperations
+} from '@hcengineering/core'
 import { documentId, type Document } from '@hcengineering/document'
 import { addStringsLoader } from '@hcengineering/platform'
-import { getClient } from '@hcengineering/presentation'
+import { getClient, PresentationPipelineImpl } from '@hcengineering/presentation'
 import { captureEditorPosition } from '@hcengineering/text-editor-resources'
 import { Notifications } from '@hcengineering/ui'
 import { openDoc } from '@hcengineering/view-resources'
@@ -14,12 +24,12 @@ import { tick } from 'svelte'
 import { createSubpage } from '../utils'
 
 jest.mock('@hcengineering/analytics', () => ({ Analytics: { handleError: jest.fn() } }))
-jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
+jest.mock('@hcengineering/presentation', () => ({
+  PresentationPipelineImpl: jest.requireActual('@hcengineering/presentation/src/pipeline').PresentationPipelineImpl,
+  getClient: jest.fn()
+}))
 jest.mock('@hcengineering/text-editor-resources', () => ({
-  captureEditorPosition: jest.fn(
-    jest.requireActual('@hcengineering/text-editor-resources/src/components/extension/relativePosition')
-      .captureEditorPosition
-  )
+  captureEditorPosition: jest.fn()
 }))
 // Load the real notification path without bootstrapping the application through the package barrels.
 jest.mock('@hcengineering/ui', () => ({
@@ -55,21 +65,13 @@ const ParagraphNode = Node.create({
   }
 })
 const TextNode = Node.create({ name: 'text', group: 'inline' })
-const ReferenceNode = Node.create({
-  name: 'reference',
-  inline: true,
-  group: 'inline',
-  atom: true,
-  addAttributes () {
-    return { id: {}, objectclass: {}, label: {} }
-  },
-  parseHTML () {
-    return [{ tag: 'span[data-type="reference"]' }]
-  },
-  renderHTML () {
-    return ['span', { 'data-type': 'reference' }]
-  }
-})
+const { captureEditorPosition: actualCaptureEditorPosition } = jest.requireActual<{
+  captureEditorPosition: typeof captureEditorPosition
+}>('@hcengineering/text-editor-resources/src/components/extension/relativePosition')
+
+const { ReferenceNode } = jest.requireActual<{ ReferenceNode: Node }>(
+  '../../../../foundations/core/packages/text/src/nodes/reference'
+)
 
 let editors: Editor[] = []
 let notifications: InstanceType<typeof Notifications>
@@ -91,22 +93,31 @@ function makeEditor (includeReference = true): Editor {
       content: [{ type: 'paragraph', content: [{ type: 'text', text: 'existing' }] }]
     },
     injectCSS: false,
-    enableContentCheck: !includeReference
+    enableContentCheck: !includeReference,
+    onContentError: () => {}
   })
   editors.push(editor)
   return editor
 }
 
-function makeClient (child: Document = makeChild()): {
-  createDoc: jest.Mock
-  findOne: jest.Mock
-  getHierarchy: jest.Mock
+function makeTransport (child: Document = makeChild()): {
+  tx: jest.Mock<Promise<TxResult>, [Tx]>
+  findOne: jest.Mock<Promise<Document | undefined>>
+  getHierarchy: () => Hierarchy
 } {
+  const hierarchy = new Hierarchy()
   return {
-    createDoc: jest.fn(async () => {}),
+    tx: jest.fn<Promise<TxResult>, [Tx]>(async () => ({})),
     findOne: jest.fn(async (): Promise<Document | undefined> => child).mockResolvedValueOnce(undefined),
-    getHierarchy: jest.fn(() => ({}))
+    getHierarchy: () => hierarchy
   }
+}
+
+function useClient (transport: ReturnType<typeof makeTransport>, usePipeline = true): void {
+  // Only the client transport is stubbed. The operations and pipeline execute their real transaction code.
+  const client = transport as unknown as Client
+  const pipeline = usePipeline ? PresentationPipelineImpl.create(client, []) : client
+  jest.mocked(getClient).mockReturnValue(new TxOperations(pipeline, systemAccount.primarySocialId))
 }
 
 function referenceAttributes (editor: Editor): unknown[] {
@@ -117,14 +128,15 @@ function referenceAttributes (editor: Editor): unknown[] {
   return references
 }
 
-function expectLinkFailure (editor: Editor, title: string = 'Child title'): void {
+function expectWarning (editor: Editor, message: string): void {
   expect(referenceAttributes(editor)).toEqual([])
   expect(openDoc).not.toHaveBeenCalled()
   expect(target.querySelector('.icon-warning')).not.toBeNull()
-  expect(target.querySelector('.content')?.textContent?.trim()).toBe(
-    `Subpage "${title}" was created, but its link could not be inserted. Find it in the navigator.`
-  )
+  expect(target.querySelector('.content')?.textContent?.trim()).toBe(message)
 }
+
+const LINK_FAILURE = 'Subpage "Child title" was created, but its link could not be inserted. Find it in the navigator.'
+const CREATION_UNCONFIRMED = 'Subpage creation could not be confirmed.'
 
 describe('subpage creation', () => {
   beforeAll(() => {
@@ -134,7 +146,8 @@ describe('subpage creation', () => {
   })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    jest.resetAllMocks()
+    jest.mocked(captureEditorPosition).mockImplementation(actualCaptureEditorPosition)
     editors = []
     target = document.createElement('div')
     document.body.append(target)
@@ -157,92 +170,118 @@ describe('subpage creation', () => {
       startCreation = resolve
     })
     const child = makeChild()
-    const client = makeClient(child)
-    client.createDoc.mockImplementation(async () => {
+    const transport = makeTransport(child)
+    transport.tx.mockImplementation(async (tx) => {
+      child._id = (tx as TxCreateDoc<Document>).objectId
       startCreation()
       await pendingCreation
+      return {}
     })
-    ;(getClient as jest.Mock).mockReturnValue(client)
+    useClient(transport)
     const editor = makeEditor()
 
     const creation = createSubpage(editor, 2, makeParent())
     await startedCreation
     expect(captureEditorPosition).toHaveBeenCalledWith(editor, 2)
-    expect(client.createDoc).toHaveBeenCalledTimes(1)
+    expect(transport.tx).toHaveBeenCalledTimes(1)
     expect(referenceAttributes(editor)).toEqual([])
+    expect(openDoc).not.toHaveBeenCalled()
 
-    finishCreation()
-    await creation
-    expect(referenceAttributes(editor)).toEqual([
+    const attributes = [
       expect.objectContaining({
-        id: expect.any(String),
+        id: child._id,
         objectclass: 'document:class:Document',
         label: 'Untitled'
       })
-    ])
-    expect(openDoc).toHaveBeenCalledWith({}, child)
+    ]
+    jest.mocked(openDoc).mockImplementation(async () => {
+      expect(referenceAttributes(editor)).toEqual(attributes)
+    })
+
+    finishCreation()
+    await creation
+    const tx = transport.tx.mock.calls[0][0]
+    expect(tx).toMatchObject({ _class: core.class.TxCreateDoc })
+    expect(transport.findOne).toHaveBeenLastCalledWith('document:class:Document', { _id: child._id }, undefined)
+    expect(referenceAttributes(editor)).toEqual(attributes)
+    expect(openDoc).toHaveBeenCalledTimes(1)
+    expect(openDoc).toHaveBeenCalledWith(transport.getHierarchy(), child)
     expect(target.textContent?.trim()).toBe('')
   })
 
-  it('does not insert a link or navigate when document creation fails', async () => {
-    const client = makeClient()
-    client.createDoc.mockRejectedValue(new Error('creation failed'))
-    ;(getClient as jest.Mock).mockReturnValue(client)
+  it('warns that creation is unconfirmed when the write throws directly', async () => {
+    const transport = makeTransport()
+    transport.tx.mockRejectedValue(new Error('creation failed'))
+    useClient(transport, false)
     const editor = makeEditor()
 
     await createSubpage(editor, 2, makeParent())
-    expect(referenceAttributes(editor)).toEqual([])
-    expect(openDoc).not.toHaveBeenCalled()
-    expect(target.textContent?.trim()).toBe('')
+    await tick()
+    expect(transport.findOne).toHaveBeenCalledTimes(1)
+    expectWarning(editor, CREATION_UNCONFIRMED)
   })
 
   it('keeps navigation closed and identifies the child when the position cannot be resolved', async () => {
     jest.mocked(captureEditorPosition).mockReturnValueOnce(() => null)
-    const client = makeClient()
-    ;(getClient as jest.Mock).mockReturnValue(client)
+    const transport = makeTransport()
+    useClient(transport)
     const editor = makeEditor()
 
     await createSubpage(editor, 2, makeParent())
     await tick()
-    expectLinkFailure(editor)
+    expectWarning(editor, LINK_FAILURE)
   })
 
-  it('keeps navigation closed and identifies the child when the real command chain fails', async () => {
-    const client = makeClient()
-    ;(getClient as jest.Mock).mockReturnValue(client)
+  it('keeps navigation closed and identifies the child when the real command chain returns false', async () => {
+    const transport = makeTransport()
+    useClient(transport)
     const editor = makeEditor(false)
+    const handleError = jest.spyOn(Analytics, 'handleError')
 
     await createSubpage(editor, 2, makeParent())
     await tick()
-    expectLinkFailure(editor)
+    expect(handleError).not.toHaveBeenCalled()
+    expectWarning(editor, LINK_FAILURE)
   })
 
   it('keeps navigation closed and identifies the child when the editor was destroyed', async () => {
-    const client = makeClient()
-    ;(getClient as jest.Mock).mockReturnValue(client)
+    const transport = makeTransport()
+    useClient(transport)
     const editor = makeEditor()
-    client.createDoc.mockImplementationOnce(async () => {
+    transport.tx.mockImplementationOnce(async () => {
       editor.destroy()
+      return {}
     })
 
     await createSubpage(editor, 2, makeParent())
     await tick()
-    expectLinkFailure(editor)
+    expectWarning(editor, LINK_FAILURE)
   })
 
-  it.each(['missing', 'failed'])('identifies the created child when the read is %s', async (read) => {
-    const client = makeClient()
-    if (read === 'missing') {
-      client.findOne.mockResolvedValue(undefined)
-    } else {
-      client.findOne.mockRejectedValue(new Error('read failed'))
-    }
-    ;(getClient as jest.Mock).mockReturnValue(client)
+  it('warns that creation is unconfirmed when the pipeline converts a rejected write to an empty result', async () => {
+    const transport = makeTransport()
+    transport.tx.mockRejectedValue(new Error('write rejected'))
+    transport.findOne.mockResolvedValue(undefined)
+    useClient(transport)
     const editor = makeEditor()
 
     await createSubpage(editor, 2, makeParent())
     await tick()
-    expect(client.createDoc).toHaveBeenCalledTimes(1)
-    expectLinkFailure(editor, 'Untitled')
+    expect(transport.tx).toHaveBeenCalledTimes(1)
+    expect(transport.findOne).toHaveBeenCalledTimes(2)
+    expectWarning(editor, CREATION_UNCONFIRMED)
+  })
+
+  it('warns that creation is unconfirmed when reading the child throws', async () => {
+    const transport = makeTransport()
+    transport.findOne.mockRejectedValueOnce(new Error('read failed'))
+    useClient(transport, false)
+    const editor = makeEditor()
+
+    await createSubpage(editor, 2, makeParent())
+    await tick()
+    expect(transport.tx).toHaveBeenCalledTimes(1)
+    expect(transport.findOne).toHaveBeenCalledTimes(2)
+    expectWarning(editor, CREATION_UNCONFIRMED)
   })
 })
