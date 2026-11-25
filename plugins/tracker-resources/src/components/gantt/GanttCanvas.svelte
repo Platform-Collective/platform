@@ -39,6 +39,7 @@
   import GanttConnectorDot from './GanttConnectorDot.svelte'
   import GanttBarResizeHandles from './GanttBarResizeHandles.svelte'
   import { hasDeadline, isOverdue } from './lib/deadline-marker'
+  import { getIssueBarRange } from './lib/bar-range'
 
   // Coalesce hover updates to roughly one per frame so a fast pointer does not
   // re-trigger GanttView reactivity on every mousemove pixel (leading-edge).
@@ -74,11 +75,13 @@
   $: groupRanges = (() => {
     const ranges = new Map<string, { start: number, due: number }>()
     for (const row of rows) {
-      if (row.groupKey === undefined || row.issue?.startDate == null || row.issue.dueDate == null) continue
+      if (row.groupKey === undefined || row.issue === null) continue
+      const range = getIssueBarRange(row.issue)
+      if (range === null) continue
       const current = ranges.get(row.groupKey)
       ranges.set(row.groupKey, {
-        start: Math.min(current?.start ?? Infinity, row.issue.startDate),
-        due: Math.max(current?.due ?? -Infinity, row.issue.dueDate)
+        start: Math.min(current?.start ?? Infinity, range.startDate),
+        due: Math.max(current?.due ?? -Infinity, range.dueDate)
       })
     }
     return ranges
@@ -219,11 +222,10 @@
     const map = new Map<string, BarRect>()
     for (const row of rows) {
       if (row.kind !== 'issue' || row.issue === null) continue
-      const start = row.issue.startDate
-      const due = row.issue.dueDate
-      if (start === null || due === null) continue
-      const left = timeScale.toX(Math.min(start, due))
-      const right = timeScale.toX(Math.max(start, due)) + timeScale.pxPerDay
+      const range = getIssueBarRange(row.issue)
+      if (range === null) continue
+      const left = timeScale.toX(Math.min(range.startDate, range.dueDate))
+      const right = timeScale.toX(Math.max(range.startDate, range.dueDate)) + timeScale.pxPerDay
       const top = milestoneStripHeight + row.y + 6
       const bottom = milestoneStripHeight + row.y + row.height - 6
       map.set(String(row.issue._id), { left, top, right, bottom })
@@ -270,8 +272,9 @@
       } else if (row.kind === 'issue' && row.issue !== null && !row.isSummary) {
         // Summary rows render an MS-Project claw, which never had handles.
         if (String(row.issue._id) !== selectedIssueId) continue
-        start = row.issue.startDate
-        due = row.issue.dueDate
+        const range = getIssueBarRange(row.issue)
+        start = range?.startDate ?? null
+        due = range?.dueDate ?? null
         target = { kind: 'issue', doc: row.issue }
       } else {
         continue
@@ -444,7 +447,8 @@
             </g>
           {/if}
         {:else if row.issue !== null}
-          {#if (row.issue.startDate == null || row.issue.dueDate == null) && (summaryFor(row)?.startDate == null || summaryFor(row)?.dueDate == null)}
+          {@const issueRange = getIssueBarRange(row.issue)}
+          {#if issueRange === null && (summaryFor(row)?.startDate == null || summaryFor(row)?.dueDate == null)}
             {#if dateMutable}
               <g
                 class="unscheduled-action"
@@ -506,6 +510,7 @@
               issue={row.issue}
               row={{ y: row.y, height: row.height }}
               {timeScale}
+              displayRange={issueRange}
               isSummary={row.isSummary}
               summaryRange={summaryFor(row)}
               statusCategory={statusCategoryFor(row.issue)}
@@ -599,7 +604,8 @@
   <g class="connector-overlay" transform="translate(0, {milestoneStripHeight})">
     {#each visibleRows as row (rowKey(row))}
       {#if row.kind === 'issue' && row.issue !== null}
-        {#if row.issue.startDate != null && row.issue.dueDate != null && isEditable(row.issue._id)}
+        {@const issueRange = getIssueBarRange(row.issue)}
+        {#if issueRange !== null && isEditable(row.issue._id)}
           {@const rowIssueId = String(row.issue._id)}
           {@const dragKind = dragState.kind}
           {@const dragSourceId =
@@ -607,8 +613,8 @@
               ? String(dragState.source._id)
               : null}
           {@const dragTargetIssueId = dragKind === 'connector-target-hover' ? String(dragState.target._id) : null}
-          {@const xOv = timeScale.toX(row.issue.startDate)}
-          {@const x2Ov = timeScale.toX(row.issue.dueDate)}
+          {@const xOv = timeScale.toX(issueRange.startDate)}
+          {@const x2Ov = timeScale.toX(issueRange.dueDate)}
           {@const wOv = Math.max(2, x2Ov - xOv + timeScale.pxPerDay)}
           {@const barYOv = row.y + 6}
           {@const barHOv = row.height - 12}

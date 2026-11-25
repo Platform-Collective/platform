@@ -57,6 +57,7 @@ export default mergeIds(trackerId, tracker, {
     Members: '' as IntlString,
     Inbox: '' as IntlString,
     MyIssues: '' as IntlString,
+    Due: '' as IntlString,
     ViewIssue: '' as IntlString,
     IssueCreated: '' as IntlString,
     Issues: '' as IntlString,
