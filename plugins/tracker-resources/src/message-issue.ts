@@ -2,7 +2,7 @@
 
 import type { Attachment } from '@hcengineering/attachment'
 import type { AttachedData, Blob, Markup, Ref } from '@hcengineering/core'
-import { getMetadata } from '@hcengineering/platform'
+import { getMetadata, setPlatformStatus, Severity, Status } from '@hcengineering/platform'
 import presentation, {
   authorizationHeaders,
   deleteFile,
@@ -12,8 +12,10 @@ import presentation, {
 } from '@hcengineering/presentation'
 import { jsonToMarkup, markupToJSON, type MarkupNode, MarkupMarkType, MarkupNodeType } from '@hcengineering/text'
 
+import tracker from './plugin'
+
 const MESSAGE_ISSUE_TITLE_LIMIT = 100
-export const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB = 25
+const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB = 25
 const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT = MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB * 1024 * 1024
 
 function messageText (node: MarkupNode): string {
@@ -137,7 +139,7 @@ function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string 
   return undefined
 }
 
-/** Copy message files and update or remove inline references before saving the issue. */
+/** Copy message files, update inline references and report size omissions before saving the issue. */
 export async function copyMessageAttachments (
   attachments: Array<AttachedData<Attachment>>,
   description: Markup,
@@ -147,11 +149,16 @@ export async function copyMessageAttachments (
   if (attachments.length === 0 && sourceAttachments.length === 0) return { attachments, description }
 
   const doc = markupToJSON(description)
-  const omittedFiles = new Set(
-    [...attachments, ...sourceAttachments]
-      .filter((attachment) => !isMessageBlobId(attachment.file) || !isMessageAttachmentWithinSizeLimit(attachment))
-      .map((attachment) => attachment.file)
-  )
+  const omittedFiles = new Set<Ref<Blob>>()
+  let omittedForSize = false
+  for (const attachment of [...attachments, ...sourceAttachments]) {
+    if (!isMessageAttachmentWithinSizeLimit(attachment)) {
+      omittedForSize = true
+      omittedFiles.add(attachment.file)
+    } else if (!isMessageBlobId(attachment.file)) {
+      omittedFiles.add(attachment.file)
+    }
+  }
   const files = new Map(
     attachments
       .filter((attachment) => isMessageBlobId(attachment.file) && isMessageAttachmentWithinSizeLimit(attachment))
@@ -187,6 +194,7 @@ export async function copyMessageAttachments (
       if (!response.ok) throw new Error(`Failed to copy message attachment: ${response.status}`)
       const blob = await response.blob()
       if (blob.size > MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT) {
+        omittedForSize = true
         omittedFiles.add(attachment.file)
         continue
       }
@@ -203,6 +211,13 @@ export async function copyMessageAttachments (
     }
 
     updateAttachmentReferences(doc, copies, omittedFiles)
+    if (omittedForSize) {
+      await setPlatformStatus(
+        new Status(Severity.WARNING, tracker.string.MessageAttachmentsTooLarge, {
+          limit: MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB
+        })
+      )
+    }
     return {
       attachments: Array.from(files.values())
         .filter((attachment) => copies.has(attachment.file))

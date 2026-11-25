@@ -88,8 +88,8 @@
   import { fillIssueDefaults } from '../issue-defaults'
   import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
+  import { copyMessageAttachments, isMessageAttachmentWithinSizeLimit } from '../message-issue'
   import tracker from '../plugin'
-  import { copyMessageAttachments } from '../message-issue'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
@@ -115,7 +115,7 @@
   export let originalIssue: Issue | undefined
   export let initialData: Pick<IssueDraft, 'title' | 'description'> | undefined = undefined
   export let initialAttachments: AttachedData<Attachment>[] = []
-  const sourceMessageAttachments = initialAttachments
+  let messageAttachments = initialAttachments.filter(isMessageAttachmentWithinSizeLimit)
 
   const mDraftController = new MultipleDraftController(tracker.ids.IssueDraft)
   // Stored across the function/dispatch boundary so the success-path close
@@ -123,7 +123,7 @@
   // to the showPopup callback. Stays undefined on cancel → existing callers
   // see no behavior change.
   let createdIssueId: Ref<Issue> | undefined
-  let copyingAttachments: { current: number; total: number } | undefined
+  let copyingAttachments: { current: number, total: number } | undefined
   const id: Ref<Issue> = generateId()
   const draftController = new DraftController<IssueDraft>(
     shouldSaveDraft ? (mDraftController.getNext() ?? id) : undefined,
@@ -478,9 +478,9 @@
     // to prevent other operations to infer our measurement.
     try {
       const copied = await copyMessageAttachments(
-        initialAttachments,
+        messageAttachments,
         object.description,
-        sourceMessageAttachments,
+        initialAttachments,
         (current, total) => {
           copyingAttachments = { current, total }
         }
@@ -828,7 +828,7 @@
   okLabel={tracker.string.SaveIssue}
   on:close={() => dispatch('close', createdIssueId)}
   onCancel={showConfirmationDialog}
-  hideAttachments={attachments.size === 0 && initialAttachments.length === 0}
+  hideAttachments={attachments.size === 0 && messageAttachments.length === 0}
   hideSubheader={parentIssue == null}
   headerNoPadding
   noFade={true}
@@ -1092,13 +1092,13 @@
     <DocCreateExtComponent manager={docCreateManager} kind={'pool'} space={currentProject} props={extraProps} />
   </svelte:fragment>
   <svelte:fragment slot="attachments">
-    {#each initialAttachments as file}
+    {#each messageAttachments as file}
       <AttachmentPresenter
         value={file}
         showPreview
         removable
         on:remove={() => {
-          initialAttachments = initialAttachments.filter((it) => it !== file)
+          messageAttachments = messageAttachments.filter((it) => it !== file)
         }}
       />
     {/each}

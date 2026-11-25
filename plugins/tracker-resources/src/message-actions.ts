@@ -5,33 +5,17 @@ import attachment from '@hcengineering/attachment'
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
 import type { MessageActionFunction, MessageActionVisibilityTester } from '@hcengineering/communication'
 import { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
-import { getMetadata, setPlatformStatus, Severity, Status, translate, unknownError } from '@hcengineering/platform'
+import { getMetadata, setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { jsonToMarkup } from '@hcengineering/text'
 import { getCurrentResolvedLocation, locationToUrl, showPopup } from '@hcengineering/ui'
 import { encodeObjectURI } from '@hcengineering/view'
 
-import {
-  getMessageAttachmentData,
-  getMessageIssueData,
-  isMessageAttachmentWithinSizeLimit,
-  isMessageBlobId,
-  MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB
-} from './message-issue'
+import { getMessageAttachmentData, getMessageIssueData, isMessageBlobId } from './message-issue'
 import tracker from './plugin'
 
 function canCreateIssue (): boolean {
   return hasAccountRole(getCurrentAccount(), AccountRole.User)
-}
-
-async function warnOnOversizedAttachments (attachments: Array<{ size: number }>): Promise<void> {
-  if (attachments.some((file) => !isMessageAttachmentWithinSizeLimit(file))) {
-    await setPlatformStatus(
-      new Status(Severity.WARNING, tracker.string.MessageAttachmentsTooLarge, {
-        limit: MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB
-      })
-    )
-  }
 }
 
 export async function canCreateIssueFromMessage (doc?: ActivityMessage | ActivityMessage[]): Promise<boolean> {
@@ -58,17 +42,12 @@ export async function createIssueFromMessage (message: ChatMessage): Promise<voi
       translate(tracker.string.NewIssue, {}),
       client.findAll(attachment.class.Attachment, { attachedTo: message._id })
     ])
-    await warnOnOversizedAttachments(attachments)
-
     showPopup(
       tracker.component.CreateIssue,
       {
         shouldSaveDraft: false,
         initialData: getMessageIssueData(message.message, sourceUrl, sourceLabel, fallbackTitle, attachments),
-        initialAttachments: attachments
-          .filter((file) => isMessageBlobId(file.file))
-          .filter(isMessageAttachmentWithinSizeLimit)
-          .map(getMessageAttachmentData)
+        initialAttachments: attachments.filter((file) => isMessageBlobId(file.file)).map(getMessageAttachmentData)
       },
       'top'
     )
@@ -104,8 +83,6 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
       metadata: file.params.metadata,
       lastModified: (file.modified ?? file.created).getTime()
     }))
-    await warnOnOversizedAttachments(messageAttachments)
-
     showPopup(
       tracker.component.CreateIssue,
       {
@@ -117,9 +94,7 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
           fallbackTitle,
           messageAttachments
         ),
-        initialAttachments: messageAttachments
-          .filter((file) => isMessageBlobId(file.file))
-          .filter(isMessageAttachmentWithinSizeLimit)
+        initialAttachments: messageAttachments.filter((file) => isMessageBlobId(file.file))
       },
       'top'
     )

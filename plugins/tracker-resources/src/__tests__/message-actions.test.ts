@@ -5,7 +5,7 @@ import chunter, { type ChatMessage } from '@hcengineering/chunter'
 import { getMessageLink } from '@hcengineering/chunter-resources'
 import { MessageType, type Message } from '@hcengineering/communication-types'
 import { AccountRole, setCurrentAccount, type Account, type AccountUuid, type PersonId } from '@hcengineering/core'
-import { getMetadata, setPlatformStatus, Severity } from '@hcengineering/platform'
+import { getMetadata, setPlatformStatus } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import { getCurrentResolvedLocation, locationToUrl, showPopup } from '@hcengineering/ui'
 
@@ -155,7 +155,7 @@ describe('create issue message actions', () => {
     expect(findAll).not.toHaveBeenCalled()
   })
 
-  it('warns about and omits oversized attachments and inline references from both message actions', async () => {
+  it('passes declared sizes on to the dialog and removes oversized inline references from both message actions', async () => {
     const file = { name: 'file.txt', file: 'blob-id', type: 'text/plain', size: 10, lastModified: 0 }
     const oversized = { ...file, file: 'oversized-blob', size: 25 * 1024 * 1024 + 1 }
     findAll.mockResolvedValue([file, oversized])
@@ -177,7 +177,7 @@ describe('create issue message actions', () => {
 
     await createIssueFromMessage(inlineMessage)
     expect(jest.mocked(showPopup).mock.calls[0][1]).toMatchObject({
-      initialAttachments: [file],
+      initialAttachments: [file, oversized],
       initialData: { description: expect.not.stringContaining(oversized.file) }
     })
 
@@ -193,17 +193,13 @@ describe('create issue message actions', () => {
     )
 
     expect(jest.mocked(showPopup).mock.calls[1][1]).toMatchObject({
-      initialAttachments: [{ ...file, lastModified: message.created.getTime() }],
+      initialAttachments: [
+        { ...file, lastModified: message.created.getTime() },
+        { ...oversized, lastModified: message.created.getTime() }
+      ],
       initialData: { description: expect.not.stringContaining(oversized.file) }
     })
-    expect(setPlatformStatus).toHaveBeenCalledTimes(2)
-    expect(setPlatformStatus).toHaveBeenCalledWith(
-      expect.objectContaining({
-        severity: Severity.WARNING,
-        code: tracker.string.MessageAttachmentsTooLarge,
-        params: { limit: 25 }
-      })
-    )
+    expect(setPlatformStatus).not.toHaveBeenCalled()
   })
 
   it('hides the actions for guests and non-text activity events', async () => {
