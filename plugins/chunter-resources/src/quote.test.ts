@@ -8,6 +8,7 @@ import {
   MarkupMarkType,
   MarkupNodeType
 } from '@hcengineering/text'
+import { markdownToMarkup } from '@hcengineering/text-markdown'
 import { buildQuoteMarkup } from './quote'
 
 describe('buildQuoteMarkup', () => {
@@ -93,6 +94,58 @@ describe('buildQuoteMarkup', () => {
         { type: MarkupNodeType.text, text: '@everyone', marks: [{ type: MarkupMarkType.bold }] },
         { type: MarkupNodeType.text, text: ' ' },
         { type: MarkupNodeType.text, text: '@here' },
+        { type: MarkupNodeType.text, text: ' after' }
+      ]
+    })
+  })
+
+  it('preserves visible text from parsed references without a label and keeps following text', () => {
+    const parsed = markdownToMarkup('Before [Jane](ref://?_class=contact%3Aclass%3APerson&_id=person) after')
+    const reference = parsed.content?.[0].content?.[1]
+
+    expect(reference).toMatchObject({
+      type: MarkupNodeType.reference,
+      attrs: { id: 'person', objectclass: 'contact:class:Person', label: '' },
+      content: [{ type: MarkupNodeType.text, text: 'Jane' }]
+    })
+
+    const quote = markupToJSON(buildQuoteMarkup(jsonToMarkup(parsed), attribution, link))
+
+    expect(quote.content?.[0].content?.[1]).toEqual({
+      type: MarkupNodeType.paragraph,
+      content: [
+        { type: MarkupNodeType.text, text: 'Before ', marks: [] },
+        { type: MarkupNodeType.text, text: '@Jane' },
+        { type: MarkupNodeType.text, text: ' after', marks: [] }
+      ]
+    })
+  })
+
+  it('uses the reference ID when both label and visible text are missing', () => {
+    const message = jsonToMarkup({
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [
+            { type: MarkupNodeType.text, text: 'Before ' },
+            {
+              type: MarkupNodeType.reference,
+              attrs: { id: 'person', objectclass: 'contact:class:Person', label: '' }
+            },
+            { type: MarkupNodeType.text, text: ' after' }
+          ]
+        }
+      ]
+    })
+
+    const quote = markupToJSON(buildQuoteMarkup(message, attribution, link))
+
+    expect(quote.content?.[0].content?.[1]).toEqual({
+      type: MarkupNodeType.paragraph,
+      content: [
+        { type: MarkupNodeType.text, text: 'Before ' },
+        { type: MarkupNodeType.text, text: '@person' },
         { type: MarkupNodeType.text, text: ' after' }
       ]
     })

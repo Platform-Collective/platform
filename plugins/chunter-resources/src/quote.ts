@@ -5,6 +5,22 @@ import { jsonToMarkup, markupToJSON, MarkupMarkType, type MarkupNode, MarkupNode
 
 const QUOTE_BLOCK_LIMIT = 3
 
+function getTextContent (node: MarkupNode): string {
+  const text = node.type === MarkupNodeType.text ? (node.text ?? '') : ''
+  return text + (node.content?.map(getTextContent).join('') ?? '')
+}
+
+function getReferenceText (node: MarkupNode): string {
+  const label = node.attrs?.label
+  if (typeof label === 'string' && label.length > 0) return label
+
+  const visibleText = node.content?.map(getTextContent).join('') ?? ''
+  if (visibleText.length > 0) return visibleText
+
+  const id = node.attrs?.id
+  return typeof id === 'string' ? id : ''
+}
+
 function toQuoteNode (node: MarkupNode): MarkupNode | undefined {
   if (
     node.type === MarkupNodeType.blockquote ||
@@ -14,9 +30,9 @@ function toQuoteNode (node: MarkupNode): MarkupNode | undefined {
     return undefined
   }
   if (node.type === MarkupNodeType.reference) {
-    const label = node.attrs?.label
-    if (typeof label !== 'string' || label.length === 0) return undefined
-    return { type: MarkupNodeType.text, text: `@${label}`, marks: node.marks }
+    const text = getReferenceText(node)
+    if (text.length === 0) return undefined
+    return { type: MarkupNodeType.text, text: `@${text}`, marks: node.marks }
   }
 
   const content = node.content?.map(toQuoteNode).filter((node): node is MarkupNode => node !== undefined)
