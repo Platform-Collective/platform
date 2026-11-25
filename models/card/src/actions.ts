@@ -29,7 +29,7 @@ export function createActions (builder: Builder): void {
     visibilityTester: view.function.CanEditSpace,
     query: {},
     context: {
-      mode: ['context', 'browser'],
+      mode: ['context', 'browser', 'spaceEditor'],
       group: 'edit'
     }
   })

@@ -103,6 +103,11 @@ export async function getActions (
   return filteredActions
 }
 
+/**
+ * Filters action contributions by target, input and visibility.
+ *
+ * @public
+ */
 export async function filterAvailableActions (
   actions: Action[],
   client: Client,

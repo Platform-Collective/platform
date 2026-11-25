@@ -615,8 +615,18 @@ export interface Action<T extends Doc = Doc, P = Record<string, any>> extends Do
  *  panel - for panel based actions.
  *  popup - for popup based actions, like Close of Popup.
  *  input - for input based actions, some actions should be available for input controls.
+ *  spaceEditor - the settings editor action for a space class.
  */
-export type ViewContextType = 'context' | 'workbench' | 'browser' | 'editor' | 'panel' | 'popup' | 'input' | 'none'
+export type ViewContextType =
+  | 'context'
+  | 'workbench'
+  | 'browser'
+  | 'editor'
+  | 'panel'
+  | 'popup'
+  | 'input'
+  | 'spaceEditor'
+  | 'none'
 
 /**
  * @public

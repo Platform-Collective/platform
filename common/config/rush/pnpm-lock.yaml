@@ -6193,6 +6193,18 @@ importers:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../foundations/utils/packages/platform-rig
+      '@hcengineering/presentation':
+        specifier: workspace:^0.7.0
+        version: link:../../packages/presentation
+      '@hcengineering/setting-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/setting-resources
+      '@hcengineering/ui':
+        specifier: workspace:^0.7.0
+        version: link:../../packages/ui
+      '@hcengineering/view-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/view-resources
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
