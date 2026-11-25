@@ -25,7 +25,8 @@ const derived = new TxFactory(core.account.System, true)
 function makeWorld (): {
   create: TxCreateDoc<Issue>
   docs: Map<Ref<Doc>, Doc>
-  history: TxCUD<Doc>[]
+  creates: Map<Ref<Doc>, TxCreateDoc<Doc>>
+  previousUpdates: Map<Ref<Doc>, TxUpdateDoc<Issue>>
   archived: Set<Ref<Space>>
   control: TriggerControl
   findAll: jest.Mock
@@ -41,42 +42,29 @@ function makeWorld (): {
     1
   )
   const docs = new Map<Ref<Doc>, Doc>([[create.objectId, TxProcessor.createDoc2Doc(create)]])
-  const history: TxCUD<Doc>[] = [create]
+  const creates = new Map<Ref<Doc>, TxCreateDoc<Doc>>([[create.objectId, create]])
+  const previousUpdates = new Map<Ref<Doc>, TxUpdateDoc<Issue>>()
   const archived = new Set<Ref<Space>>()
-  const getValue = (doc: Doc, key: string): unknown =>
-    key.split('.').reduce<unknown>((value, part) => (value as Record<string, unknown> | undefined)?.[part], doc)
-  const matches = (doc: Doc, query: Record<string, unknown>): boolean =>
-    Object.entries(query).every(([key, value]) => {
-      if (key === '$or') {
-        return (value as Array<Record<string, unknown>>).some((part) => matches(doc, part))
-      }
-      const actual = getValue(doc, key)
-      if (value !== null && typeof value === 'object') {
-        if ('$in' in value) return (value.$in as unknown[]).includes(actual)
-        if ('$exists' in value) return (actual !== undefined) === value.$exists
-      }
-      return actual === value
-    })
   const findAll = jest.fn(
-    async (
-      _ctx: unknown,
-      cls: string,
-      query: Record<string, unknown>,
-      options?: { showArchived?: boolean, sort?: Record<string, 1 | -1>, limit?: number }
-    ) => {
-      const source = cls === core.class.TxCUD ? history : [...docs.values()].filter((doc) => doc._class === cls)
-      const result = source.filter(
-        (doc) => (!archived.has(doc.space) || options?.showArchived === true) && matches(doc, query)
+    async (_ctx: unknown, cls: string, query: Record<string, unknown>, options?: { showArchived?: boolean }) => {
+      if (cls === core.class.TxUpdateDoc) {
+        const previous = previousUpdates.get(query.objectId as Ref<Doc>)
+        return previous === undefined ? [] : [previous]
+      }
+      if (cls === core.class.TxCreateDoc) {
+        const created = creates.get(query.objectId as Ref<Doc>)
+        return created === undefined ? [] : [created]
+      }
+      const ids = cls === tracker.class.Issue ? (query._id as { $in: Ref<Doc>[] } | undefined)?.$in : undefined
+      const issueIds =
+        cls === tracker.class.IssueIdentifierAlias ? (query.issue as { $in: Ref<Doc>[] } | undefined)?.$in : undefined
+      return [...docs.values()].filter(
+        (doc) =>
+          doc._class === cls &&
+          (!archived.has(doc.space) || options?.showArchived === true) &&
+          (ids === undefined || ids.includes(doc._id)) &&
+          (issueIds === undefined || issueIds.includes((doc as IssueIdentifierAlias).issue))
       )
-      result.sort((a, b) => {
-        for (const [key, order] of Object.entries(options?.sort ?? {})) {
-          const left = getValue(a, key) as string | number
-          const right = getValue(b, key) as string | number
-          if (left !== right) return (left < right ? -1 : 1) * order
-        }
-        return 0
-      })
-      return result.slice(0, options?.limit)
     }
   )
   const control = {
@@ -99,7 +87,6 @@ function makeWorld (): {
       } else if (tx._class === core.class.TxRemoveDoc) {
         docs.delete(cud.objectId)
       }
-      history.push(cud)
     }
   }
 
@@ -108,6 +95,15 @@ function makeWorld (): {
     control.txes = [...txes]
     const result = await OnIssueUpdate(txes, control)
     persist(result)
+    for (const tx of txes) {
+      if (tx._class === core.class.TxCreateDoc) {
+        const createTx = tx as TxCreateDoc<Doc>
+        creates.set(createTx.objectId, createTx)
+      } else if (tx._class === core.class.TxUpdateDoc) {
+        const updateTx = tx as TxUpdateDoc<Issue>
+        if (updateTx.operations.identifier !== undefined) previousUpdates.set(updateTx.objectId, updateTx)
+      }
+    }
     return result
   }
 
@@ -121,7 +117,7 @@ function makeWorld (): {
       (doc): doc is IssueIdentifierAlias => doc._class === tracker.class.IssueIdentifierAlias
     )
   }
-  return { create, docs, history, archived, control, findAll, apply, move, aliases }
+  return { create, docs, creates, previousUpdates, archived, control, findAll, apply, move, aliases }
 }
 
 it('writes aliases from ordinary issue updates without any new client payload', async () => {
@@ -208,41 +204,46 @@ it('cleans aliases through the project deletion cascade, including archived alia
 it('records only the new transition, without backfilling historical moves', async () => {
   const world = makeWorld()
   const oldMove = world.move('B-7', B) as TxUpdateDoc<Issue>
-  world.history.push(oldMove)
+  world.previousUpdates.set(world.create.objectId, oldMove)
   TxProcessor.updateDoc2Doc(world.docs.get(world.create.objectId) as Issue, oldMove)
   await world.apply([world.move('C-3', C)])
   expect(world.aliases().map((alias) => alias.identifier)).toEqual(['B-7'])
 })
 
-it('queries only creates and identifier updates with a narrow projection', async () => {
+it('queries the latest pre-batch identifier update and falls back to a projected create', async () => {
   const world = makeWorld()
-  await world.apply([world.move('B-7', B)])
-  const historyCall = world.findAll.mock.calls.find((call) => call[1] === core.class.TxCUD)
-  expect(historyCall?.[2]).toEqual({
-    objectId: { $in: ['issue'] },
-    $or: [
-      { _class: core.class.TxCreateDoc },
-      { _class: core.class.TxUpdateDoc, 'operations.identifier': { $exists: true } }
-    ]
+  const move = world.move('B-7', B)
+  await world.apply([move])
+  const updateCall = world.findAll.mock.calls.find((call) => call[1] === core.class.TxUpdateDoc)
+  expect(updateCall?.[2]).toEqual({
+    _id: { $nin: [move._id] },
+    objectId: 'issue',
+    'operations.identifier': { $exists: true }
   })
-  expect(historyCall?.[3]).toMatchObject({
+  expect(updateCall?.[3]).toEqual({
     sort: { modifiedOn: -1, _id: -1 },
-    projection: { _id: 1, _class: 1, objectId: 1, modifiedOn: 1, attributes: 1, operations: 1 }
+    limit: 1,
+    projection: { 'operations.identifier': 1 }
   })
+  const createCall = world.findAll.mock.calls.find((call) => call[1] === core.class.TxCreateDoc)
+  expect(createCall?.[2]).toEqual({ _id: { $nin: [move._id] }, objectId: 'issue' })
+  expect(createCall?.[3]).toEqual({ limit: 1, projection: { 'attributes.identifier': 1 } })
 })
 
 it('uses the latest identifier update when the create transaction is no longer available', async () => {
   const world = makeWorld()
   const oldMove = world.move('B-7', B) as TxUpdateDoc<Issue>
-  world.history.splice(0, 1, oldMove)
+  world.creates.delete(world.create.objectId)
+  world.previousUpdates.set(world.create.objectId, oldMove)
   TxProcessor.updateDoc2Doc(world.docs.get(world.create.objectId) as Issue, oldMove)
   await world.apply([world.move('C-3', C)])
   expect(world.aliases().map((alias) => alias.identifier)).toEqual(['B-7'])
+  expect(world.findAll.mock.calls.some((call) => call[1] === core.class.TxCreateDoc)).toBe(false)
 })
 
 it('logs when an identifier change has no recoverable previous identifier', async () => {
   const world = makeWorld()
-  world.history.length = 0
+  world.creates.clear()
   await world.apply([world.move('B-7', B)])
   expect(world.aliases()).toEqual([])
   expect(world.control.ctx.warn).toHaveBeenCalledWith(

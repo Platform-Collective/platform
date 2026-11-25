@@ -3,6 +3,7 @@
 import core, {
   SortingOrder,
   TxProcessor,
+  type Doc,
   type Ref,
   type Tx,
   type TxCUD,
@@ -11,6 +12,39 @@ import core, {
 } from '@hcengineering/core'
 import { type TriggerControl } from '@hcengineering/server-core'
 import tracker, { type Issue } from '@hcengineering/tracker'
+
+async function findPreviousIdentifier (
+  issueId: Ref<Issue>,
+  pending: Ref<Tx>[],
+  control: TriggerControl
+): Promise<string | undefined> {
+  const updateProjection: Record<string, 0 | 1> = { 'operations.identifier': 1 }
+  const updates = await control.findAll(
+    control.ctx,
+    core.class.TxUpdateDoc,
+    {
+      _id: { $nin: pending as Ref<TxUpdateDoc<Doc>>[] },
+      objectId: issueId,
+      'operations.identifier': { $exists: true }
+    },
+    {
+      sort: { modifiedOn: SortingOrder.Descending, _id: SortingOrder.Descending },
+      limit: 1,
+      projection: updateProjection
+    }
+  )
+  const previousUpdate = updates[0] as TxUpdateDoc<Issue> | undefined
+  if (previousUpdate !== undefined) return previousUpdate.operations.identifier
+
+  const createProjection: Record<string, 0 | 1> = { 'attributes.identifier': 1 }
+  const creates = await control.findAll(
+    control.ctx,
+    core.class.TxCreateDoc,
+    { _id: { $nin: pending as Ref<TxCreateDoc<Doc>>[] }, objectId: issueId },
+    { limit: 1, projection: createProjection }
+  )
+  return (creates[0] as TxCreateDoc<Issue> | undefined)?.attributes.identifier
+}
 
 /** Maintain identifier history for every issue writer, including older clients and integrations. */
 export async function updateIssueIdentifierAliases (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
@@ -24,46 +58,18 @@ export async function updateIssueIdentifierAliases (txes: Tx[], control: Trigger
   if (updates.length === 0) return []
 
   const ids = [...new Set(updates.map((tx) => tx.objectId))]
-  const historyProjection: Record<string, 0 | 1> = {
-    _id: 1,
-    _class: 1,
-    objectId: 1,
-    modifiedOn: 1,
-    attributes: 1,
-    operations: 1
-  }
-  const [issues, aliases, history] = await Promise.all([
+  const pending = control.txes.map((tx) => tx._id)
+  const [issues, aliases, previousIdentifiers] = await Promise.all([
     control.findAll(control.ctx, tracker.class.Issue, { _id: { $in: ids } }, { showArchived: true }),
     control.findAll(control.ctx, tracker.class.IssueIdentifierAlias, { issue: { $in: ids } }, { showArchived: true }),
-    control.findAll(
-      control.ctx,
-      core.class.TxCUD,
-      {
-        objectId: { $in: ids },
-        $or: [
-          { _class: core.class.TxCreateDoc },
-          { _class: core.class.TxUpdateDoc, 'operations.identifier': { $exists: true } }
-        ]
-      },
-      {
-        sort: { modifiedOn: SortingOrder.Descending, _id: SortingOrder.Descending },
-        projection: historyProjection
-      }
-    )
+    Promise.all(ids.map(async (id) => [id, await findPreviousIdentifier(id, pending, control)] as const))
   ])
+  const previous = new Map(previousIdentifiers)
   const result: Tx[] = []
-  const pending = new Set(control.txes.map((tx) => tx._id))
   const matched = new Set<Ref<Tx>>(updates.map((tx) => tx._id))
   for (const issue of issues) {
-    // Triggers run after persistence. Start with the latest relevant entry before
-    // this batch, then replay it in order to retain every identifier.
-    const previous = history.find((tx) => tx.objectId === issue._id && !pending.has(tx._id))
-    let identifier =
-      previous?._class === core.class.TxCreateDoc
-        ? (previous as TxCreateDoc<Issue>).attributes.identifier
-        : previous?._class === core.class.TxUpdateDoc
-          ? (previous as TxUpdateDoc<Issue>).operations.identifier
-          : undefined
+    // Replay this batch in order so multiple moves retain every identifier.
+    let identifier = previous.get(issue._id)
     for (const tx of control.txes) {
       const cud = tx as TxCUD<Issue>
       if (cud.objectId !== issue._id) continue
