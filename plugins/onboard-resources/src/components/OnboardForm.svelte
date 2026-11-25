@@ -14,7 +14,13 @@
 -->
 <script lang="ts">
   import { LoginInfo, WorkspaceLoginInfo } from '@hcengineering/login'
-  import { getAccount, getAccountDisplayName, getWorkspaces, navigateToWorkspace } from '@hcengineering/login-resources'
+  import {
+    fetchLoginCapabilities,
+    getAccount,
+    getAccountDisplayName,
+    getWorkspaces,
+    navigateToWorkspace
+  } from '@hcengineering/login-resources'
   import { OK } from '@hcengineering/platform'
   import { onMount } from 'svelte'
   import { Analytics } from '@hcengineering/analytics'
@@ -32,6 +38,7 @@
 
   let account: LoginInfo | null | undefined = undefined
   let step: OnboardSteps = OnboardSteps.Workspace
+  let workspaceCreationAllowed = false
 
   function handleStepEvent(event: CustomEvent<LoginInfo | WorkspaceLoginInfo | undefined>): void {
     if (event.detail != null) {
@@ -57,6 +64,14 @@
       await ensureConfirmed(account)
     } else {
       goToLogin('login')
+      return
+    }
+
+    const capabilities = await fetchLoginCapabilities(account.token)
+    workspaceCreationAllowed = capabilities.workspaceCreationAllowed
+    if (!workspaceCreationAllowed) {
+      goToLogin('selectWorkspace')
+      return
     }
 
     const workspaces = await getWorkspaces()
@@ -76,7 +91,7 @@
   }
 </script>
 
-{#if account}
+{#if account && workspaceCreationAllowed}
   {#if step === OnboardSteps.Workspace}
     <OnboardWorkspaceForm {account} on:step={handleStepEvent} />
   {:else if step === OnboardSteps.User}
