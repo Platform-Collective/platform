@@ -56,9 +56,7 @@ export function createDuplicateTargetFilter (
     if (matchQuery([doc], query, tracker.class.Issue, hierarchy).length === 0) return false
     if (guest === undefined) return true
     return (
-      (doc.createdBy !== undefined &&
-        Array.isArray(guest.socialIds) &&
-        guest.socialIds.includes(doc.createdBy)) ||
+      (doc.createdBy !== undefined && Array.isArray(guest.socialIds) && guest.socialIds.includes(doc.createdBy)) ||
       guest.collaboratorOf.has(doc._id)
     )
   }

@@ -24,12 +24,7 @@ const status = (id: string, category: Ref<StatusCategory>): Status => {
   return result as Status
 }
 
-function createIssue (
-  id: string,
-  space: string,
-  statusId: Ref<Status>,
-  createdBy?: PersonId
-): Issue {
+function createIssue (id: string, space: string, statusId: Ref<Status>, createdBy?: PersonId): Issue {
   return {
     _id: id,
     _class: tracker.class.Issue,
@@ -61,14 +56,7 @@ function createStorage (): { db: ModelDb, hierarchy: Hierarchy, factory: TxFacto
 }
 
 async function addDoc<T extends Doc> (db: ModelDb, factory: TxFactory, doc: T): Promise<void> {
-  const tx = factory.createTxCreateDoc(
-    doc._class,
-    doc.space,
-    doc,
-    doc._id,
-    undefined,
-    doc.createdBy
-  )
+  const tx = factory.createTxCreateDoc(doc._class, doc.space, doc, doc._id, undefined, doc.createdBy)
   await db.tx(tx)
 }
 
@@ -123,9 +111,7 @@ it('uses real storage and guest rules to select only editable creator or collabo
     lost
   )
   const candidates = await db.findAll(tracker.class.Issue, query)
-  expect(new Set(candidates.map((issue) => issue._id))).toEqual(
-    new Set([creator._id, collaborator._id, unrelated._id])
-  )
+  expect(new Set(candidates.map((issue) => issue._id))).toEqual(new Set([creator._id, collaborator._id, unrelated._id]))
 
   const collaborations = await db.findAll(core.class.Collaborator, { collaborator: guest.uuid })
   const guestFilter = createDuplicateTargetFilter(query, hierarchy, {

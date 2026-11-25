@@ -10,12 +10,14 @@ it('registers mark-as-duplicate with its own icon and visibility tester', () => 
   const builder = new Builder()
   createActions(builder, 'issues', 'components', 'my-issues')
 
-  const tx = builder.getTxes().find(
-    (candidate): candidate is TxCreateDoc<Action> =>
-      candidate._class === core.class.TxCreateDoc &&
-      'objectId' in candidate &&
-      candidate.objectId === tracker.action.MarkAsDuplicate
-  )
+  const tx = builder
+    .getTxes()
+    .find(
+      (candidate): candidate is TxCreateDoc<Action> =>
+        candidate._class === core.class.TxCreateDoc &&
+        'objectId' in candidate &&
+        candidate.objectId === tracker.action.MarkAsDuplicate
+    )
   if (tx === undefined) throw new Error('Mark-as-duplicate action was not registered')
   const action = TxProcessor.createDoc2Doc(tx)
 
