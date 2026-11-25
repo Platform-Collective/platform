@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import core, {
+  groupByArray,
   SortingOrder,
   TxProcessor,
   type Doc,
@@ -12,6 +13,8 @@ import core, {
 } from '@hcengineering/core'
 import { type TriggerControl } from '@hcengineering/server-core'
 import tracker, { type Issue } from '@hcengineering/tracker'
+
+const HISTORY_LOOKUP_CONCURRENCY = 4
 
 async function findPreviousIdentifier (
   issueId: Ref<Issue>,
@@ -57,49 +60,82 @@ export async function updateIssueIdentifierAliases (txes: Tx[], control: Trigger
   )
   if (updates.length === 0) return []
 
-  const ids = [...new Set(updates.map((tx) => tx.objectId))]
-  const pending = control.txes.map((tx) => tx._id)
-  const [issues, aliases, previousIdentifiers] = await Promise.all([
+  const issueIds = new Set(updates.map((tx) => tx.objectId))
+  const ids = [...issueIds]
+  const pending = groupByArray(
+    (control.txes as TxCUD<Issue>[]).filter((tx) => issueIds.has(tx.objectId)),
+    (tx) => tx.objectId
+  )
+  const [issues, aliases] = await Promise.all([
     control.findAll(control.ctx, tracker.class.Issue, { _id: { $in: ids } }, { showArchived: true }),
-    control.findAll(control.ctx, tracker.class.IssueIdentifierAlias, { issue: { $in: ids } }, { showArchived: true }),
-    Promise.all(ids.map(async (id) => [id, await findPreviousIdentifier(id, pending, control)] as const))
+    control.findAll(control.ctx, tracker.class.IssueIdentifierAlias, { issue: { $in: ids } }, { showArchived: true })
   ])
-  const previous = new Map(previousIdentifiers)
-  const result: Tx[] = []
+  const aliasesByIssue = groupByArray(aliases, (alias) => alias.issue)
   const matched = new Set<Ref<Tx>>(updates.map((tx) => tx._id))
-  for (const issue of issues) {
-    // Replay this batch in order so multiple moves retain every identifier.
-    let identifier = previous.get(issue._id)
-    for (const tx of control.txes) {
-      const cud = tx as TxCUD<Issue>
-      if (cud.objectId !== issue._id) continue
-      if (tx._class === core.class.TxCreateDoc) {
-        identifier = TxProcessor.createDoc2Doc(cud as TxCreateDoc<Issue>).identifier
-      } else if (tx._class === core.class.TxUpdateDoc) {
-        const next = (tx as TxUpdateDoc<Issue>).operations.identifier
-        if (next === undefined) continue
-        if (matched.has(tx._id) && identifier !== next) {
-          if (identifier === undefined) {
-            control.ctx.warn('Cannot create issue identifier alias without previous identifier', {
-              issueId: issue._id,
-              txId: tx._id
-            })
-          } else {
-            result.push(
-              control.txFactory.createTxCreateDoc(tracker.class.IssueIdentifierAlias, issue.space, {
-                identifier,
-                issue: issue._id
-              })
+  const result: Tx[] = []
+  for (let offset = 0; offset < issues.length; offset += HISTORY_LOOKUP_CONCURRENCY) {
+    const batch = issues.slice(offset, offset + HISTORY_LOOKUP_CONCURRENCY)
+    const results = await Promise.all(
+      batch.map(async (issue) => {
+        const changes = await replayIdentifierUpdates(issue, pending.get(issue._id) ?? [], matched, control)
+        for (const alias of aliasesByIssue.get(issue._id) ?? []) {
+          if (alias.space !== issue.space) {
+            changes.push(
+              control.txFactory.createTxUpdateDoc(alias._class, alias.space, alias._id, { space: issue.space })
             )
           }
         }
-        identifier = next
-      }
+        return changes
+      })
+    )
+    for (const changes of results) {
+      for (const change of changes) result.push(change)
     }
-    for (const alias of aliases) {
-      if (alias.issue === issue._id && alias.space !== issue.space) {
-        result.push(control.txFactory.createTxUpdateDoc(alias._class, alias.space, alias._id, { space: issue.space }))
+  }
+  return result
+}
+
+async function replayIdentifierUpdates (
+  issue: Issue,
+  pending: TxCUD<Issue>[],
+  matched: Set<Ref<Tx>>,
+  control: TriggerControl
+): Promise<Tx[]> {
+  const result: Tx[] = []
+  let identifier: string | undefined
+  let needsHistory = true
+  // Replay the issue's transactions in order so multiple moves retain every identifier.
+  for (const tx of pending) {
+    if (tx._class === core.class.TxCreateDoc) {
+      identifier = (tx as TxCreateDoc<Issue>).attributes.identifier
+      needsHistory = false
+    } else if (tx._class === core.class.TxUpdateDoc) {
+      const next = (tx as TxUpdateDoc<Issue>).operations.identifier
+      if (next === undefined) continue
+      if (matched.has(tx._id)) {
+        if (needsHistory) {
+          identifier = await findPreviousIdentifier(
+            issue._id,
+            pending.map((tx) => tx._id),
+            control
+          )
+        }
+        if (identifier === undefined) {
+          control.ctx.warn('Cannot create issue identifier alias without previous identifier', {
+            issueId: issue._id,
+            txId: tx._id
+          })
+        } else if (identifier !== next) {
+          result.push(
+            control.txFactory.createTxCreateDoc(tracker.class.IssueIdentifierAlias, issue.space, {
+              identifier,
+              issue: issue._id
+            })
+          )
+        }
       }
+      identifier = next
+      needsHistory = false
     }
   }
   return result

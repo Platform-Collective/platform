@@ -266,6 +266,7 @@ export async function OnComponentRemove (txes: Tx[], control: TriggerControl): P
  */
 export async function OnIssueUpdate (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = await updateIssueIdentifierAliases(txes, control)
+  const removedIssues = new Set<Ref<Issue>>()
   // Issues whose parents info, or that of their descendants, may be stale:
   // title, identifier and space are denormalised into the descendants'
   // parents info (identifier and space change when an issue tree is moved to
@@ -311,15 +312,7 @@ export async function OnIssueUpdate (txes: Tx[], control: TriggerControl): Promi
     if (actualTx._class === core.class.TxRemoveDoc) {
       const removeTx = actualTx as TxRemoveDoc<Issue>
       if (control.hierarchy.isDerived(removeTx.objectClass, tracker.class.Issue)) {
-        const aliases = await control.findAll(
-          control.ctx,
-          tracker.class.IssueIdentifierAlias,
-          { issue: removeTx.objectId },
-          { showArchived: true }
-        )
-        result.push(
-          ...aliases.map((alias) => control.txFactory.createTxRemoveDoc(alias._class, alias.space, alias._id))
-        )
+        removedIssues.add(removeTx.objectId)
         const parents = await findRemovedIssueParents(removeTx, control)
         updateIssueParentEstimations(
           {
@@ -334,6 +327,17 @@ export async function OnIssueUpdate (txes: Tx[], control: TriggerControl): Promi
           []
         )
       }
+    }
+  }
+  if (removedIssues.size > 0) {
+    const aliases = await control.findAll(
+      control.ctx,
+      tracker.class.IssueIdentifierAlias,
+      { issue: { $in: [...removedIssues] } },
+      { showArchived: true }
+    )
+    for (const alias of aliases) {
+      result.push(control.txFactory.createTxRemoveDoc(alias._class, alias.space, alias._id))
     }
   }
   result.push(...(await refreshIssueParents(Array.from(changedParents), control)))
