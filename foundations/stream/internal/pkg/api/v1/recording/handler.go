@@ -61,7 +61,7 @@ func (h *recordingHandler) initialize() {
 
 	tusComposer := tusd.NewStoreComposer()
 	tusComposer.UseCore(coordinator)
-	if h.cfg.RecordingRecoveryEnabled {
+	if coordinator.RecoveryEnabled() {
 		memorylocker.New().UseIn(tusComposer)
 	}
 	tusComposer.UseTerminater(coordinator)

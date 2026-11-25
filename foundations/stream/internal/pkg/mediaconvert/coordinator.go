@@ -31,6 +31,7 @@ import (
 	"github.com/hcengineering/stream/internal/pkg/config"
 	"github.com/hcengineering/stream/internal/pkg/log"
 	"github.com/hcengineering/stream/internal/pkg/manifest"
+	"github.com/hcengineering/stream/internal/pkg/sharedpipe"
 	"github.com/hcengineering/stream/internal/pkg/storage"
 	"github.com/hcengineering/stream/internal/pkg/uploader"
 	"github.com/tus/tusd/v2/pkg/handler"
@@ -63,10 +64,14 @@ func NewStreamCoordinator(ctx context.Context, c *config.Config) *StreamCoordina
 	effective := *c
 	c = &effective
 	if c.RecordingRecoveryEnabled {
-		if c.EndpointURL == nil || c.EndpointURL.Scheme != "datalake" {
+		switch {
+		case !c.RecordingRecoveryAcknowledged:
+			log.FromContext(ctx).Warn("recording recovery disabled: explicitly acknowledge the one-replica or sticky-routing requirement")
+			c.RecordingRecoveryEnabled = false
+		case c.EndpointURL == nil || c.EndpointURL.Scheme != "datalake":
 			log.FromContext(ctx).Warn("recording recovery disabled: a Datalake multipart backend is required")
 			c.RecordingRecoveryEnabled = false
-		} else {
+		default:
 			log.FromContext(ctx).Warn("recording recovery uses process-local state: deploy one stream replica or sticky routing for creation and every upload request")
 		}
 	}
@@ -88,6 +93,11 @@ func NewStreamCoordinator(ctx context.Context, c *config.Config) *StreamCoordina
 	}
 }
 
+// RecoveryEnabled reports whether recovery survived startup configuration checks.
+func (s *StreamCoordinator) RecoveryEnabled() bool {
+	return s.conf.RecordingRecoveryEnabled
+}
+
 // NewUpload creates a new worker with passed parameters
 func (s *StreamCoordinator) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
 	if info.ID == "" {
@@ -102,6 +112,12 @@ func (s *StreamCoordinator) NewUpload(ctx context.Context, info handler.FileInfo
 		done:         make(chan struct{}),
 		lastActivity: time.Now(),
 		legacy:       !s.conf.RecordingRecoveryEnabled,
+	}
+	if stream.legacy {
+		stream.writer = sharedpipe.NewWriter()
+		if err := stream.start(); err != nil {
+			return nil, err
+		}
 	}
 
 	width, err := strconv.Atoi(info.MetaData["width"])

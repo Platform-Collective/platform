@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hcengineering/stream/internal/pkg/sharedpipe"
 	"github.com/hcengineering/stream/internal/pkg/storage"
 	"github.com/hcengineering/stream/internal/pkg/tracing"
 	"github.com/pkg/errors"
@@ -34,6 +35,8 @@ type Stream struct {
 	mu               sync.Mutex
 	logger           *zap.Logger
 	info             handler.FileInfo
+	writer           *sharedpipe.Writer
+	reader           *sharedpipe.Reader
 	storage          storage.Storage
 	multipart        *MultipartUpload
 	done             chan struct{}
@@ -75,8 +78,14 @@ func (w *Stream) WriteChunk(ctx context.Context, offset int64, src io.Reader) (i
 	if w.terminated || w.completionFailed {
 		return 0, handler.ErrNotFound
 	}
-	if w.completed || offset != w.info.Offset {
+	if w.completed || (!w.legacy && offset != w.info.Offset) {
 		return 0, errors.New("recording offset mismatch or upload already completed")
+	}
+	if w.legacy {
+		written, err := w.writer.Write(data)
+		if err != nil {
+			return int64(written), err
+		}
 	}
 	if w.multipart == nil && w.legacy {
 		w.info.Offset += int64(len(data))
@@ -134,8 +143,12 @@ func (w *Stream) GetInfo(ctx context.Context) (handler.FileInfo, error) {
 	return w.info, nil
 }
 
-// GetReader is disabled: recordings have no live download or transcode consumer.
+// GetReader returns the legacy shared pipe; recovery uploads are read from object storage after completion.
 func (w *Stream) GetReader(ctx context.Context) (io.ReadCloser, error) {
+	if w.legacy {
+		w.logger.Debug("GetReader is executed, creating current reader...")
+		return w.reader, nil
+	}
 	return nil, errors.New("recording download is disabled")
 }
 
@@ -163,6 +176,11 @@ func (w *Stream) terminateLocked(ctx context.Context) error {
 		return nil
 	}
 	w.terminated = true
+	if w.legacy {
+		if err := w.writer.Close(); err != nil {
+			return err
+		}
+	}
 	w.doneOnce.Do(func() { close(w.done) })
 	if w.multipart != nil {
 		return w.multipart.Terminate(ctx)
@@ -201,6 +219,11 @@ func (w *Stream) finishLocked(ctx context.Context) error {
 	}
 	if w.completed {
 		return nil
+	}
+	if w.legacy {
+		if err := w.writer.Close(); err != nil {
+			return err
+		}
 	}
 	if w.multipart == nil && w.legacy {
 		w.completed = true
@@ -266,4 +289,10 @@ func (w *Stream) finishLocked(ctx context.Context) error {
 func (s *StreamCoordinator) AsConcatableUpload(upload handler.Upload) handler.ConcatableUpload {
 	s.logger.Debug("AsConcatableUpload is executed")
 	return upload.(*Stream)
+}
+
+func (w *Stream) start() error {
+	defer w.logger.Debug("start done")
+	w.reader = w.writer.Transpile()
+	return nil
 }

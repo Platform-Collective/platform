@@ -17,6 +17,7 @@ import (
 
 	"github.com/hcengineering/stream/internal/pkg/config"
 	"github.com/hcengineering/stream/internal/pkg/log"
+	"github.com/hcengineering/stream/internal/pkg/sharedpipe"
 	"github.com/hcengineering/stream/internal/pkg/storage"
 	"github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/memorylocker"
@@ -99,10 +100,14 @@ func newRecording(t *testing.T) (*Stream, *recordingStorage, context.Context) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Stream{
-		info: info, multipart: multipart, storage: stg, logger: zap.NewNop(),
+	w := &Stream{
+		info: info, multipart: multipart, storage: stg, logger: zap.NewNop(), writer: sharedpipe.NewWriter(),
 		done: make(chan struct{}), lastActivity: time.Now(),
-	}, stg, ctx
+	}
+	if err := w.start(); err != nil {
+		t.Fatal(err)
+	}
+	return w, stg, ctx
 }
 
 func TestFailedPartRetainsBytesAndBoundsFurtherAcceptance(t *testing.T) {
@@ -213,7 +218,7 @@ func TestCompleteRetryDoesNotDuplicateFinalPart(t *testing.T) {
 func recordingHTTP(t *testing.T, w *Stream, ctx context.Context) (*StreamCoordinator, http.Handler) {
 	t.Helper()
 	coordinator := NewStreamCoordinator(ctx, &config.Config{
-		Timeout: time.Minute, RecordingRecoveryEnabled: true,
+		Timeout: time.Minute, RecordingRecoveryEnabled: true, RecordingRecoveryAcknowledged: true,
 		EndpointURL: &url.URL{Scheme: "datalake", Host: "localhost"},
 	})
 	coordinator.streams.Store(w.info.ID, w)
@@ -297,7 +302,7 @@ func TestHTTPCompletionVisibility(t *testing.T) {
 func TestCoordinatorMissingAndUnsupportedBackend(t *testing.T) {
 	ctx := recordingContext(t)
 	coordinator := NewStreamCoordinator(ctx, &config.Config{
-		RecordingRecoveryEnabled: true, EndpointURL: &url.URL{Scheme: "datalake", Host: "localhost"},
+		RecordingRecoveryEnabled: true, RecordingRecoveryAcknowledged: true, EndpointURL: &url.URL{Scheme: "datalake", Host: "localhost"},
 	})
 	if _, err := coordinator.GetUpload(ctx, "missing"); !errors.Is(err, handler.ErrNotFound) {
 		t.Fatal(err)
@@ -343,7 +348,7 @@ func TestTerminateDoesNotBlockOnRequestBodyAndWriteCannotAppendAfterIt(t *testin
 func TestTimeoutRefreshAndCompletedRetention(t *testing.T) {
 	w, _, ctx := newRecording(t)
 	coordinator := NewStreamCoordinator(ctx, &config.Config{
-		Timeout: 80 * time.Millisecond, RecordingRecoveryEnabled: true,
+		Timeout: 80 * time.Millisecond, RecordingRecoveryEnabled: true, RecordingRecoveryAcknowledged: true,
 		EndpointURL: &url.URL{Scheme: "datalake", Host: "localhost"},
 	})
 	coordinator.streams.Store(w.info.ID, w)
@@ -547,18 +552,47 @@ func TestRecoveryProtocolIsOptIn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n, err := upload.WriteChunk(ctx, 0, bytes.NewReader([]byte("legacy"))); n != 6 || err != nil {
-		t.Fatalf("default backend behavior changed: %d, %v", n, err)
+	if n, err := upload.WriteChunk(ctx, 17, bytes.NewReader([]byte("legacy"))); n != 6 || err != nil {
+		t.Fatalf("default offset behavior changed: %d, %v", n, err)
+	}
+	reader, err := upload.GetReader(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	got := make([]byte, 6)
+	if _, err := io.ReadFull(reader, got); err != nil || !bytes.Equal(got, []byte("legacy")) {
+		t.Fatalf("legacy shared pipe changed: %q, %v", got, err)
 	}
 	if err := upload.FinishUpload(ctx); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := reader.Read(make([]byte, 1)); !errors.Is(err, io.EOF) {
+		t.Fatalf("legacy shared pipe did not close: %v", err)
+	}
+}
+
+func TestRecoveryRequiresDeploymentAcknowledgement(t *testing.T) {
+	ctx := recordingContext(t)
+	conf := &config.Config{
+		RecordingRecoveryEnabled: true,
+		EndpointURL:              &url.URL{Scheme: "datalake", Host: "localhost"},
+	}
+	coordinator := NewStreamCoordinator(ctx, conf)
+	if coordinator.RecoveryEnabled() {
+		t.Fatal("recovery enabled without explicit deployment acknowledgement")
+	}
+	conf.RecordingRecoveryAcknowledged = true
+	coordinator = NewStreamCoordinator(ctx, conf)
+	if !coordinator.RecoveryEnabled() {
+		t.Fatal("acknowledged recovery did not enable")
 	}
 }
 
 func TestRecoveryMisconfigurationIsHandledAtStartup(t *testing.T) {
 	ctx := recordingContext(t)
 	for _, endpoint := range []*url.URL{nil, {Scheme: "s3", Host: "localhost"}} {
-		conf := &config.Config{Timeout: time.Minute, RecordingRecoveryEnabled: true, EndpointURL: endpoint}
+		conf := &config.Config{Timeout: time.Minute, RecordingRecoveryEnabled: true, RecordingRecoveryAcknowledged: true, EndpointURL: endpoint}
 		coordinator := NewStreamCoordinator(ctx, conf)
 		if coordinator.conf.RecordingRecoveryEnabled {
 			t.Fatal("unsupported backend left recovery enabled until the first recording")
@@ -571,7 +605,7 @@ func TestRecoveryMisconfigurationIsHandledAtStartup(t *testing.T) {
 
 func TestLegacyRequestBodyIsNotTruncated(t *testing.T) {
 	ctx := recordingContext(t)
-	w := &Stream{info: handler.FileInfo{SizeIsDeferred: true}, legacy: true}
+	w := &Stream{info: handler.FileInfo{SizeIsDeferred: true}, legacy: true, writer: sharedpipe.NewWriter()}
 	data := bytes.Repeat([]byte{7}, 4*minPartSize+2)
 	if n, err := w.WriteChunk(ctx, 0, bytes.NewReader(data)); n != int64(len(data)) || err != nil {
 		t.Fatalf("legacy body was truncated: %d of %d bytes, %v", n, len(data), err)
@@ -586,7 +620,7 @@ func TestLegacyMultipartWriteReportsFlushErrors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := &Stream{info: info, legacy: true, multipart: multipart, logger: zap.NewNop()}
+	w := &Stream{info: info, legacy: true, writer: sharedpipe.NewWriter(), multipart: multipart, logger: zap.NewNop()}
 	if _, err := w.WriteChunk(ctx, 0, bytes.NewReader(bytes.Repeat([]byte{7}, minPartSize))); err == nil {
 		t.Fatal("legacy upload reported success after a failed multipart flush")
 	}
