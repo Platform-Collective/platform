@@ -327,14 +327,25 @@ export function computePairApplyScope (endpointA: string, endpointB: string): st
  * bidirectionality for an existing one-way pair) still guard that side.
  *
  * - `createForward` flags whether the apply creates the forward rule
- *   (A -> B). When true, add a filter that rejects the apply if any
- *   forward rule already exists between the same ordered pair.
+ *   (A -> B). When true, BOTH direction guards are emitted so that two
+ *   editors inserting a one-way pair from opposite endpoints cannot each
+ *   land a primary rule (they would otherwise each guard only their own
+ *   direction and both would succeed). The second editor's save hits the
+ *   reverse guard against the row the first editor already wrote.
  * - `createReverse` flags whether the apply creates the reverse rule
- *   (B -> A). Same shape, swapped endpoints.
+ *   (B -> A) during an EDIT of an already-forward-persisted pair - i.e.
+ *   turning a one-way into bidirectional. In that case the forward row
+ *   already exists in storage, so emitting the forward guard would reject
+ *   every such edit; only the reverse guard is emitted.
  *
  * Returns the empty array when neither direction is being created
  * (pure edit of existing rules). The caller attaches each filter with
  * `ops.notMatch(WorkflowRule, filter)`.
+ *
+ * This both-directions-on-create rule lives in the helper (not in the
+ * Svelte caller) so `pure.spec.ts` exercises the same production code the
+ * UI runs. A future refactor of `save()` cannot silently drop the
+ * opposite-endpoint guard without the regression test catching it.
  */
 export function computeDuplicateNotMatchFilters (
   currentSpace: string,
@@ -344,6 +355,8 @@ export function computeDuplicateNotMatchFilters (
   const filters: Array<{ space: string, linkedProject: string }> = []
   if (opts.createForward) {
     filters.push({ space: currentSpace, linkedProject })
+    filters.push({ space: linkedProject, linkedProject: currentSpace })
+    return filters
   }
   if (opts.createReverse) {
     filters.push({ space: linkedProject, linkedProject: currentSpace })
