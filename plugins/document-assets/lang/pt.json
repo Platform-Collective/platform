@@ -36,6 +36,7 @@
     "NoHistory": "Sem histórico anterior",
     "Untitled": "Sin título",
     "Subpage": "Subpágina",
+    "SubpageLinkFailed": "A subpágina \"{title}\" foi criada, mas não foi possível inserir a ligação. Encontre-a no navegador.",
     "Description": "Descrição",
     "CopyDocumentUrl": "Copiar URL do documento para a área de transferência",
     "DocumentUrlCopied": "Copiado!",

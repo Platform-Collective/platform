@@ -36,6 +36,7 @@
     "NoHistory": "Brak historii",
     "Untitled": "Bez nazwy",
     "Subpage": "Podstrona",
+    "SubpageLinkFailed": "Podstrona \"{title}\" została utworzona, ale nie udało się wstawić jej łącza. Znajdziesz ją w nawigatorze.",
 
     "Description": "Opis",
 

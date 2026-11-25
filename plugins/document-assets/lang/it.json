@@ -36,6 +36,7 @@
     "NoHistory": "Nessuna storia precedente",
     "Untitled": "Senza titolo",
     "Subpage": "Sottopagina",
+    "SubpageLinkFailed": "La sottopagina \"{title}\" è stata creata, ma non è stato possibile inserire il collegamento. Trovala nel pannello di navigazione.",
     "Description": "Descrizione",
     "CopyDocumentUrl": "Copia l'URL del documento negli appunti",
     "DocumentUrlCopied": "Copiato!",

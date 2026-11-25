@@ -36,6 +36,7 @@
     "NoHistory": "以前の履歴はありません",
     "Untitled": "無題",
     "Subpage": "サブページ",
+    "SubpageLinkFailed": "サブページ「{title}」を作成しましたが、リンクを挿入できませんでした。ナビゲーターで確認してください。",
     "Description": "説明",
     "CopyDocumentUrl": "ドキュメントのURLをクリップボードにコピー",
     "DocumentUrlCopied": "コピーしました",

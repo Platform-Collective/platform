@@ -36,6 +36,7 @@
     "NoHistory": "Aucun historique précédent",
     "Untitled": "Sans titre",
     "Subpage": "Sous-page",
+    "SubpageLinkFailed": "La sous-page « {title} » a été créée, mais son lien n’a pas pu être inséré. Retrouvez-la dans le panneau de navigation.",
     "Description": "Description",
     "CopyDocumentUrl": "Copier l'URL du document dans le presse-papiers",
     "DocumentUrlCopied": "Copié !",

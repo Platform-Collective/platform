@@ -36,6 +36,7 @@
     "NoHistory": "No previous history",
     "Untitled": "Untitled",
     "Subpage": "Subpage",
+    "SubpageLinkFailed": "Subpage \"{title}\" was created, but its link could not be inserted. Find it in the navigator.",
 
     "Description": "Description",
 

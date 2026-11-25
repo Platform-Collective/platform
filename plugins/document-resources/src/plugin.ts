@@ -64,6 +64,7 @@ export default mergeIds(documentId, document, {
     NoHistory: '' as IntlString,
     Untitled: '' as IntlString,
     Subpage: '' as IntlString,
+    SubpageLinkFailed: '' as IntlString,
 
     Description: '' as IntlString,
     DescriptionPlaceholder: '' as IntlString,

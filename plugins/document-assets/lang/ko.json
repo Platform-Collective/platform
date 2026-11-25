@@ -36,6 +36,7 @@
         "NoHistory": "이전 기록 없음",
         "Untitled": "제목 없음",
         "Subpage": "하위 페이지",
+        "SubpageLinkFailed": "하위 페이지 \"{title}\"을(를) 만들었지만 링크를 삽입하지 못했습니다. 탐색기에서 찾으세요.",
         "Description": "설명",
         "CopyDocumentUrl": "문서 URL 클립보드에 복사",
         "DocumentUrlCopied": "복사됨",

@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Editor } from '@tiptap/core'
-import {
-  absolutePositionToRelativePosition,
-  relativePositionToAbsolutePosition,
-  ySyncPluginKey
-} from 'y-prosemirror'
+import { absolutePositionToRelativePosition, relativePositionToAbsolutePosition, ySyncPluginKey } from 'y-prosemirror'
 
 /** Capture a position that survives collaborative edits while asynchronous work is pending. */
 export function captureEditorPosition (editor: Editor, pos: number): () => number | null {

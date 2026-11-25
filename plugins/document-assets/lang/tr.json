@@ -36,6 +36,7 @@
     "NoHistory": "Önceki geçmiş yok",
     "Untitled": "Başlıksız",
     "Subpage": "Alt sayfa",
+    "SubpageLinkFailed": "\"{title}\" alt sayfası oluşturuldu ancak bağlantısı eklenemedi. Gezginde bulabilirsiniz.",
     "Description": "Açıklama",
     "CopyDocumentUrl": "Doküman URL'sini panoya kopyala",
     "DocumentUrlCopied": "Kopyalandı!",

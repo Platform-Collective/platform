@@ -28,7 +28,14 @@ import { getMetadata, translate } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { makeRank } from '@hcengineering/rank'
 import { captureEditorPosition } from '@hcengineering/text-editor-resources'
-import { type Location, type ResolvedLocation, getCurrentResolvedLocation, getPanelURI } from '@hcengineering/ui'
+import {
+  type Location,
+  NotificationSeverity,
+  type ResolvedLocation,
+  addNotification,
+  getCurrentResolvedLocation,
+  getPanelURI
+} from '@hcengineering/ui'
 import { accessDeniedStore, openDoc } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
 import { type Editor } from '@tiptap/core'
@@ -97,9 +104,14 @@ export async function createEmptyDocument (
   await client.createDoc(document.class.Document, space, object, id)
 }
 
+async function notifySubpageLinkFailure (title: string): Promise<void> {
+  const message = await translate(document.string.SubpageLinkFailed, { title })
+  addNotification(message, '', undefined as any, undefined, NotificationSeverity.Warning)
+}
+
 /**
- * Create a child document of `parent`, insert a link to it at `pos` and open it,
- * the same way creating a child document from the navigator does.
+ * Create a child document of `parent`, insert a link to it at `pos` and open it
+ * after the link was inserted, the same way creating a child document from the navigator does.
  */
 export async function createSubpage (editor: Editor, pos: number, parent: Document): Promise<void> {
   const client = getClient()
@@ -118,10 +130,26 @@ export async function createSubpage (editor: Editor, pos: number, parent: Docume
   const doc = await client.findOne(document.class.Document, { _id: id })
   if (doc === undefined) return
 
-  const at = resolvePosition()
-  if (at !== null && !editor.isDestroyed) {
-    const inline = editor.state.doc.resolve(at).parent.inlineContent
-    editor.chain().focus(at).insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline)).run()
+  let inserted = false
+  try {
+    if (!editor.isDestroyed) {
+      const at = resolvePosition()
+      if (at !== null && !editor.isDestroyed) {
+        const inline = editor.state.doc.resolve(at).parent.inlineContent
+        inserted = editor
+          .chain()
+          .focus(at)
+          .insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline))
+          .run()
+      }
+    }
+  } catch (err: any) {
+    Analytics.handleError(err)
+  }
+
+  if (!inserted) {
+    await notifySubpageLinkFailure(doc.title)
+    return
   }
   await openDoc(client.getHierarchy(), doc)
 }
