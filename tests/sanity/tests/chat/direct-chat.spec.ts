@@ -64,11 +64,11 @@ test.describe('Check direct messages channels', () => {
         const directChat = channelPage.channelContainers().filter({ hasText: directChatName })
         await directChat.hover()
         await directChat.locator('.hulyNavItem-actions').click()
-        await page.locator('.antiPopup').getByRole('button', { name: 'Notifications', exact: true }).click()
+        await page.locator('.antiPopup').getByRole('button', { name: 'Notifications' }).click()
       }
       const navigatorSelector = page.locator('.popup .selectPopup[tabindex="0"]').last()
-      const allMessages = navigatorSelector.getByRole('button', { name: 'All messages', exact: true })
-      const nothing = navigatorSelector.getByRole('button', { name: 'Nothing', exact: true })
+      const allMessages = navigatorSelector.getByRole('button', { name: 'All messages' })
+      const nothing = navigatorSelector.getByRole('button', { name: 'Nothing' })
 
       await openNotifications()
       await expect(allMessages).toBeVisible()
