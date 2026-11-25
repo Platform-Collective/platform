@@ -456,7 +456,8 @@ export const storeMarks: Record<string, MarkProcessor> = {
       if (state.renderAHref === true) {
         return `<a href="${encodeURI(mark.attrs?.href)}">`
       } else {
-        state.inAutolink = isPlainURL(mark, parent, index)
+        // In callouts, keep the escaped label separate from the destination.
+        state.inAutolink = !state.escapeText && isPlainURL(mark, parent, index)
         return state.inAutolink ? '<' : '['
       }
     },
@@ -469,7 +470,8 @@ export const storeMarks: Record<string, MarkProcessor> = {
 
         const href = (mark.attrs?.href as string) ?? ''
         // eslint-disable-next-line
-        const url = href.replace(/[\(\)"\\<>]/g, '\\$&')
+        let url = href.replace(/[\(\)"\\<>]/g, '\\$&')
+        if (state.escapeText) url = url.replace(/&/g, '\\&')
         const hasSpaces = url.includes(' ')
 
         return inAutolink === true

@@ -116,6 +116,42 @@ describe('callout Markdown conversion', () => {
     expect(markdown).toContain('> [!NOTE]\n>\n')
   })
 
+  it.each([
+    ['https://example.org/ab', 'https://example.org/ab'],
+    ['https://example.org/a_b', 'https://example.org/a_b'],
+    ['https://example.org/a_b*(c)', 'https://example.org/a_b*(c)'],
+    ['https://example.org/?a=1&amp;b=2', 'https://example.org/?a=1&amp;b=2'],
+    ['https://example.org/a%5Fb', 'https://example.org/a%5Fb'],
+    ['https://xn--bcher-kva.example/a_b', 'https://xn--bcher-kva.example/a_b'],
+    ['See [a_b] &amp;', 'https://example.org/a_(b)?a=1&amp;b=2']
+  ])('round-trips the callout link label %s and destination %s', (text, href) => {
+    const link: MarkupNode = {
+      type: MarkupNodeType.text,
+      text,
+      marks: [{ type: MarkupMarkType.link, attrs: { href } }]
+    }
+    const outsideUrl = 'https://example.org/outside'
+    const outsideLink: MarkupNode = {
+      ...link,
+      text: outsideUrl,
+      marks: [{ type: MarkupMarkType.link, attrs: { href: outsideUrl } }]
+    }
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [{ type: MarkupNodeType.paragraph, content: [link] }, paragraph('Inside')]
+        },
+        { type: MarkupNodeType.paragraph, content: [outsideLink] }
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    expect(markdown.split('\n').at(-1)).toBe(`<${outsideUrl}>`)
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+  })
+
   it('preserves callout table content and restores the escape mode afterward', () => {
     const literal = '<b>literal</b> &amp; '
     const bold: MarkupNode = {
