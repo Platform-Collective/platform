@@ -14,8 +14,10 @@
 //
 
 import {
+  getCalloutEmoji,
   getCalloutKind,
   getOrderedListStart,
+  parseCalloutEmoji,
   type AttrValue,
   type MarkupMark,
   type MarkupNode,
@@ -79,20 +81,6 @@ class HtmlParseState {
     const top = this.top()
     if (top === undefined || text.length === 0) {
       return
-    }
-
-    // Entity decoding can split one callout text node across several parser callbacks.
-    if (this.stack.some((node) => node.type === MarkupNodeType.callout)) {
-      const previous = top.content?.[top.content.length - 1]
-      const marks = previous?.marks ?? []
-      if (
-        previous?.type === MarkupNodeType.text &&
-        marks.length === this.marks.length &&
-        marks.every((mark, index) => mark === this.marks[index])
-      ) {
-        previous.text = (previous.text ?? '') + text
-        return
-      }
     }
 
     // Both documents and callouts require block children.
@@ -314,10 +302,11 @@ const nodeRules: Record<string, HtmlNodeRule> = {
   },
   div: {
     node: MarkupNodeType.callout,
-    getAttrs: (attributes) => ({
-      kind: getCalloutKind(attributes['data-kind']),
-      emoji: attributes['data-emoji'] ?? null
-    })
+    getAttrs: (attributes) => {
+      const kind = getCalloutKind(attributes['data-kind'])
+      const emoji = parseCalloutEmoji(attributes['data-emoji'])
+      return { kind, emoji: emoji === getCalloutEmoji(kind) ? null : emoji }
+    }
   },
   blockquote: {
     node: MarkupNodeType.blockquote
@@ -546,6 +535,7 @@ export class HtmlParser {
 
     let rawPos: number | undefined
     let rawDepth: number | undefined
+    let rawTag: string | undefined
 
     const parser = new Parser(
       {
@@ -563,12 +553,14 @@ export class HtmlParser {
           }
 
           // Only tagged callout divs are nodes; preserve other divs as raw HTML as before.
-          const handler = tag === 'div' && attributes['data-type'] !== 'callout' ? undefined : state.handlers[tag]
+          const isPlainDiv = tag === 'div' && attributes['data-type'] !== 'callout'
+          const handler = isPlainDiv ? undefined : state.handlers[tag]
           if (handler !== undefined) {
             handler.handleOpenTag(state, tag, attributes)
           } else {
             rawPos = parser.startIndex
-            rawDepth = 1
+            rawDepth = isPlainDiv ? 1 : 0
+            rawTag = tag
           }
         },
 
@@ -610,11 +602,12 @@ export class HtmlParser {
 
             if (rawDepth === 0) {
               const start = rawPos ?? 0
-              const end = parser.endIndex + 1
+              const end = parser.endIndex + (rawTag === 'div' ? 1 : 0)
               const text = html.substring(start, end)
               state.addText(text)
               rawPos = undefined
               rawDepth = undefined
+              rawTag = undefined
             }
             return
           }

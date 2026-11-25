@@ -13,7 +13,14 @@
 // limitations under the License.
 //
 
-import { getOrderedListStart, MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
+import {
+  getOrderedListStart,
+  MarkupMark,
+  MarkupMarkType,
+  MarkupNode,
+  MarkupNodeType,
+  parseCalloutEmoji
+} from '@hcengineering/text-core'
 import { markupToHtml } from '@hcengineering/text-html'
 
 import { isInSet, markEq } from './marks'
@@ -341,9 +348,15 @@ export const storeNodes: Record<string, NodeProcessor> = {
     state.text(node.attrs?.emoji as string)
   },
   callout: (state, node) => {
-    // Blank lines would terminate the Markdown HTML block, including inside code blocks.
-    state.write(state.renderHtml(node).replace(/\n/g, '&#10;'))
-    state.closeBlock(node)
+    if (parseCalloutEmoji(nodeAttrs(node).emoji) !== null) {
+      // GitHub admonitions have no custom emoji attribute, so retain the lossless HTML form for those.
+      state.write(state.renderHtml(node).replace(/\n/g, '&#10;'))
+      state.closeBlock(node)
+      return
+    }
+    state.wrapBlock('> ', '> [!NOTE]\n> ', node, () => {
+      state.renderContent(node)
+    })
   },
   table: (state, node) => {
     state.write(state.renderHtml(node))

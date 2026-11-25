@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { getCalloutKind, type CalloutKind } from '@hcengineering/text-core'
+import { getCalloutEmoji, getCalloutKind, parseCalloutEmoji, type CalloutKind } from '@hcengineering/text-core'
 import { Node, mergeAttributes } from '@tiptap/core'
 
 export interface CalloutAttributes {
@@ -35,8 +35,14 @@ export const CalloutNode = Node.create({
       },
       emoji: {
         default: null,
-        parseHTML: (element) => element.getAttribute('data-emoji'),
-        renderHTML: (attributes) => (attributes.emoji == null ? {} : { 'data-emoji': attributes.emoji })
+        parseHTML: (element) => {
+          const kind = getCalloutKind(element.getAttribute('data-kind'))
+          const emoji = parseCalloutEmoji(element.getAttribute('data-emoji'))
+          return emoji === getCalloutEmoji(kind) ? null : emoji
+        },
+        renderHTML: (attributes) => ({
+          'data-emoji': parseCalloutEmoji(attributes.emoji) ?? getCalloutEmoji(attributes.kind)
+        })
       }
     }
   },

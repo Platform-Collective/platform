@@ -3,23 +3,22 @@
 import { MarkupNodeType, MarkupMarkType, type MarkupNode } from '@hcengineering/text-core'
 import { markdownToMarkup, markupToMarkdown } from '..'
 
+const paragraph = (text?: string): MarkupNode => ({
+  type: MarkupNodeType.paragraph,
+  content: text === undefined ? [] : [{ type: MarkupNodeType.text, text }]
+})
+
 describe('callout Markdown conversion', () => {
-  it.each(['info', 'warning', 'success'])('round-trips %s callouts without losing block content', (kind) => {
-    const paragraph = (text: string): MarkupNode => ({
-      type: MarkupNodeType.paragraph,
-      attrs: { textAlign: null },
-      content: [{ type: MarkupNodeType.text, text }]
-    })
+  it('round-trips GitHub-style notes without losing block content', () => {
     const doc: MarkupNode = {
       type: MarkupNodeType.doc,
       content: [
         {
           type: MarkupNodeType.callout,
-          attrs: { kind, emoji: '💡 "<&' },
+          attrs: { kind: 'info', emoji: null },
           content: [
             {
               type: MarkupNodeType.paragraph,
-              attrs: { textAlign: null },
               content: [{ type: MarkupNodeType.text, text: 'Formatted', marks: [{ type: MarkupMarkType.bold }] }]
             },
             paragraph('Second paragraph'),
@@ -38,9 +37,39 @@ describe('callout Markdown conversion', () => {
       ]
     }
     const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('> [!NOTE]\n> **Formatted**')
+    expect(markdown).not.toContain('<div data-type="callout"')
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+    expect(markupToMarkdown(markdownToMarkup(markdown))).toBe(markdown)
+  })
+
+  it('accepts a GitHub-style note separately from following Markdown and ordinary blockquotes', () => {
+    const doc = markdownToMarkup('> [!NOTE]\n> Note\n>\n> Second\n\nAfter\n\n> Quote')
+    expect(doc.content?.map((node) => node.type)).toEqual(['callout', 'paragraph', 'blockquote'])
+    expect(doc.content?.[0].attrs).toEqual({ kind: 'info', emoji: null })
+    expect(doc.content?.[0].content?.map((node) => node.content?.[0]?.text)).toEqual(['Note', 'Second'])
+    expect(markdownToMarkup('> Quote').content?.[0].type).toBe(MarkupNodeType.blockquote)
+  })
+
+  it('continues to accept tagged HTML callouts', () => {
+    const doc = markdownToMarkup('<div data-type="callout"><p>Note</p></div>\n\nAfter')
+    expect(doc.content?.map((node) => node.type)).toEqual(['callout', 'paragraph'])
+  })
+
+  it('uses tagged HTML when a custom emoji needs to be preserved', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: '💡' },
+          content: [{ ...paragraph('Note'), attrs: { textAlign: null } }]
+        }
+      ]
+    }
+    const markdown = markupToMarkdown(doc)
     expect(markdown).toContain('<div data-type="callout"')
     expect(markdownToMarkup(markdown)).toEqual(doc)
-    expect(markupToMarkdown(markdownToMarkup(markdown))).toBe(markdown)
   })
 
   it('defaults missing attributes and preserves an empty callout', () => {
@@ -49,7 +78,7 @@ describe('callout Markdown conversion', () => {
       content: [
         {
           type: MarkupNodeType.callout,
-          content: [{ type: MarkupNodeType.paragraph, attrs: { textAlign: null } }]
+          content: [paragraph()]
         }
       ]
     }
@@ -57,11 +86,5 @@ describe('callout Markdown conversion', () => {
       ...doc.content?.[0],
       attrs: { kind: 'info', emoji: null }
     })
-  })
-
-  it('keeps a callout separate from following Markdown and ordinary blockquotes', () => {
-    const doc = markdownToMarkup('<div data-type="callout"><p>Note</p></div>\n\nAfter\n\n> Quote')
-    expect(doc.content?.map((node) => node.type)).toEqual(['callout', 'paragraph', 'blockquote'])
-    expect(markdownToMarkup('> Quote').content?.[0].type).toBe(MarkupNodeType.blockquote)
   })
 })

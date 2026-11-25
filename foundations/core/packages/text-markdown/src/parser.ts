@@ -454,6 +454,7 @@ function todoItemMetaAttrsGet (tok: Token): Record<string, string> {
 // ::- A configuration of a Markdown parser. Such a parser uses
 const tokensBlock: Record<string, ParsingBlockRule> = {
   blockquote: { block: MarkupNodeType.blockquote },
+  callout: { block: MarkupNodeType.callout, getAttrs: () => ({ kind: 'info', emoji: null }) },
   paragraph: { block: MarkupNodeType.paragraph },
   list_item: { block: MarkupNodeType.list_item },
   task_item: { block: MarkupNodeType.taskItem, getAttrs: (tok) => ({ 'data-type': 'taskItem' }) },
@@ -651,6 +652,40 @@ export const isParagraphToken = (token?: Token): boolean => token?.type === 'par
 
 export const isListItemToken = (token?: Token): boolean => token?.type === 'list_item_open'
 
+const calloutMarker = '[!NOTE]'
+
+function convertCallout (tokens: Token[], open: number): boolean {
+  if (
+    tokens[open].type !== 'blockquote_open' ||
+    tokens[open + 1]?.type !== 'paragraph_open' ||
+    tokens[open + 2]?.type !== 'inline'
+  ) {
+    return false
+  }
+
+  const inline = tokens[open + 2]
+  if (inline.content !== calloutMarker && !inline.content.startsWith(calloutMarker + '\n')) {
+    return false
+  }
+
+  const close = tokens.findIndex(
+    (token, index) => index > open && token.type === 'blockquote_close' && token.level === tokens[open].level
+  )
+  if (close === -1) return false
+
+  tokens[open].type = 'callout_open'
+  tokens[close].type = 'callout_close'
+  inline.content = inline.content.slice(calloutMarker.length).replace(/^\n/, '')
+
+  const children = inline.children ?? []
+  if (children[0]?.type === 'text') {
+    children[0].content = children[0].content.slice(calloutMarker.length)
+    if (children[0].content.length === 0) children.shift()
+  }
+  if (children[0]?.type === 'softbreak') children.shift()
+  return true
+}
+
 export interface TaskListEnv {
   tasklists: number
 }
@@ -682,6 +717,7 @@ export class MarkdownParser {
     this.tokenizer = MarkdownIt('default', {
       html: true
     })
+    this.tokenizer.core.ruler.after('inline', 'callout', this.calloutRule)
     this.tokenizer.core.ruler.after('inline', 'task_list', this.listRule)
     this.tokenizer.core.ruler.after('inline', 'html_comment', this.htmlCommentRule)
 
@@ -700,6 +736,13 @@ export class MarkdownParser {
       doc = state.closeNode()
     } while (state.stack.length > 0)
     return doc
+  }
+
+  calloutRule: RuleCore = (state: StateCore): boolean => {
+    for (let i = 0; i < state.tokens.length; i++) {
+      convertCallout(state.tokens, i)
+    }
+    return true
   }
 
   htmlCommentRule: RuleCore = (state: StateCore): boolean => {
