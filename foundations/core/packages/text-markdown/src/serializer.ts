@@ -355,7 +355,9 @@ export const storeNodes: Record<string, NodeProcessor> = {
       return
     }
     state.wrapBlock('> ', '> [!NOTE]', node, () => {
-      state.ensureNewLine()
+      // Separate the marker paragraph from blocks that cannot interrupt a paragraph.
+      state.closeBlock(node)
+      state.flushClose(2)
       state.renderContent(node)
     })
   },

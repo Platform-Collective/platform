@@ -37,7 +37,7 @@ describe('callout Markdown conversion', () => {
       ]
     }
     const markdown = markupToMarkdown(doc)
-    expect(markdown).toContain('> [!NOTE]\n> **Formatted**')
+    expect(markdown).toContain('> [!NOTE]\n>\n> **Formatted**')
     expect(markdown).not.toContain('<div data-type="callout"')
     expect(markdownToMarkup(markdown)).toMatchObject(doc)
     expect(markupToMarkdown(markdownToMarkup(markdown))).toBe(markdown)
@@ -68,7 +68,7 @@ describe('callout Markdown conversion', () => {
       ]
     }
     const markdown = markupToMarkdown(doc)
-    expect(markdown).toContain('> > [!NOTE]\n> > # Inner heading')
+    expect(markdown).toContain('> > [!NOTE]\n> >\n> > # Inner heading')
     expect(markdownToMarkup(markdown)).toMatchObject(doc)
   })
 
@@ -90,6 +90,27 @@ describe('callout Markdown conversion', () => {
     const restored = markdownToMarkup(markupToMarkdown(doc))
     expect(restored).toMatchObject(doc)
     expect(restored.content?.[0].content?.map((node) => node.type)).toEqual([MarkupNodeType.bullet_list])
+  })
+
+  it.each([
+    ['---', MarkupNodeType.horizontal_rule],
+    ['Heading\n---', MarkupNodeType.heading],
+    ['3. Item', MarkupNodeType.ordered_list]
+  ])('preserves a callout starting with %j', (firstBlock, blockType) => {
+    const block = markdownToMarkup(firstBlock).content?.[0]
+    expect(block?.type).toBe(blockType)
+    if (block === undefined) throw new Error('Expected the first Markdown block')
+
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [{ type: MarkupNodeType.callout, content: [block, paragraph('Inside')] }, paragraph('After')]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    expect(restored).toMatchObject(doc)
+    expect(restored.content?.[0].content?.map((node) => node.type)).toEqual([blockType, MarkupNodeType.paragraph])
+    expect(markdown).toContain('> [!NOTE]\n>\n')
   })
 
   it('accepts a GitHub-style note separately from following Markdown and ordinary blockquotes', () => {
