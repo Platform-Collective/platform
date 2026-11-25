@@ -296,13 +296,15 @@ describe('create issue message actions', () => {
           {
             ...message,
             content: `Before ${images} after`,
-            attachments: source.map(({ file, name, size, type }): BlobAttachment => ({
-              id: String(file) as AttachmentID,
-              mimeType: type,
-              creator: account.primarySocialId,
-              created: message.created,
-              params: { blobId: file, fileName: name, size }
-            }))
+            attachments: source.map(
+              ({ file, name, size, type }): BlobAttachment => ({
+                id: String(file) as AttachmentID,
+                mimeType: type,
+                creator: account.primarySocialId,
+                created: message.created,
+                params: { blobId: file, fileName: name, size }
+              })
+            )
           },
           card
         )
