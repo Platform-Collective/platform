@@ -181,7 +181,13 @@
   let list: ListView
   /* eslint-disable no-undef */
 
-  let activeAction: { action: Action, docs: Doc[], selectedCount: number } | undefined
+  interface ActiveAction {
+    action: Action
+    docs: Doc[]
+    selectedCount: number
+  }
+
+  let activeAction: ActiveAction | undefined
   $: displayedFocus = activeAction === undefined ? $focusStore.focus : activeAction.docs[0]
   $: selectedCount = activeAction?.selectedCount ?? $selectionStore.docs.length
 
