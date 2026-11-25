@@ -208,7 +208,7 @@ describe('copyMessageAttachments', () => {
     setMetadata(presentation.metadata.FrontUrl, 'https://huly.example/')
     setMetadata(presentation.metadata.UploadURL, 'https://files.example/files')
     globalThis.fetch = fetchFile
-    fetchFile.mockResolvedValue({ ok: true, blob: async () => new globalThis.Blob(['png'], { type: 'image/png' }) })
+    fetchFile.mockImplementation(async () => new Response('png'))
     jest.mocked(generateFileId).mockReturnValue('copied-blob')
     jest.mocked(getFileUrl).mockImplementation((file) => `https://files.example/${file}`)
   })
@@ -321,6 +321,20 @@ describe('copyMessageAttachments', () => {
     expect(uploadFile).toHaveBeenCalledTimes(1)
   })
 
+  it('copies a response that reaches exactly the size limit across multiple chunks', async () => {
+    const limit = 25 * 1024 * 1024
+    const body = new globalThis.Blob([new Uint8Array(limit - 1), 'a'])
+    fetchFile.mockResolvedValue(new Response(body.stream()))
+
+    const result = await copyMessageAttachments(classifyMessageAttachments([source]), [source], description)
+
+    expect(result.attachments).toEqual([{ ...source, file: 'copied-blob', size: limit }])
+    expect(result.sizeOmissions).toEqual([])
+    const [file] = jest.mocked(uploadFile).mock.calls[0]
+    expect(file.size).toBe(limit)
+    expect(await file.slice(-1).text()).toBe('a')
+  })
+
   it('does not copy files removed from both the preview and the description', async () => {
     const edited = markup([paragraph('Edited description')])
     expect(await copyMessageAttachments(classifyMessageAttachments([source]), [], edited)).toEqual({
@@ -398,8 +412,8 @@ describe('copyMessageAttachments', () => {
   )
 
   it('cleans up earlier copies if a later source file cannot be downloaded', async () => {
-    fetchFile.mockResolvedValueOnce({ ok: true, blob: async () => new globalThis.Blob(['png']) })
-    fetchFile.mockResolvedValueOnce({ ok: false, status: 404 })
+    fetchFile.mockResolvedValueOnce(new Response('png'))
+    fetchFile.mockResolvedValueOnce(new Response(null, { status: 404 }))
     const files = [source, { ...source, file: 'missing-blob' as Ref<Blob> }]
     await expect(copyMessageAttachments(classifyMessageAttachments(files), files, description)).rejects.toThrow(
       'Failed to copy message attachment: 404'

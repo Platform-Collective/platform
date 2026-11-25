@@ -86,7 +86,26 @@ describe('saving attachments from a message', () => {
     setMetadata(presentation.metadata.DatalakeUrl, datalakeUrl)
     setMetadata(presentation.metadata.HulylakeUrl, hulylakeUrl)
     setMetadata(presentation.metadata.FileStorage, createFileStorage(storeUrl, datalakeUrl, hulylakeUrl))
-    const fetchFile = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new Uint8Array(limit + 1)))
+    let chunksRead = 0
+    const cancel = jest.fn()
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull (controller) {
+          chunksRead++
+          if (chunksRead === 1) {
+            controller.enqueue(new Uint8Array(limit - 1))
+          } else if (chunksRead === 2) {
+            controller.enqueue(new Uint8Array(2))
+          } else {
+            controller.enqueue(new Uint8Array(1))
+            controller.close()
+          }
+        },
+        cancel
+      },
+      { highWaterMark: 0 }
+    )
+    const fetchFile = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body))
     const source = includeDeclared ? [downloaded, declared] : [downloaded]
     const { description, sourceAttachments } = issueData(source)
 
@@ -109,6 +128,8 @@ describe('saving attachments from a message', () => {
     expect(fetchFile).toHaveBeenCalledWith(storeUrl + expectedPath, { headers: {} })
     expect(listener).toHaveBeenCalledTimes(1)
     expect(listener).toHaveBeenCalledWith(PlatformEvent, omittedWarning)
+    expect(chunksRead).toBe(2)
+    expect(cancel).toHaveBeenCalledTimes(1)
   })
 
   it('warns once when only the declared size excludes an attachment', async () => {

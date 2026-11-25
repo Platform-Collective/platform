@@ -197,6 +197,30 @@ function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string 
   return undefined
 }
 
+async function readMessageAttachment (response: Response): Promise<globalThis.Blob | undefined> {
+  if (response.body === null) return new globalThis.Blob()
+
+  const reader = response.body.getReader()
+  const chunks: BlobPart[] = []
+  let size = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) return new globalThis.Blob(chunks)
+
+      size += value.byteLength
+      if (size > MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT) {
+        // Keep the size omission even if the stream fails while being cancelled.
+        await reader.cancel().catch(() => {})
+        return undefined
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 /** Copy message files, update inline references and report size omissions before saving the issue. */
 export async function copyMessageAttachments (
   sourceAttachments: readonly MessageAttachment[],
@@ -234,8 +258,8 @@ export async function copyMessageAttachments (
         headers: authorizationHeaders(getMetadata(presentation.metadata.Token))
       })
       if (!response.ok) throw new Error(`Failed to copy message attachment: ${response.status}`)
-      const blob = await response.blob()
-      if (blob.size > MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT) {
+      const blob = await readMessageAttachment(response)
+      if (blob === undefined) {
         decisions.set(attachment.file, { attachment, omission: 'downloaded-size' })
         continue
       }
