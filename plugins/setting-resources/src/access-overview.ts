@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { formatName } from '@hcengineering/contact'
+import type { Employee } from '@hcengineering/contact'
 import core, { AccountRole } from '@hcengineering/core'
 import type {
   AccountUuid,
@@ -36,6 +38,15 @@ export interface PersonSpaceAccess {
 export interface PersonAccess extends WorkspaceMemberInfo {
   guest: boolean
   spaces: PersonSpaceAccess[]
+}
+
+export function getPersonAccessName (
+  person: AccountUuid,
+  employees: Map<AccountUuid, Employee>,
+  unknownUserLabel: string
+): string {
+  const employee = employees.get(person)
+  return employee === undefined ? unknownUserLabel : formatName(employee.name) || person
 }
 
 export interface SpaceAccessFilter {

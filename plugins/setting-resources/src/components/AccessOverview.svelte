@@ -2,11 +2,12 @@
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
   import chunter from '@hcengineering/chunter'
-  import contact, { formatName } from '@hcengineering/contact'
+  import contact from '@hcengineering/contact'
   import type { Employee } from '@hcengineering/contact'
   import core, { AccountRole } from '@hcengineering/core'
   import type { AccountUuid, Class, Ref, Role, Space, SpaceType, WorkspaceMemberInfo } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
+  import { translateCB } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import {
     Breadcrumb,
@@ -17,7 +18,8 @@
     Loading,
     ModernToggle,
     Scroller,
-    SearchInput
+    SearchInput,
+    themeStore
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
   import { onDestroy, onMount } from 'svelte'
@@ -25,6 +27,7 @@
     collectPersonAccess,
     collectSpaceAccess,
     filterSpaceAccess,
+    getPersonAccessName,
     getSpaceAccessQueryOptions
   } from '../access-overview'
   import setting from '../plugin'
@@ -117,10 +120,10 @@
     }
   }
 
-  function personName(person: AccountUuid, employeesByAccount: Map<AccountUuid, Employee>): string {
-    const employee = employeesByAccount.get(person)
-    return employee === undefined ? person : formatName(employee.name) || person
-  }
+  let unknownUserLabel = ''
+  $: translateCB(setting.string.AccessUnknownUser, {}, $themeStore.language, (label) => {
+    unknownUserLabel = label
+  })
 
   $: inventory = collectSpaceAccess(spaces, types, roles, hierarchy, excludedClasses)
   $: classes = [...new Set(inventory.map(({ space }) => space._class))]
@@ -135,11 +138,15 @@
     .filter(
       (person) =>
         (!guestsOnly || person.guest) &&
-        `${personName(person.person, employees)} ${person.person}`
+        `${getPersonAccessName(person.person, employees, unknownUserLabel)} ${person.person}`
           .toLocaleLowerCase()
           .includes(appliedSearch.trim().toLocaleLowerCase())
     )
-    .sort((a, b) => personName(a.person, employees).localeCompare(personName(b.person, employees)))
+    .sort((a, b) =>
+      getPersonAccessName(a.person, employees, unknownUserLabel).localeCompare(
+        getPersonAccessName(b.person, employees, unknownUserLabel)
+      )
+    )
   $: loaded = membersLoaded && spacesLoaded && typesLoaded && rolesLoaded && employeesLoaded
 </script>
 
@@ -222,7 +229,7 @@
                 <div class="summary">
                   <AccessCollapse
                     expanded={expandedPeople[person.person] ?? false}
-                    label={personName(person.person, employees)}
+                    label={getPersonAccessName(person.person, employees, unknownUserLabel)}
                     on:click={() => {
                       expandedPeople[person.person] = !expandedPeople[person.person]
                     }}

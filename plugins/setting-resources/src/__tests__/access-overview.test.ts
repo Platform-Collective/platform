@@ -16,6 +16,7 @@ import {
   collectPersonAccess,
   collectSpaceAccess,
   filterSpaceAccess,
+  getPersonAccessName,
   getSpaceAccessQueryOptions
 } from '../access-overview'
 import type { SpaceAccess } from '../access-overview'
@@ -218,6 +219,10 @@ describe('person access inventory', () => {
 
   it.each([AccountRole.Guest, AccountRole.ReadOnlyGuest, AccountRole.DocGuest])('identifies guest role %s', (role) => {
     expect(collectPersonAccess([], [{ person: guest, role }])[0].guest).toBe(true)
+  })
+
+  it('uses the translated unknown-user label instead of the account UUID', () => {
+    expect(getPersonAccessName(outsider, new Map(), 'Unknown user')).toBe('Unknown user')
   })
 })
 
