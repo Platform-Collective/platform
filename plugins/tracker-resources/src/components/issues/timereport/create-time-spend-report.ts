@@ -1,14 +1,24 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { Analytics } from '@hcengineering/analytics'
-import type { AttachedData, Ref, Space, TxOperations } from '@hcengineering/core'
+import type { AttachedData, DocumentUpdate, Ref, Space, TxOperations } from '@hcengineering/core'
 import { TrackerEvents } from '@hcengineering/tracker'
 import type { Issue, TimeSpendReport } from '@hcengineering/tracker'
 import tracker from '../../../plugin'
+import { saveReportOnce } from './issue-timer'
 
 interface TimeReportIssue extends Pick<Issue, '_id' | '_class'> {
   space: Ref<Space>
   identifier?: string
+}
+
+export interface SaveTimeSpendReportOptions {
+  target?: TimeReportIssue
+  value?: TimeSpendReport
+  data: AttachedData<TimeSpendReport>
+  reportId?: Ref<TimeSpendReport>
+  onAlreadySaved: () => Promise<void>
+  onSaveFailed: () => Promise<void>
 }
 
 /** Create a time report through the issue collection so existing time totals and activity are updated. */
@@ -38,4 +48,40 @@ export async function createTimeSpendReportOnce (
   const { result } = await ops.commit()
   if (result) Analytics.handleEvent(TrackerEvents.IssueTimeSpentAdded, { issue: issue.identifier ?? issue._id })
   return result
+}
+
+export async function saveTimeSpendReport (client: TxOperations, options: SaveTimeSpendReportOptions): Promise<void> {
+  try {
+    await writeTimeSpendReport(client, options)
+  } catch (err) {
+    if (options.value === undefined && options.reportId !== undefined) throw err
+    await options.onSaveFailed()
+  }
+}
+
+async function writeTimeSpendReport (client: TxOperations, options: SaveTimeSpendReportOptions): Promise<void> {
+  const { target, value, data, reportId, onAlreadySaved } = options
+  if (value === undefined) {
+    if (target === undefined) return
+    if (reportId === undefined) {
+      await createTimeSpendReport(client, target, data)
+      return
+    }
+    const result = await saveReportOnce(
+      async () => (await client.findOne(tracker.class.TimeSpendReport, { _id: reportId })) !== undefined,
+      async () => await createTimeSpendReportOnce(client, target, data, reportId)
+    )
+    if (result === 'exists') await onAlreadySaved()
+    return
+  }
+
+  const ops: DocumentUpdate<TimeSpendReport> = {}
+  if (value.value !== data.value) ops.value = data.value
+  if (value.employee !== data.employee) ops.employee = data.employee
+  if (value.description !== data.description) ops.description = data.description
+  if (value.date !== data.date) ops.date = data.date
+  if (Object.keys(ops).length > 0) {
+    await client.update(value, ops)
+    Analytics.handleEvent(TrackerEvents.IssueTimeSpentUpdated, { issue: target?.identifier ?? value._id })
+  }
 }

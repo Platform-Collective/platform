@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
   import type { IntlString } from '@hcengineering/platform'
-  import { reportCardError } from '../card-error'
+  import { executeCardAction } from '../card-error'
   import {
     Button,
     IconClose,
@@ -83,24 +83,10 @@
       if (okProcessing) {
         return
       }
-      okProcessing = true
-      const r = okAction()
-      if (r instanceof Promise) {
-        const done = r.then(() => {
-          okProcessing = false
-          dispatch('close')
-        })
-        if (retryOnError) {
-          // Only for idempotent actions: keep the dialog and its values open so the action can be retried.
-          void done.catch((err) => {
-            okProcessing = false
-            reportCardError(err)
-          })
-        }
-      } else {
-        okProcessing = false
-        dispatch('close')
-      }
+      executeCardAction(okAction, retryOnError, {
+        onProcessing: (processing) => (okProcessing = processing),
+        onClose: () => dispatch('close')
+      })
     }
   }
 </script>
