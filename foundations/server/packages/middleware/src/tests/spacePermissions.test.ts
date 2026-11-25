@@ -47,6 +47,7 @@ import {
   type TxMiddlewareResult
 } from '@hcengineering/server-core'
 import { SpacePermissionsMiddleware } from '../spacePermissions'
+import { ModelMiddleware } from '../model'
 import { getUpdatedAttributes } from '../utils'
 import { SpaceSecurityMiddleware } from '../spaceSecurity'
 import { QueryJoinMiddleware } from '../queryJoin'
@@ -161,10 +162,7 @@ class StorageMiddleware extends BaseMiddleware {
       return
     }
     const cud = tx as TxCUD<Doc>
-    if (cud.objectSpace === core.space.Model) {
-      this.context.modelDb.addTxes(makeContext(), [tx], true)
-      return
-    }
+    if (cud.objectSpace === core.space.Model) return
     if (tx._class === core.class.TxCreateDoc) {
       // Mongo logs duplicate-key failures without rejecting the whole batch.
       if (!this.documents.has(cud.objectId)) {
@@ -434,6 +432,23 @@ describe('permission cache refresh', () => {
     expect(storage.documents.size).toBe(1002)
   })
 
+  it('measures concurrent membership edits', async () => {
+    const { middleware, storage } = await setup()
+    const ctx = makeContext(OWNER)
+    await middleware.tx(ctx, [])
+    const before = storage.reads
+    const edits = Array.from({ length: 100 }, (_, index) =>
+      update({ $push: { members: `test:member:${index}` as AccountUuid } })
+    )
+    const started = Date.now()
+    await Promise.all(edits.map(async (tx) => await middleware.tx(ctx, [tx])))
+    const elapsedMs = Date.now() - started
+    const reads = storage.reads - before
+    ctx.info('Synthetic concurrent membership measurement', { edits: edits.length, reads, elapsedMs })
+    expect(reads).toBe(edits.length)
+    expect(storage.txes).toHaveLength(edits.length)
+  })
+
   it.each([false, true])('checks ordinary deletes after refresh (forbid=%s)', async (forbid) => {
     const { middleware, storage, ctx, space, model } = await setup(forbid ? [core.permission.DeleteObject] : [])
     space.restricted = !forbid
@@ -556,6 +571,51 @@ describe('permission cache refresh', () => {
     await expect(middleware.tx(owner, [update({ private: true })])).resolves.toEqual({})
     expect(refreshed.every((query) => JSON.stringify(query) === JSON.stringify({ $in: [SPACE] }))).toBe(true)
     expect(middleware.wasInit).toBe(true)
+  })
+
+  it('retries a failed refresh in the background before another request', async () => {
+    const { middleware, storage, ctx, space, model } = await setup([core.permission.DeleteObject])
+    const permission = model.findAllSync(core.class.Permission, { _id: core.permission.DeleteObject })[0]
+    Object.assign(permission, { txClass: core.class.TxRemoveDoc, objectClass: DOCUMENT })
+    space.restricted = true
+    await middleware.tx(ctx, [])
+    const owner = makeContext(OWNER)
+    const errors = jest.spyOn(owner, 'error').mockImplementation(() => {})
+    let fail = true
+    storage.beforeRead = async (query) => {
+      if (typeof query._id === 'object' && fail) throw new Error('refresh unavailable')
+    }
+    jest.useFakeTimers()
+    try {
+      await expect(middleware.tx(owner, [mixin({ [ROLE]: [] })])).resolves.toEqual({})
+      expect(errors).toHaveBeenCalled()
+      const before = storage.reads
+      fail = false
+      await jest.advanceTimersByTimeAsync(1000)
+      expect(storage.reads).toBe(before + 1)
+      const remove = factory.createTxRemoveDoc(DOCUMENT, SPACE, 'test:doc' as Ref<Doc>)
+      await expect(middleware.tx(ctx, [remove])).rejects.toEqual(forbidden)
+      expect(storage.txes).not.toContain(remove)
+    } finally {
+      await middleware.close()
+      jest.useRealTimers()
+    }
+  })
+
+  it('uses model updates from the full pipeline when rebuilding role permissions', async () => {
+    const { storage, ctx, space, model, context } = await setup([core.permission.DeleteObject])
+    const permission = model.findAllSync(core.class.Permission, { _id: core.permission.DeleteObject })[0]
+    Object.assign(permission, { txClass: core.class.TxRemoveDoc, objectClass: DOCUMENT })
+    space.restricted = true
+    const modelMiddleware = new ModelMiddleware(context, storage, [])
+    const pipeline = await SpacePermissionsMiddleware.create(ctx, context, modelMiddleware)
+    await pipeline.tx(ctx, [])
+    const roleUpdate = factory.createTxUpdateDoc(core.class.Role, core.space.Model, ROLE, { permissions: [] })
+    await pipeline.tx(ctx, [roleUpdate])
+    expect(model.findObject<Role>(ROLE)?.permissions).toEqual([])
+    const remove = factory.createTxRemoveDoc(DOCUMENT, SPACE, 'test:doc' as Ref<Doc>)
+    await expect(pipeline.tx(ctx, [remove])).rejects.toEqual(forbidden)
+    expect(storage.txes).not.toContain(remove)
   })
 
   it('refreshes grants after an owner uses a forged untyped class', async () => {

@@ -50,6 +50,17 @@ const SPACE_ADMIN_ATTRIBUTES = new Set([
 ])
 
 const SPACE_IDENTITY_ATTRIBUTES = new Set(['_id', '_class', 'space', 'createdBy'])
+const REFRESH_RETRY_DELAY_MS = 1000
+
+interface ClassifiedTransaction {
+  tx: TxCUD<Doc>
+  administration: boolean
+}
+
+interface BatchClassification {
+  transactions: ClassifiedTransaction[]
+  administration: boolean
+}
 
 /**
  * @public
@@ -63,14 +74,24 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
   private administrationTail: Promise<void> = Promise.resolve()
   private readonly pendingSpaces = new Map<Ref<Space>, Promise<void>>()
   private readonly failedSpaces = new Set<Ref<Space>>()
+  private retryTimer?: NodeJS.Timeout
+  private closed = false
   wasInit: Promise<void> | boolean = false
+
+  private constructor (
+    private readonly ctx: MeasureContext,
+    context: PipelineContext,
+    next: Middleware | undefined
+  ) {
+    super(context, next)
+  }
 
   static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
   ): Promise<SpacePermissionsMiddleware> {
-    return new SpacePermissionsMiddleware(context, next)
+    return new SpacePermissionsMiddleware(ctx, context, next)
   }
 
   private async init (ctx: MeasureContext): Promise<void> {
@@ -282,59 +303,71 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     )
   }
 
-  private rememberSpaceTypes (tx: Tx, types: Map<Ref<Doc>, Ref<SpaceType>>, seen = new Set<Tx>()): void {
-    if (seen.has(tx) || seen.size >= 10000) this.throwForbidden()
-    seen.add(tx)
-    if (tx._class === core.class.TxApplyIf) {
-      for (const child of (tx as TxApplyIf).txes) this.rememberSpaceTypes(child, types, seen)
-    } else if (TxProcessor.isExtendsCUD(tx._class)) {
+  private classifyBatch (txes: Tx[]): BatchClassification {
+    const classification: BatchClassification = { transactions: [], administration: false }
+    const active = new Set<Tx>()
+    const visit = (tx: Tx): void => {
+      if (tx._class === core.class.TxApplyIf) {
+        if (active.has(tx)) this.throwForbidden()
+        active.add(tx)
+        for (const child of (tx as TxApplyIf).txes) visit(child)
+        active.delete(tx)
+        return
+      }
+      if (!TxProcessor.isExtendsCUD(tx._class)) return
       const cud = tx as TxCUD<Doc>
-      const role = this.context.modelDb.findObject<Role>(cud.objectId as Ref<Role>)
+      const administration = this.isAdministrationTx(cud)
+      classification.transactions.push({ tx: cud, administration })
+      classification.administration ||= administration
+    }
+    for (const tx of txes) visit(tx)
+    return classification
+  }
+
+  private getPreviousTypes (transactions: ClassifiedTransaction[]): Map<Ref<Doc>, Ref<SpaceType>> {
+    const types = new Map<Ref<Doc>, Ref<SpaceType>>()
+    for (const { tx } of transactions) {
+      const role = this.context.modelDb.findObject<Role>(tx.objectId as Ref<Role>)
       if (role !== undefined && this.context.hierarchy.isDerived(role._class, core.class.Role)) {
-        types.set(cud.objectId, role.attachedTo)
+        types.set(tx.objectId, role.attachedTo)
       }
     }
+    return types
   }
 
   private collectChangedSpaces (
-    tx: Tx,
-    spaces: Set<Ref<Space>>,
+    transactions: ClassifiedTransaction[],
     types: Map<Ref<Doc>, Ref<SpaceType>>,
-    seen = new Set<Tx>()
-  ): void {
-    if (seen.has(tx) || seen.size >= 10000) this.throwForbidden()
-    seen.add(tx)
-    if (tx._class === core.class.TxApplyIf) {
-      for (const child of (tx as TxApplyIf).txes) this.collectChangedSpaces(child, spaces, types, seen)
-      return
-    }
-    if (!TxProcessor.isExtendsCUD(tx._class)) return
-    const cud = tx as TxCUD<Doc>
-    if (this.isSpaceTypeTx(cud)) {
-      const role = this.context.modelDb.findObject<Role>(cud.objectId as Ref<Role>)
-      const typeIds = new Set([role?.attachedTo, types.get(cud.objectId), cud.attachedTo, cud.objectId])
-      for (const [spaceId, spaceTypeId] of Object.entries(this.typeBySpace)) {
-        if (!typeIds.has(spaceTypeId)) continue
-        if (this.context.hierarchy.isDerived(cud.objectClass, core.class.SpaceType)) {
-          spaces.add(spaceId as Ref<Space>)
-        } else {
-          this.permissionsBySpace[spaceId as Ref<Space>] = this.getRolePermissions(
-            this.getRoles(spaceTypeId),
-            this.assignmentBySpace[spaceId as Ref<Space>] ?? {},
-            this.getPermissions()
-          )
+    spaces = new Set<Ref<Space>>()
+  ): Set<Ref<Space>> {
+    for (const { tx: cud, administration } of transactions) {
+      if (this.isSpaceTypeTx(cud)) {
+        const role = this.context.modelDb.findObject<Role>(cud.objectId as Ref<Role>)
+        const typeIds = new Set([role?.attachedTo, types.get(cud.objectId), cud.attachedTo, cud.objectId])
+        for (const [spaceId, spaceTypeId] of Object.entries(this.typeBySpace)) {
+          if (!typeIds.has(spaceTypeId)) continue
+          if (this.context.hierarchy.isDerived(cud.objectClass, core.class.SpaceType)) {
+            spaces.add(spaceId as Ref<Space>)
+          } else {
+            this.permissionsBySpace[spaceId as Ref<Space>] = this.getRolePermissions(
+              this.getRoles(spaceTypeId),
+              this.assignmentBySpace[spaceId as Ref<Space>] ?? {},
+              this.getPermissions()
+            )
+          }
         }
+        continue
       }
-      return
+      if (!this.context.hierarchy.isDerived(cud.objectClass, core.class.Space)) continue
+      // A create may have failed silently or belonged to an unmatched TxApplyIf.
+      // Only a stored-class read can establish that its id is safe to whitelist.
+      if (administration || cud._class === core.class.TxCreateDoc) {
+        spaces.add(cud.objectId as Ref<Space>)
+      } else if (cud._class === core.class.TxRemoveDoc) {
+        this.clearSpace(cud.objectId as Ref<Space>)
+      }
     }
-    if (!this.context.hierarchy.isDerived(cud.objectClass, core.class.Space)) return
-    // A create may have failed silently or belonged to an unmatched TxApplyIf.
-    // Only a stored-class read can establish that its id is safe to whitelist.
-    if (this.isAdministrationTx(tx) || tx._class === core.class.TxCreateDoc) {
-      spaces.add(cud.objectId as Ref<Space>)
-    } else if (tx._class === core.class.TxRemoveDoc) {
-      this.clearSpace(cud.objectId as Ref<Space>)
-    }
+    return spaces
   }
 
   private async refreshSpaces (ctx: MeasureContext, ids: Set<Ref<Space>>): Promise<void> {
@@ -364,15 +397,34 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
       for (const id of ids) {
         if (this.pendingSpaces.get(id) === pending) this.failedSpaces.add(id)
       }
-      // Persistence already succeeded. Retry affected ids on the next request
-      // without reporting the committed write as failed or clearing live grants.
+      // Persistence already succeeded. Keep the committed write successful and
+      // retain the last grants until a background or request-driven refresh succeeds.
       ctx.error('Failed to refresh space permissions', { ids: Array.from(ids), err })
+      this.scheduleRefreshRetry()
     } finally {
       for (const id of ids) {
         if (this.pendingSpaces.get(id) === pending) this.pendingSpaces.delete(id)
       }
       release()
     }
+  }
+
+  private scheduleRefreshRetry (): void {
+    if (this.closed || this.retryTimer !== undefined || this.failedSpaces.size === 0) return
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = undefined
+      void this.refreshSpaces(this.ctx, new Set(this.failedSpaces))
+    }, REFRESH_RETRY_DELAY_MS)
+    this.retryTimer.unref()
+  }
+
+  override async close (): Promise<void> {
+    this.closed = true
+    if (this.retryTimer !== undefined) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = undefined
+    }
+    await super.close()
   }
 
   private isSpaceAdminAttribute (attribute: string): boolean {
@@ -387,18 +439,11 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     return role !== undefined && this.context.hierarchy.isDerived(role._class, core.class.Role)
   }
 
-  private isAdministrationTx (tx: Tx, seen = new Set<Tx>()): boolean {
-    if (seen.has(tx) || seen.size >= 10000) return true
-    seen.add(tx)
-    if (tx._class === core.class.TxApplyIf) {
-      return (tx as TxApplyIf).txes.some((child) => this.isAdministrationTx(child, seen))
-    }
-    if (!TxProcessor.isExtendsCUD(tx._class)) return false
-    const cudTx = tx as TxCUD<Doc>
+  private isAdministrationTx (cudTx: TxCUD<Doc>): boolean {
     const h = this.context.hierarchy
     if (this.isSpaceTypeTx(cudTx)) return true
     if (!h.isDerived(cudTx.objectClass, core.class.Space)) return false
-    if (tx._class === core.class.TxCreateDoc || tx._class === core.class.TxRemoveDoc) {
+    if (cudTx._class === core.class.TxCreateDoc || cudTx._class === core.class.TxRemoveDoc) {
       return this.isTypedSpaceClass(cudTx.objectClass) || this.typeBySpace[cudTx.objectId as Ref<Space>] !== undefined
     }
     // A declared untyped class is only trustworthy for a known untyped id.
@@ -410,17 +455,17 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     ) {
       // Identity writes can turn an untyped space into a typed one. Refresh its
       // cache entry after persistence instead of retaining the untyped whitelist.
-      if (tx._class === core.class.TxUpdateDoc) {
-        const attributes = getUpdatedAttributes((tx as TxUpdateDoc<Doc>).operations)
+      if (cudTx._class === core.class.TxUpdateDoc) {
+        const attributes = getUpdatedAttributes((cudTx as TxUpdateDoc<Doc>).operations)
         return (
           attributes === 'all' || Array.from(attributes).some((attribute) => SPACE_IDENTITY_ATTRIBUTES.has(attribute))
         )
       }
-      if (tx._class === core.class.TxMixin) return '$rename' in (tx as TxMixin<Space, Space>).attributes
+      if (cudTx._class === core.class.TxMixin) return '$rename' in (cudTx as TxMixin<Space, Space>).attributes
       return false
     }
-    if (tx._class === core.class.TxMixin) {
-      const mixinTx = tx as TxMixin<Space, Space>
+    if (cudTx._class === core.class.TxMixin) {
+      const mixinTx = cudTx as TxMixin<Space, Space>
       if (!h.isMixin(mixinTx.mixin)) return true
       // Only universally applicable mixins can skip a stored-class check safely.
       if (!h.isDerived(core.class.Space, h.getBaseClass(mixinTx.mixin))) return true
@@ -431,8 +476,8 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
         this.context.modelDb.findAllSync(core.class.SpaceType, { targetClass: mixinTx.mixin }).length > 0
       )
     }
-    if (tx._class !== core.class.TxUpdateDoc) return true
-    const attributes = getUpdatedAttributes((tx as TxUpdateDoc<Doc>).operations)
+    if (cudTx._class !== core.class.TxUpdateDoc) return true
+    const attributes = getUpdatedAttributes((cudTx as TxUpdateDoc<Doc>).operations)
     return (
       attributes === 'all' ||
       Array.from(attributes).some(
@@ -444,11 +489,9 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
 
   async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     await this.init(ctx)
-    // Serialize administrative reads through persistence, including global role revocations.
-    // Operational writes only wait for refreshes of their own permission entries.
-    const administration = txes.some((tx) => this.isAdministrationTx(tx))
+    const classification = this.classifyBatch(txes)
     let release: (() => void) | undefined
-    if (administration) {
+    if (classification.administration) {
       const previous = this.administrationTail
       this.administrationTail = new Promise<void>((resolve) => {
         release = resolve
@@ -456,17 +499,15 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
       await previous
     }
     try {
+      const previousTypes = this.getPreviousTypes(classification.transactions)
       await this.refreshSpaces(ctx, new Set(this.failedSpaces))
-      for (const tx of txes) {
+      for (const { tx } of classification.transactions) {
         await this.checkPermissions(ctx, tx)
       }
-      const previousTypes = new Map<Ref<Doc>, Ref<SpaceType>>()
-      for (const tx of txes) this.rememberSpaceTypes(tx, previousTypes)
       const res = await this.provideTx(ctx, txes)
-      const changedSpaces = new Set<Ref<Space>>()
-      for (const tx of [...txes, ...ctx.contextData.broadcast.txes]) {
-        this.collectChangedSpaces(tx, changedSpaces, previousTypes)
-      }
+      const changedSpaces = this.collectChangedSpaces(classification.transactions, previousTypes)
+      const broadcasts = this.classifyBatch(ctx.contextData.broadcast.txes)
+      this.collectChangedSpaces(broadcasts.transactions, previousTypes, changedSpaces)
       await this.refreshSpaces(ctx, changedSpaces)
       return res
     } finally {
@@ -474,24 +515,16 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  protected async checkPermissions (ctx: MeasureContext<SessionData>, tx: Tx, seen = new Set<Tx>()): Promise<void> {
-    if (seen.has(tx) || seen.size >= 10000) this.throwForbidden()
-    seen.add(tx)
-    if (tx._class === core.class.TxApplyIf) {
-      for (const child of (tx as TxApplyIf).txes) await this.checkPermissions(ctx, child, seen)
-      return
-    }
-    if (!TxProcessor.isExtendsCUD(tx._class)) return
-    const cudTx = tx as TxCUD<Doc>
+  protected async checkPermissions (ctx: MeasureContext<SessionData>, cudTx: TxCUD<Doc>): Promise<void> {
     const isSpace = this.context.hierarchy.isDerived(cudTx.objectClass, core.class.Space)
     const ids = [cudTx.objectSpace, ...(isSpace ? [cudTx.objectId as Ref<Space>] : [])]
     const waited = new Set<Promise<void>>()
-    for (let attempt = 0; ; attempt++) {
+    for (;;) {
       // Re-read every relevant entry after each await: a newer refresh can
       // replace the one we observed, including for an already visited space.
       const pending = ids.map((id) => this.pendingSpaces.get(id)).find((value) => value !== undefined)
       if (pending === undefined) break
-      if (attempt >= 1000 || waited.has(pending)) this.throwForbidden()
+      if (waited.has(pending)) this.throwForbidden()
       waited.add(pending)
       await pending
     }
