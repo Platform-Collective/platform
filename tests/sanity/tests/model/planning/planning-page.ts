@@ -124,15 +124,28 @@ export class PlanningPage extends CalendarPage {
   }
 
   async dragToCalendar (title: string, column: number, time: string, addHalf: boolean = false): Promise<void> {
+    const slots = this.eventInSchedule(title)
+    const initialCount = await slots.count()
+    const expectedCount = initialCount + 1
+
     await expect(async () => {
+      // A late update from the previous drop must not create another slot.
+      if ((await slots.count()) > initialCount) {
+        await expect(slots).toHaveCount(expectedCount, { timeout: 5000 })
+        return
+      }
+
       await this.toDosContainer().getByRole('button', { name: title }).hover()
-      await this.page.mouse.down()
       const boundingBox = await this.selectTimeCell(time, column).boundingBox()
       expect(boundingBox).toBeTruthy()
       if (boundingBox != null) {
-        await this.page.mouse.move(boundingBox.x + boundingBox.width / 2, boundingBox.y + (addHalf ? 40 : 20))
-        await this.page.mouse.up()
-        await expect(this.eventInSchedule(title)).toBeVisible({ timeout: 5000 })
+        await this.page.mouse.down()
+        try {
+          await this.page.mouse.move(boundingBox.x + boundingBox.width / 2, boundingBox.y + (addHalf ? 40 : 20))
+        } finally {
+          await this.page.mouse.up()
+        }
+        await expect(slots).toHaveCount(expectedCount, { timeout: 5000 })
       }
     }).toPass(retryOptions)
   }
@@ -392,9 +405,9 @@ export class PlanningPage extends CalendarPage {
   }
 
   async checkToDoExistInCalendar (toDoName: string, count: number): Promise<void> {
-    await expect(
-      this.page.locator('div.calendar-element > div.event-container >> div[class*="label"]', { hasText: toDoName })
-    ).toHaveCount(count)
+    await expect(this.page.locator('div.calendar-element > div.event-container', { hasText: toDoName })).toHaveCount(
+      count
+    )
   }
 
   public async deleteTimeSlot (rowNumber: number): Promise<void> {

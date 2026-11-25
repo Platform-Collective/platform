@@ -37,12 +37,14 @@
     resizeObserver,
     themeStore
   } from '@hcengineering/ui'
-  import { Filter, GrouppingManager } from '@hcengineering/view'
+  import { Filter, GrouppingManager, type ReferenceFilterSpace } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import { FILTER_DEBOUNCE_MS, sortFilterValues } from '../../filter'
+  import { filterAndSortBySpace, getReferenceFilterSpace, getSpaceFilterLabel } from '../../referenceFilterSpace'
   import view from '../../plugin'
   import { buildConfigLookup, getPresenter } from '../../utils'
   import FilterRemovedNotification from './FilterRemovedNotification.svelte'
+  import { isObjectFilterValueSelected, toggleObjectFilterValue } from './object-filter-selection'
 
   export let filter: Filter
   export let space: Ref<Space> | undefined = undefined
@@ -71,9 +73,20 @@
     grouppingManager = undefined
   }
 
+  let spaceConfig: ReferenceFilterSpace | undefined
   let filterUpdateTimeout: any | undefined
 
+  function getLabel(value: Doc): string {
+    const labelKey = clazz.sortingKey ?? clazz.filteringKey
+    return labelKey !== undefined ? String(getObjectValue(labelKey, value) ?? '') : ''
+  }
+
   async function getValues(search: string): Promise<void> {
+    // Values grouped by a manager are not plain documents, so they keep their default rows.
+    spaceConfig =
+      grouppingManager === undefined
+        ? getReferenceFilterSpace(hierarchy, client.getModel(), filter.key, space)
+        : undefined
     if (objectsPromise !== undefined) {
       await objectsPromise
     }
@@ -117,8 +130,9 @@
       targets.add(object)
     }
 
+    // With space settings the search also matches the space label, so it runs on the loaded values.
     const resultQuery =
-      search !== '' && clazz.filteringKey !== undefined
+      search !== '' && clazz.filteringKey !== undefined && spaceConfig === undefined
         ? {
             [clazz.filteringKey]: { $like: '%' + search + '%' },
             _id: { $in: Array.from(targets.keys()) }
@@ -127,7 +141,11 @@
             _id: { $in: Array.from(targets.keys()) }
           }
     const options = clazz.sortingKey !== undefined ? { sort: { [clazz.sortingKey]: SortingOrder.Ascending } } : {}
-    objectsPromise = client.findAll(targetClass, resultQuery, options)
+    objectsPromise = client.findAll(
+      targetClass,
+      resultQuery,
+      spaceConfig !== undefined ? { ...options, lookup: { space: spaceConfig.spaceClass } } : options
+    )
     values = await objectsPromise
     if (grouppingManager !== undefined) {
       values = grouppingManager.groupValues(values as Doc[], targets)
@@ -151,6 +169,11 @@
         )
       }
     }
+    if (spaceConfig !== undefined) {
+      const docs = values.filter((v): v is Doc => v != null)
+      const sorted = filterAndSortBySpace(docs, spaceConfig, getLabel, search)
+      values = docs.length < values.length ? [undefined, ...sorted] : sorted
+    }
     values = sortFilterValues(values, (v) => isSelected(v, filter.value))
     objectsPromise = undefined
   }
@@ -159,19 +182,11 @@
     if (value != null && grouppingManager !== undefined) {
       return grouppingManager.hasValue(value, values)
     }
-    return values.includes(value?._id ?? value)
+    return isObjectFilterValueSelected(value, values)
   }
 
   function handleFilterToggle(value: any): void {
-    if (isSelected(value, filter.value)) {
-      filter.value = filter.value.filter((p) => (value ? p !== value._id : p != null))
-    } else {
-      if (value) {
-        filter.value = [...filter.value, value._id]
-      } else {
-        filter.value = [...filter.value, undefined]
-      }
-    }
+    filter.value = toggleObjectFilterValue(value, filter.value, isSelected(value, filter.value))
 
     updateFilter()
   }
@@ -222,7 +237,14 @@
                 <div class="flex-row-center">
                   {#if value}
                     {#key value._id}
-                      <svelte:component this={attribute.presenter} {value} {...attribute.props} disabled oneLine />
+                      <svelte:component
+                        this={attribute.presenter}
+                        {value}
+                        {...attribute.props}
+                        {...spaceConfig !== undefined ? { spaceLabel: getSpaceFilterLabel(value, spaceConfig) } : {}}
+                        disabled
+                        oneLine
+                      />
                     {/key}
                   {:else}
                     <Label label={ui.string.NotSelected} />

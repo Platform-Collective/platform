@@ -67,10 +67,26 @@ export const CommonKitFactory = (e: ExtensionFactory) =>
     heading: e(Heading),
     underline: e(Underline),
     blockquote: e(Blockquote, { HTMLAttributes: { class: 'proseBlockQuote' } }),
-    link: e(Link.extend({ inclusive: false }), {
-      openOnClick: false,
-      HTMLAttributes: { class: 'cursor-pointer', rel: 'noopener noreferrer', target: '_blank' }
-    }),
+    link: e(
+      Link.extend({
+        inclusive: false,
+        addPasteRules () {
+          const rules = this.parent?.() ?? []
+          for (const rule of rules) {
+            const find = rule.find
+            if (typeof find === 'function') {
+              // Keep markup delimiters out of URLs without changing match positions in the original text.
+              rule.find = (text, event) => find(text.replace(/[<>"]/g, ' '), event)
+            }
+          }
+          return rules
+        }
+      }),
+      {
+        openOnClick: false,
+        HTMLAttributes: { class: 'cursor-pointer', rel: 'noopener noreferrer', target: '_blank' }
+      }
+    ),
     textAlign: e(TextAlign, {
       types: ['heading', 'paragraph'],
       alignments: ['left', 'center', 'right'],

@@ -41,10 +41,8 @@
     "StartWithoutVideo": "Sempre começar sem vídeo",
     "StartWithMutedMic": "Sempre começar com o microfone silenciado",
     "InvitingYou": "{name} está te convidando para entrar",
-    "YouInivite": "Você está convidando para entrar",
     "NoiseCancellation": "Cancelamento de ruído",
     "KnockingLabel": "Batendo",
-    "InivitingLabel": "Convite",
     "Invite": "Convidar",
     "KnockAction": "Bater",
     "NoiseCancellationNotSupported": "Seu navegador não suporta cancelamento de ruído",
@@ -161,6 +159,7 @@
     "GroupByStatus": "Por status",
     "GroupByDate": "Por data",
     "SpeakingWhileMuted": "Seu microfone está mudo - os outros não te ouvem",
-    "SpeakingWhileMutedAlert": "Avisar quando eu falar com o microfone mudo"
+    "SpeakingWhileMutedAlert": "Avisar quando eu falar com o microfone mudo",
+    "ScreenSharedBy": "{name} está compartilhando a tela"
   }
 }

@@ -17,6 +17,7 @@
     Doc,
     Ref,
     SearchResultDoc,
+    Space,
     Tx,
     TxWorkspaceEvent,
     WithLookup,
@@ -53,6 +54,7 @@
   import { createEventDispatcher, onMount, tick } from 'svelte'
   import { filterActions, getSelection, normalizeActionContext } from '../actions'
   import { filterActionsByInput, getActionPopupValue } from '../actionContext'
+  import { withCurrentSpace } from '../actionSpace'
   import view from '../plugin'
   import { focusStore, selectionStore } from '../selection'
   import { openDoc } from '../utils'
@@ -63,6 +65,8 @@
   import ChevronUp from './icons/ChevronUp.svelte'
 
   export let viewContext: ViewContext | undefined = $contextStore.getLastContext()
+  // Space the user currently works in, passed to actions like the keyboard shortcuts do
+  export let space: Ref<Space> | undefined = undefined
 
   let search: string = ''
   let actions: Array<WithLookup<Action>> = []
@@ -223,11 +227,18 @@
         return
       }
 
+      // Only actions of the active application get the current space, it belongs to that application
+      const actionProps =
+        space !== undefined &&
+        action.context.application !== undefined &&
+        action.context.application === viewContext?.application
+          ? withCurrentSpace(action.actionProps, space)
+          : action.actionProps
       const target = action.input === 'focus' ? supportedContext.docs[0] : supportedContext.docs
       const impl = await getResource(action.action)
       if (impl !== undefined) {
         closePopup()
-        await impl(target, evt, { ...action.actionProps, action })
+        await impl(target, evt, { ...actionProps, action })
       }
     }
   }

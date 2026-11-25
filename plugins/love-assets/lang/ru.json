@@ -159,6 +159,7 @@
     "GroupByStatus": "По статусу",
     "GroupByDate": "По дате",
     "SpeakingWhileMuted": "Микрофон выключен - вас не слышат",
-    "SpeakingWhileMutedAlert": "Предупреждать, когда говорю при выключенном микрофоне"
+    "SpeakingWhileMutedAlert": "Предупреждать, когда говорю при выключенном микрофоне",
+    "ScreenSharedBy": "{name} показывает экран"
   }
 }

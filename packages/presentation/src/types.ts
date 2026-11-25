@@ -1,4 +1,5 @@
 import {
+  type AccountUuid,
   type Tx,
   type Blob as PlatformBlob,
   type Class,
@@ -34,6 +35,19 @@ export interface ObjectSearchResult {
 /**
  * @public
  */
+export interface ObjectSearchOptions {
+  in?: RelatedDocument[]
+  nin?: RelatedDocument[]
+  /**
+   * Supported by EmployeeQuery only: replaces full-text search with an in-memory search among these
+   * accounts (for example space members). Other search factories ignore this option.
+   */
+  members?: AccountUuid[]
+}
+
+/**
+ * @public
+ */
 export interface ObjectCreate {
   component: AnyComponent | undefined
   props?: Record<string, any>
@@ -50,10 +64,7 @@ export interface ObjectCreate {
 export type ObjectSearchFactory = (
   client: Client,
   query: string,
-  options?: {
-    in?: RelatedDocument[]
-    nin?: RelatedDocument[]
-  }
+  options?: ObjectSearchOptions
 ) => Promise<ObjectSearchResult[]>
 
 /**
@@ -192,10 +203,15 @@ export type FileOrBlob = File | Blob
  * @public
  */
 export interface FilePreviewExtension extends ComponentPointExtension {
+  // Inherited props are viewer defaults, overridden by caller props and then host values:
+  // value, name (including undefined), contentType, metadata, fit and setLoading.
+  // Selection: exact MIME before type/* before */*, then order (missing first), then _id.
+  // MIME values are literal; only type/* and */* are wildcard patterns.
   contentType: string | string[]
   alignment?: string
   metadataProvider?: Resource<(file: FileOrBlob, blob: Ref<PlatformBlob>) => Promise<BlobMetadata | undefined>>
-  // Extension is only available if this checker returns true
+  // A registered checker must resolve and return true; missing/failed resources are unavailable.
+  // Only MIME-matching candidates are checked, and failure is isolated to that candidate.
   availabilityChecker?: Resource<() => Promise<boolean>>
 }
 

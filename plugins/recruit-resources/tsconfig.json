@@ -2,6 +2,7 @@
   "extends": "./node_modules/@hcengineering/platform-rig/profiles/ui/tsconfig.json",
 
   "compilerOptions": {
+    "types": ["jest", "node"],
     "rootDir": "./src",
     "outDir": "./lib",
     "declarationDir": "./types"

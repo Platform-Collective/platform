@@ -33,6 +33,7 @@
   export let props: Record<string, any> = {}
   export let compactMode: boolean = false
   export let readonly: boolean = false
+  export let dragHidden: boolean = false
 
   export function scroll() {
     elem?.scrollIntoView({ behavior: 'auto', block: 'nearest' })
@@ -90,6 +91,7 @@
   class:mListGridSelected={selected}
   class:last
   class:lastCat
+  style:visibility={dragHidden ? 'hidden' : undefined}
   draggable={true}
   on:contextmenu
   on:focus

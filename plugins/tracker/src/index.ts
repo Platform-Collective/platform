@@ -31,6 +31,7 @@ import {
   Timestamp,
   Type,
   type Permission,
+  type SortingRules,
   type AccountUuid
 } from '@hcengineering/core'
 import { Asset, IntlString, Plugin, Resource, plugin } from '@hcengineering/platform'
@@ -175,6 +176,20 @@ export enum IssuePriority {
   High,
   Medium,
   Low
+}
+
+/**
+ * Query ordering independent of the persisted priority values.
+ * @public
+ */
+export const issuePrioritySorting: Omit<SortingRules<IssuePriority>, 'order'> = {
+  cases: [
+    IssuePriority.Urgent,
+    IssuePriority.High,
+    IssuePriority.Medium,
+    IssuePriority.Low,
+    IssuePriority.NoPriority
+  ].map((query, index) => ({ query, index: index + 1 }))
 }
 
 /**
@@ -695,6 +710,7 @@ const pluginState = plugin(trackerId, {
     SetComponent: '' as Ref<Action<Doc, any>>,
     CopyIssueId: '' as Ref<Action<Doc, any>>,
     CopyIssueTitle: '' as Ref<Action<Doc, any>>,
+    CopyIssueBranch: '' as Ref<Action<Doc, any>>,
     CopyIssueLink: '' as Ref<Action<Doc, any>>,
     MoveToProject: '' as Ref<Action>,
     Duplicate: '' as Ref<Action<Doc, any>>,
