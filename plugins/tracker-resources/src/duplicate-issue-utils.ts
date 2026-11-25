@@ -7,8 +7,11 @@ import {
   type Class,
   type Doc,
   type DocumentQuery,
+  type FindOptions,
   type Hierarchy,
+  type PersonId,
   type Ref,
+  SortingOrder,
   type Status,
   type StatusCategory
 } from '@hcengineering/core'
@@ -29,16 +32,35 @@ export function selectCanceledStatus (
   return canceled.find((status) => status._id === currentStatus) ?? canceled[0]
 }
 
-/** Build the duplicate target query from cached statuses and editable projects. */
+interface DuplicatePickerScope {
+  readonly source: Ref<Issue>
+  readonly creators?: PersonId[]
+  readonly eligible?: Ref<Issue>[]
+}
+
+/** Build the duplicate target query from cached statuses, editable projects and guest eligibility. */
 export function createDuplicatePickerQuery (
   statuses: Status[],
   editableProjects: Array<Ref<Project>>,
-  canceledCategory: Ref<StatusCategory>
+  canceledCategory: Ref<StatusCategory>,
+  scope?: DuplicatePickerScope
 ): DocumentQuery<Issue> {
-  return {
-    status: { $nin: statuses.filter((status) => status.category === canceledCategory).map((status) => status._id) },
+  const query: DocumentQuery<Issue> = {
+    status: { $in: statuses.filter((status) => status.category !== canceledCategory).map((status) => status._id) },
     space: { $in: editableProjects }
   }
+  if (scope !== undefined) {
+    const eligible = scope.eligible?.filter((id) => id !== scope.source)
+    query._id = eligible === undefined ? { $nin: [scope.source] } : { $in: eligible }
+    if (scope.creators !== undefined) query.createdBy = { $in: scope.creators }
+  }
+  return query
+}
+
+// Match the default list limit in ObjectPopup. Both queries use the same order to break timestamp ties.
+export const DUPLICATE_PICKER_LIST_OPTIONS: FindOptions<Issue> = {
+  limit: 200,
+  sort: { modifiedOn: SortingOrder.Descending, _id: SortingOrder.Ascending }
 }
 
 export interface DuplicateTargetGuest {

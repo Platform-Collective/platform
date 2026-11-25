@@ -1,14 +1,7 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import { permissionsStore } from '@hcengineering/contact-resources'
-  import core, {
-    AccountRole,
-    getCurrentAccount,
-    type Doc,
-    type FindOptions,
-    type Ref,
-    SortingOrder
-  } from '@hcengineering/core'
+  import core, { AccountRole, getCurrentAccount, type FindOptions, type Ref } from '@hcengineering/core'
   import { setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { createQuery, getClient, ObjectPopup } from '@hcengineering/presentation'
   import task from '@hcengineering/task'
@@ -16,7 +9,11 @@
   import { statusStore } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import { getEditableDuplicateProjectIds, markIssueDuplicate } from '../duplicate-issue'
-  import { createDuplicatePickerQuery, createDuplicateTargetFilter } from '../duplicate-issue-utils'
+  import {
+    createDuplicatePickerQuery,
+    createDuplicateTargetFilter,
+    DUPLICATE_PICKER_LIST_OPTIONS
+  } from '../duplicate-issue-utils'
   import tracker from '../plugin'
   import { activeProjects } from '../utils'
   import IssueStatusIcon from './issues/IssueStatusIcon.svelte'
@@ -29,26 +26,51 @@
     account.role === AccountRole.Guest ||
     account.role === AccountRole.DocGuest ||
     account.role === AccountRole.ReadOnlyGuest
+  const creatorQuery = createQuery()
+  const socialIds = Array.isArray(account.socialIds) ? account.socialIds : []
   let loading = false
-  let collaboratorOf = new Set<Ref<Doc>>()
+  let createdIssues: Array<Ref<Issue>> = []
+  let collaboratorOf = new Set<Ref<Issue>>()
 
   if (isGuest) {
     const collaboratorQuery = createQuery()
     collaboratorQuery.query(core.class.Collaborator, { collaborator: account.uuid }, (result) => {
-      collaboratorOf = new Set(result.map((collaborator) => collaborator.attachedTo))
+      collaboratorOf = new Set(result.map((collaborator) => collaborator.attachedTo as Ref<Issue>))
     })
   }
 
   $: editableProjects = getEditableDuplicateProjectIds(Array.from($activeProjects.values()), $permissionsStore)
-  $: docQuery = createDuplicatePickerQuery($statusStore.array, editableProjects, task.statusCategory.Lost)
+  $: baseQuery = createDuplicatePickerQuery($statusStore.array, editableProjects, task.statusCategory.Lost, {
+    source: value._id
+  })
+  $: if (isGuest && socialIds.length > 0) {
+    creatorQuery.query(
+      tracker.class.Issue,
+      createDuplicatePickerQuery($statusStore.array, editableProjects, task.statusCategory.Lost, {
+        source: value._id,
+        creators: socialIds
+      }),
+      (result) => {
+        createdIssues = result.map((issue) => issue._id)
+      },
+      { ...DUPLICATE_PICKER_LIST_OPTIONS, projection: { _id: 1 } }
+    )
+  }
+  // Restrict the default list before its limit. Spotlight supplies its own IDs, so also filter its results.
+  $: docQuery = isGuest
+    ? createDuplicatePickerQuery($statusStore.array, editableProjects, task.statusCategory.Lost, {
+        source: value._id,
+        eligible: Array.from(new Set([...createdIssues, ...collaboratorOf]))
+      })
+    : baseQuery
   $: targetFilter = createDuplicateTargetFilter(
-    docQuery,
+    baseQuery,
     getClient().getHierarchy(),
-    isGuest ? { socialIds: account.socialIds, collaboratorOf } : undefined
+    isGuest ? { socialIds, collaboratorOf } : undefined
   )
   const options: FindOptions<Issue> = {
-    lookup: { status: [tracker.class.IssueStatus, { category: core.class.StatusCategory }] },
-    sort: { modifiedOn: SortingOrder.Descending }
+    ...DUPLICATE_PICKER_LIST_OPTIONS,
+    lookup: { status: [tracker.class.IssueStatus, { category: core.class.StatusCategory }] }
   }
 
   async function onClose({ detail: original }: CustomEvent<Issue | undefined | null>): Promise<void> {

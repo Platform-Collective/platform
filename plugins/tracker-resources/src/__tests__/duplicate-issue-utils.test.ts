@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { translateActivityInfoMessage } from '@hcengineering/activity'
 import type { Class, Doc, Ref, Status, StatusCategory } from '@hcengineering/core'
+import { addStringsLoader } from '@hcengineering/platform'
+import { trackerId } from '@hcengineering/tracker'
 import { createDuplicateReference, selectCanceledStatus } from '../duplicate-issue-utils'
+import tracker from '../plugin'
 
 const ru = jest.requireActual<{ string: { DuplicateOf: string } }>('../../../tracker-assets/lang/ru.json')
 
@@ -52,9 +56,11 @@ it('encodes issue references safely for translated activity messages', () => {
   )
 })
 
-it('inserts an issue reference into the actual Russian locale string', () => {
-  const issue = { _id: 'issue-id' as Ref<Doc>, _class: 'tracker:class:Issue' as Ref<Class<Doc>>, identifier: 'TEST-42' }
-  expect(ru.string.DuplicateOf.replace('{issue}', createDuplicateReference(issue))).toContain(
-    'Дубликат <span data-type="reference"'
-  )
+it('renders an issue reference with the tracker message ID and Russian translation', async () => {
+  addStringsLoader(trackerId, async () => ru)
+  const issue = { _id: 'issue-id' as Ref<Doc>, _class: tracker.class.Issue, identifier: 'TEST-42' }
+  const result = new Promise<string>((resolve) => {
+    translateActivityInfoMessage(tracker.string.DuplicateOf, { issue: createDuplicateReference(issue) }, 'ru', resolve)
+  })
+  await expect(result).resolves.toContain('Дубликат <span data-type="reference"')
 })

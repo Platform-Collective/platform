@@ -5,6 +5,7 @@ import core, {
   type Collaborator,
   Hierarchy,
   ModelDb,
+  SortingOrder,
   TxFactory,
   type Account,
   type Doc,
@@ -24,14 +25,15 @@ const status = (id: string, category: Ref<StatusCategory>): Status => {
   return result as Status
 }
 
-function createIssue (id: string, space: string, statusId: Ref<Status>, createdBy?: PersonId): Issue {
+function createIssue (id: string, space: string, statusId: Ref<Status>, createdBy?: PersonId, modifiedOn = 1): Issue {
   return {
     _id: id,
     _class: tracker.class.Issue,
     space,
     status: statusId,
     title: id,
-    createdBy
+    createdBy,
+    modifiedOn
   } as unknown as Issue
 }
 
@@ -56,7 +58,7 @@ function createStorage (): { db: ModelDb, hierarchy: Hierarchy, factory: TxFacto
 }
 
 async function addDoc<T extends Doc> (db: ModelDb, factory: TxFactory, doc: T): Promise<void> {
-  const tx = factory.createTxCreateDoc(doc._class, doc.space, doc, doc._id, undefined, doc.createdBy)
+  const tx = factory.createTxCreateDoc(doc._class, doc.space, doc, doc._id, doc.modifiedOn, doc.createdBy)
   await db.tx(tx)
 }
 
@@ -69,14 +71,14 @@ it('excludes canceled issues and projects without edit permission from the picke
       lost
     )
   ).toEqual({
-    status: { $nin: ['canceled-a', 'canceled-b'] },
+    status: { $in: ['open'] },
     space: { $in: editableProjects }
   })
 })
 
 it('returns an empty editable-project query until permissions have loaded', () => {
   expect(createDuplicatePickerQuery([], [], lost)).toEqual({
-    status: { $nin: [] },
+    status: { $in: [] },
     space: { $in: [] }
   })
 })
@@ -125,4 +127,47 @@ it('uses real storage and guest rules to select only editable creator or collabo
   expect(new Set(candidates.filter(regularFilter).map((issue) => issue._id))).toEqual(
     new Set([creator._id, collaborator._id, unrelated._id])
   )
+})
+
+it('applies guest eligibility before the default list limit', async () => {
+  const { db, factory } = createStorage()
+  const socialId = 'guest-social' as PersonId
+  const open = 'open' as Ref<Status>
+  const source = createIssue('source', 'editable', open, socialId, 9)
+  const creator = createIssue('creator', 'editable', open, socialId, 3)
+  const collaborator = createIssue('collaborator', 'editable', open, undefined, 2)
+  const unknown = createIssue('unknown', 'editable', 'unknown' as Ref<Status>, socialId, 8)
+  for (const issue of [source, creator, collaborator, unknown]) {
+    await addDoc(db, factory, issue)
+  }
+  for (let i = 0; i < 200; i++) {
+    await addDoc(db, factory, createIssue(`unrelated-${i}`, 'editable', open, undefined, 4))
+  }
+  const account = 'guest-account' as Account['uuid']
+  await addDoc(db, factory, {
+    _id: 'guest-collaboration',
+    _class: core.class.Collaborator,
+    space: collaborator.space,
+    attachedTo: collaborator._id,
+    attachedToClass: tracker.class.Issue,
+    collection: 'collaborators',
+    collaborator: account
+  } as unknown as Collaborator)
+
+  const statuses = [status('open', active)]
+  const projects = ['editable' as Ref<Project>]
+  const options = { limit: 200, sort: { modifiedOn: SortingOrder.Descending, _id: SortingOrder.Ascending } }
+  const creators = await db.findAll(
+    tracker.class.Issue,
+    createDuplicatePickerQuery(statuses, projects, lost, { source: source._id, creators: [socialId] }),
+    options
+  )
+  const collaborations = await db.findAll(core.class.Collaborator, { collaborator: account })
+  const query = createDuplicatePickerQuery(statuses, projects, lost, {
+    source: source._id,
+    eligible: [...creators.map((issue) => issue._id), ...collaborations.map((row) => row.attachedTo as Ref<Issue>)]
+  })
+
+  const defaultList = await db.findAll(tracker.class.Issue, query, options)
+  expect(defaultList.map((issue) => issue._id)).toEqual([creator._id, collaborator._id])
 })
