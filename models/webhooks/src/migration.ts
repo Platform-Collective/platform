@@ -24,6 +24,33 @@ import {
 import webhooks, { webhooksId } from '@hcengineering/webhooks'
 
 /**
+ * Thrown by the webhooks migration when a pass cannot complete. The
+ * class is distinct so operators can grep for it in logs, and so
+ * tests can assert the branch that tripped. Every subclass throws
+ * BEFORE any `client.update` call, so partial writes are impossible.
+ *
+ * `tryMigrate` catches any throw from a migration function and
+ * `continue`s past the state-record `create()` at the end of its
+ * loop body (`foundations/core/packages/model/src/migration.ts:187-207`).
+ * Thrown-from paths therefore leave `seedOwnerMembers-v1` unset, and
+ * the next upgrade retries. Addresses MichaelUray's Nov 25 review.
+ */
+/** @public */
+export class WebhooksMigrationIncompleteError extends Error {
+  readonly reason: 'dedicated-space-missing' | 'account-service-failed' | 'dedicated-space-collides'
+
+  constructor (
+    reason: 'dedicated-space-missing' | 'account-service-failed' | 'dedicated-space-collides',
+    message: string,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options)
+    this.name = 'WebhooksMigrationIncompleteError'
+    this.reason = reason
+  }
+}
+
+/**
  * Seed `webhooks.space.Webhooks.members` with the current set of
  * workspace Owners.
  *
@@ -59,27 +86,42 @@ import webhooks, { webhooksId } from '@hcengineering/webhooks'
  *     role is no longer Owner, so a demoted Owner stops receiving
  *     the space's broadcast. Not shipped in this PR.
  *
- * Idempotency: re-running this migration is a no-op. The migration
- * state key is per-workspace and the write is skipped when the
- * seeded set is already a subset of the current `members` list. The
- * migration preserves any existing non-Owner members (e.g. the
- * service account) because it unions rather than replaces.
+ * Idempotency and retry: re-running this migration is a no-op. The
+ * migration state key is per-workspace and the write is skipped when
+ * the seeded set is already a subset of the current `members` list.
+ * The migration preserves any existing non-Owner members (e.g. the
+ * service account) because it unions rather than replaces. Any
+ * branch that cannot complete the seed throws
+ * `WebhooksMigrationIncompleteError` so `tryMigrate` leaves the
+ * state key unset and the next upgrade retries.
  */
 async function seedWebhooksSpaceMembers (client: MigrationClient): Promise<void> {
   const current = await readWebhooksSpace(client)
   if (current === undefined) {
-    client.logger.log('webhooks: dedicated space missing, migration deferred until model-apply seeds it', {})
-    return
+    // Expected transient state during first install: `tryMigrate`
+    // runs before the model-apply has persisted the space row.
+    // Throwing here keeps the state key unset so the next upgrade
+    // pass picks it up and seeds. Returning normally recorded the
+    // seed as successful even though no Owner was added (Michael,
+    // Nov 25 review).
+    throw new WebhooksMigrationIncompleteError(
+      'dedicated-space-missing',
+      'webhooks: dedicated space missing; leaving migration unset so the next upgrade retries'
+    )
   }
 
   let members: WorkspaceMemberInfo[]
   try {
     members = await client.accountClient.getWorkspaceMembers()
   } catch (err: unknown) {
-    client.logger.log('webhooks: accountClient.getWorkspaceMembers failed; skipping seed this pass', {
-      error: err instanceof Error ? err.message : String(err)
-    })
-    return
+    // Treat an account-service failure as transient. Throwing here
+    // leaves the state key unset so the next upgrade retries once
+    // the account service is reachable again (Michael, Nov 25).
+    throw new WebhooksMigrationIncompleteError(
+      'account-service-failed',
+      'webhooks: accountClient.getWorkspaceMembers failed; leaving migration unset so the next upgrade retries',
+      { cause: err }
+    )
   }
 
   const owners = toOwnerSet(members)
@@ -112,10 +154,15 @@ async function readWebhooksSpace (client: MigrationClient): Promise<WebhooksSpac
   const rows = await client.find<Space>(DOMAIN_SPACE, { _id: webhooks.space.Webhooks }, { limit: 2 })
   if (rows.length === 0) return undefined
   if (rows.length > 1) {
-    client.logger.log('webhooks: multiple docs collide on the dedicated space _id; refusing to seed', {
-      count: rows.length
-    })
-    return undefined
+    // Treat duplicate dedicated-space rows as a data-integrity
+    // problem the operator must address. Throwing here keeps the
+    // state key unset so a later pass retries after the state is
+    // fixed, rather than recording the seed as successful and
+    // locking out all future runs (Michael, Nov 25).
+    throw new WebhooksMigrationIncompleteError(
+      'dedicated-space-collides',
+      `webhooks: ${rows.length} docs collide on the dedicated space _id; leaving migration unset so the next upgrade retries once operators resolve the collision`
+    )
   }
   const row = rows[0]
   const members = sanitizeMembers(row.members)
