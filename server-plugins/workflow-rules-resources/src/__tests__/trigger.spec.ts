@@ -1900,9 +1900,66 @@ describe('auto-create', () => {
     expect(create.attributes.attachedTo).toBe(tracker.ids.NoParent)
     expect(update.objectId).toBe('issue:a-source')
     expect(update.operations.attachedTo).toBe(create.objectId)
-    expect(update.operations.parents[0]).toMatchObject({ parentId: create.objectId, space: PROJ_B })
+    // The source's new `parents[0]` MUST describe the NEW counterpart (its
+    // title and identifier), not the source itself. The parent presenter
+    // uses `identifier` for the link target; leaking the source identifier
+    // here opens the source's own issue or a nonexistent one.
+    // Default autoRule has empty inherit, so counterpart title falls back to
+    // `${project.identifier} auto-created`; target project identifier is
+    // 'BRA' with sequence 10, so counterpart identifier is 'BRA-11'. Source
+    // fixture identifier is 'SRC-7' and title 'Source title'.
+    expect(update.operations.parents[0]).toMatchObject({
+      parentId: create.objectId,
+      space: PROJ_B,
+      parentTitle: 'BRA auto-created',
+      identifier: 'BRA-11'
+    })
+    expect(update.operations.parents[0].parentTitle).not.toBe('Source title')
+    expect(update.operations.parents[0].identifier).not.toBe('SRC-7')
     // notMatch for parentIssue is "source.attachedTo has been reassigned".
     expect(apply.notMatch[0].query).toMatchObject({ _id: 'issue:a-source' })
+  })
+
+  it("parentIssue source update's parents entry uses counterpart title and identifier, not source's", async () => {
+    // Distinct-identifiers case: source lives in a project whose identifier
+    // string shares no prefix with the target's, and inherit:['title'] means
+    // the counterpart title equals the source title. A regression that
+    // copied source values into the `parents` entry would still populate
+    // `parentTitle` with the source title (they match by coincidence) but
+    // would set `identifier` to source's 'DIFF-999', not the counterpart's
+    // 'BRA-11'. The assertion catches that path.
+    const control = makeAutoControl({
+      issues: [
+        sourceIssue({
+          attachedTo: tracker.ids.NoParent,
+          identifier: 'DIFF-999',
+          title: 'Carry-over title'
+        })
+      ],
+      rules: [
+        autoRule({
+          linkKind: 'parentIssue',
+          autoCreate: {
+            triggerStatuses: [S.inProgress],
+            componentMap: {},
+            inherit: ['title']
+          }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    const { create, update } = unwrapAutoApplyIf(emitted[0])
+    expect(create.attributes.title).toBe('Carry-over title')
+    expect(create.attributes.identifier).toBe('BRA-11')
+    expect(update.operations.parents[0]).toMatchObject({
+      parentId: create.objectId,
+      space: PROJ_B,
+      parentTitle: 'Carry-over title',
+      identifier: 'BRA-11'
+    })
+    // Key regression guard: counterpart identifier, never source identifier.
+    expect(update.operations.parents[0].identifier).not.toBe('DIFF-999')
   })
 
   it('suppresses duplicate auto-create for same (source, rule) in one request', async () => {

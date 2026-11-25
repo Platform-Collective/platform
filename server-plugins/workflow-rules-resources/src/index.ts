@@ -1001,41 +1001,11 @@ export async function tryEmitAutoCreate (
       return []
     }
     attachedTo = tracker.ids.NoParent
-    // Build the source-update tx that reattaches the source as a sub-issue of
-    // the new counterpart. parents chain gets the new counterpart prepended.
-    const titleForParents = typeof source.title === 'string' ? source.title : ''
-    const identifierForParents =
-      typeof source.identifier === 'string' && source.identifier.length > 0
-        ? source.identifier
-        : `${project.identifier}-0`
-    const nextParents: IssueParentInfo[] = [
-      {
-        parentId: newId,
-        parentTitle: titleForParents,
-        space: rule.linkedProject,
-        identifier: identifierForParents
-      },
-      ...(Array.isArray(source.parents) ? source.parents : [])
-    ]
-    sourceUpdateTx = control.txFactory.createTxUpdateDoc(
-      tracker.class.Issue,
-      source.space,
-      source._id,
-      {
-        attachedTo: newId,
-        attachedToClass: tracker.class.Issue,
-        collection: 'subIssues',
-        parents: nextParents
-      },
-      false,
-      sourceTx.modifiedOn,
-      sourceTx.modifiedBy
-    )
-    // Mark the source update as derived so a status trigger watching the
-    // source does not re-enter us. The source update here does NOT change
-    // status, so even without this mark the cascade guard would not fire;
-    // the mark keeps the invariant "every tx we emit is DerivedTx".
-    ;(sourceUpdateTx as unknown as { space: unknown }).space = core.space.DerivedTx
+    // The source-update tx that reattaches the source as a sub-issue of the
+    // new counterpart is built below, after `defaultTitle` and `identifier`
+    // are known. The entry prepended to source.parents MUST describe the
+    // counterpart (its title and identifier), not the source itself; the
+    // parent presenter uses it for the link label and target.
   } else {
     // Unknown linkKind; isValidRule should have refused, but fail closed.
     return []
@@ -1055,6 +1025,42 @@ export async function tryEmitAutoCreate (
     typeof inherited.title === 'string' && inherited.title.length > 0
       ? inherited.title
       : `${project.identifier} auto-created`
+
+  // Build the source-update tx for the parentIssue linkKind now that the new
+  // counterpart's title (`defaultTitle`) and identifier are known. The entry
+  // prepended to source.parents MUST describe the counterpart, not the
+  // source; the parent presenter uses it for the link label and target.
+  if (rule.linkKind === 'parentIssue') {
+    const nextParents: IssueParentInfo[] = [
+      {
+        parentId: newId,
+        parentTitle: defaultTitle,
+        space: rule.linkedProject,
+        identifier
+      },
+      ...(Array.isArray(source.parents) ? source.parents : [])
+    ]
+    sourceUpdateTx = control.txFactory.createTxUpdateDoc(
+      tracker.class.Issue,
+      source.space,
+      source._id,
+      {
+        attachedTo: newId,
+        attachedToClass: tracker.class.Issue,
+        collection: 'subIssues',
+        parents: nextParents
+      },
+      false,
+      sourceTx.modifiedOn,
+      sourceTx.modifiedBy
+    )
+    // Mark the source update as derived (invariant: every tx we emit is
+    // DerivedTx). The source update here does not change status, so the
+    // cascade guard would not fire anyway; the mark keeps the invariant
+    // visible.
+    ;(sourceUpdateTx as unknown as { space: unknown }).space = core.space.DerivedTx
+  }
+
   const attrs: Data<Issue> = {
     attachedTo,
     attachedToClass: tracker.class.Issue,
