@@ -33,24 +33,14 @@ import LabelsPresenter from './components/LabelsPresenter.svelte'
 import CreateTagElement from './components/CreateTagElement.svelte'
 import ObjectsTagsEditorPopup from './components/ObjectsTagsEditorPopup.svelte'
 import TagElement from './components/TagElement.svelte'
-import { type ObjQueryType } from '@hcengineering/core'
-import { getRefs, selectedTagElements } from './utils'
-import { type Filter } from '@hcengineering/view'
+import { selectedTagElements, tagsInResult, tagsNinResult } from './utils'
 import WeightPopup from './components/WeightPopup.svelte'
 import DraftTagsEditor from './components/DraftTagsEditor.svelte'
 import TagsFilterPresenter from './components/TagsFilterPresenter.svelte'
 import DocTagsEditor from './components/DocTagsEditor.svelte'
 
 export { WeightPopup, TagElement, selectedTagElements, TagElementPresenter }
-export async function tagsInResult (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {
-  const result = await getRefs(filter, onUpdate)
-  return { $in: result }
-}
-
-export async function tagsNinResult (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {
-  const result = await getRefs(filter, onUpdate)
-  return { $nin: result }
-}
+export { tagsInResult, tagsNinResult }
 
 export async function createTagElement (props: Record<string, any> = {}): Promise<void> {
   showPopup(CreateTagElement, props, 'top')

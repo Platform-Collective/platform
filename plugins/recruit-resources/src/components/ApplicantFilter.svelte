@@ -16,7 +16,6 @@
   import { getClient } from '@hcengineering/presentation'
   import { SelectPopup } from '@hcengineering/ui'
   import view, { Filter, FilterMode } from '@hcengineering/view'
-  import { FilterQuery } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import recruit from '../plugin'
 
@@ -25,9 +24,6 @@
   export let onChange: (e: Filter) => void
 
   const client = getClient()
-  filter.onRemove = () => {
-    FilterQuery.remove(filter.index)
-  }
 
   filter.modes = [recruit.filter.HasActive, recruit.filter.NoActive, recruit.filter.None]
   filter.mode = filter.mode === undefined ? filter.modes[0] : filter.mode

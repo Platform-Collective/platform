@@ -95,7 +95,12 @@ import {
   type TabItem
 } from '@hcengineering/ui'
 import view, { type Filter, type GrouppingManager, type ObjectPanel } from '@hcengineering/view'
-import { accessDeniedStore, FilterQuery } from '@hcengineering/view-resources'
+import {
+  accessDeniedStore,
+  FILTER_QUERY_VALUE_SCOPE,
+  FilterQuery,
+  queryFilterRefs
+} from '@hcengineering/view-resources'
 import { type LocationData } from '@hcengineering/workbench'
 import { derived, get, type Readable, writable } from 'svelte/store'
 
@@ -188,39 +193,36 @@ export async function getRefs (
   docUpdates?: Map<Ref<Doc>, DocNotifyContext>,
   inboxNotificationsByContext?: Map<Ref<DocNotifyContext>, InboxNotification[]>
 ): Promise<Array<Ref<Doc>>> {
+  const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
   const lq = FilterQuery.getLiveQuery(filter.index)
   const client = getClient()
-  const mode = await client.findOne(view.class.FilterMode, { _id: filter.mode })
-  if (mode === undefined) return []
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
-    const hasMessagesQuery = hasMessages === true ? { items: { $gt: 0 } } : {}
-    const refresh = lq.query(
-      contact.class.Channel,
-      {
-        provider: { $in: filter.value },
-        ...hasMessagesQuery
-      },
-      (refs) => {
-        const filteredRefs =
-          docUpdates !== undefined && inboxNotificationsByContext !== undefined
-            ? refs.filter((channel) => {
-                const docUpdate = docUpdates.get(channel._id)
-                return docUpdate != null
-                  ? inboxNotificationsByContext.get(docUpdate._id)?.some(({ isViewed }) => !isViewed)
-                  : (channel.items ?? 0) > 0
-              })
-            : refs
-        const result = Array.from(new Set(filteredRefs.map((p) => p.attachedTo)))
-        FilterQuery.results.set(filter.index, result)
-        resolve(result)
-        onUpdate()
-      }
-    )
-    if (!refresh) {
-      resolve(FilterQuery.results.get(filter.index) ?? [])
+  const mode = await lifetime.waitFor(client.findOne(view.class.FilterMode, { _id: filter.mode }))
+  if (mode === undefined || !FilterQuery.isActive(filter.index, FILTER_QUERY_VALUE_SCOPE, lq)) return []
+  const hasMessagesQuery = hasMessages === true ? { items: { $gt: 0 } } : {}
+  return await queryFilterRefs({
+    filter,
+    onUpdate,
+    lifetime,
+    lq,
+    _class: contact.class.Channel,
+    query: {
+      provider: { $in: filter.value },
+      ...hasMessagesQuery
+    },
+    mapResults: (refs) => {
+      const filteredRefs =
+        docUpdates !== undefined && inboxNotificationsByContext !== undefined
+          ? refs.filter((channel) => {
+              const docUpdate = docUpdates.get(channel._id)
+              return docUpdate != null
+                ? inboxNotificationsByContext.get(docUpdate._id)?.some(({ isViewed }) => !isViewed)
+                : (channel.items ?? 0) > 0
+            })
+          : refs
+      return filteredRefs.map((p) => p.attachedTo)
     }
   })
-  return await promise
 }
 
 export async function getCurrentEmployeeName (): Promise<string> {

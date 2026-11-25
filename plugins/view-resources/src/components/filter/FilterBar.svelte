@@ -14,12 +14,12 @@
 -->
 <script lang="ts">
   import { AccountRole, Class, Doc, DocumentQuery, Ref, Space, getCurrentAccount } from '@hcengineering/core'
-  import { getClient, reduceCalls } from '@hcengineering/presentation'
+  import { getClient } from '@hcengineering/presentation'
   import { Button, IconAdd, IconClose, eventToHTMLElement, getCurrentLocation, showPopup } from '@hcengineering/ui'
   import { Filter, FilterMode, FilteredView, ViewOptions, Viewlet } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import { filterStore, removeFilter, selectedFilterStore, setFilters, updateFilter } from '../../filter'
-  import { makeFilterQuery } from '../../filter/query-builder'
+  import { createFilterQueryComposer } from '../../filter/composer'
   import view from '../../plugin'
   import { activeViewlet, getActiveViewletId, makeViewletKey } from '../../utils'
   import { getViewOptions, viewOptionStore } from '../../viewOptions'
@@ -88,19 +88,22 @@
   const resolveMode = async (id: Ref<FilterMode>): Promise<FilterMode | undefined> =>
     await client.findOne(view.class.FilterMode, { _id: id })
 
-  const makeQuery = reduceCalls(async (query: DocumentQuery<Doc>, filters: Filter[]): Promise<void> => {
-    // Pass a real refresh callback (6th arg) instead of the no-op default in
-    // makeFilterQuery. A filter's async result-fn invokes refresh when its
-    // underlying data resolves/changes (e.g. lookup filters that load their
-    // value set asynchronously) so the query must be rebuilt and re-dispatched.
-    // This restores develop's behaviour, where the inline makeQuery passed
-    // `() => makeQuery(query, filters)` to each filter's result(). reduceCalls
-    // coalesces the re-entrant call, so this cannot spin into an infinite loop.
-    const next = await makeFilterQuery(query, filters, resolveMode, undefined, hierarchy, () => {
-      void makeQuery(query, filters)
-    })
-    dispatch('change', next)
+  const composeQuery = createFilterQueryComposer({
+    resolveMode,
+    hierarchy,
+    onChange: (next) => {
+      dispatch('change', next)
+    },
+    refresh: () => {
+      // Retained subscriptions refresh current inputs. Their own generation
+      // guards live in makeFilterQuery; a removed sibling must not block them.
+      makeQuery(query, $filterStore)
+    }
   })
+
+  function makeQuery(query: DocumentQuery<Doc>, filters: Filter[]): void {
+    void composeQuery(query, filters)
+  }
 
   $: makeQuery(query, $filterStore)
 
@@ -158,7 +161,7 @@
 {#if showChipRow}
   <div class="filterbar-container">
     <div class="filters">
-      {#each $filterStore as filter, i}
+      {#each $filterStore as filter, i (filter.index)}
         <FilterSection
           {space}
           {filter}
