@@ -6,15 +6,15 @@
   "license": "EPL-2.0",
   "scripts": {
     "build": "compile ui",
-    "test": "jest --passWithNoTests --silent",
     "build:docs": "api-extractor run --local",
     "format": "format src",
     "svelte-check": "do-svelte-check",
     "build:watch": "compile ui",
+    "test": "jest --passWithNoTests --silent",
     "_phase:build": "compile ui",
     "_phase:format": "format src",
-    "_phase:validate": "compile validate",
-    "_phase:test": "jest --passWithNoTests --silent"
+    "_phase:test": "jest --passWithNoTests --silent",
+    "_phase:validate": "compile validate"
   },
   "devDependencies": {
     "svelte-loader": "^3.2.0",
