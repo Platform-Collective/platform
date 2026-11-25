@@ -113,6 +113,132 @@ describe('callout Markdown conversion', () => {
     expect(markdown).toContain('> [!NOTE]\n>\n')
   })
 
+  it.each([
+    '---',
+    '   ---',
+    '***',
+    '___',
+    '# Heading',
+    '> Quote',
+    '- Item',
+    '+ Item',
+    '* Item',
+    '1. Item',
+    '1) Item',
+    '```ts\nconst value = 1\n```',
+    '~~~\ncode\n~~~',
+    '<b>literal</b> &amp; | pipe',
+    'Heading\n===',
+    'Heading\n---',
+    '[!NOTE]'
+  ])('round-trips a literal paragraph containing Markdown syntax: %j', (text) => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: null },
+          content: [paragraph(text), paragraph('Inside')]
+        },
+        paragraph('After')
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    expect(restored).toMatchObject(doc)
+    expect(restored.content?.[0].content?.[0].type).toBe(MarkupNodeType.paragraph)
+    expect(restored.content?.[0].content?.[0].content?.map((node) => node.text)).toEqual([text])
+    expect(markupToMarkdown(restored)).toBe(markdown)
+  })
+
+  it('keeps real code block contents raw', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [
+            {
+              type: MarkupNodeType.code_block,
+              attrs: { language: 'md' },
+              content: [{ type: MarkupNodeType.text, text: '---\n```\n**literal**' }]
+            },
+            paragraph('After')
+          ]
+        }
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('> ---\n> ```\n> **literal**')
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+  })
+
+  it('escapes literal text in HTML-styled marks without escaping inline code', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [
+            {
+              type: MarkupNodeType.paragraph,
+              content: [
+                {
+                  type: MarkupNodeType.text,
+                  text: '<b>literal</b> &amp;',
+                  marks: [{ type: MarkupMarkType.textStyle, attrs: { color: 'red' } }]
+                },
+                { type: MarkupNodeType.text, text: '`code` &amp;', marks: [{ type: MarkupMarkType.code }] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    const content = restored.content?.[0].content?.[0].content ?? []
+    const styled = content.filter((node) => node.marks?.some((mark) => mark.type === MarkupMarkType.textStyle))
+    expect(content.map((node) => node.text ?? '').join('')).toBe('<b>literal</b> &amp;`code` &amp;')
+    expect(styled.map((node) => node.text ?? '').join('')).toBe('<b>literal</b> &amp;')
+    expect(
+      styled.every((node) =>
+        node.marks?.some((mark) => mark.type === MarkupMarkType.textStyle && mark.attrs?.color === 'red')
+      )
+    ).toBe(true)
+    expect(content.at(-1)?.text).toBe('`code` &amp;')
+    expect(content.at(-1)?.marks?.some((mark) => mark.type === MarkupMarkType.code)).toBe(true)
+  })
+
+  it('round-trips empty paragraphs between callout content', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: null },
+          content: [paragraph('Before'), paragraph(), paragraph(), paragraph('After')]
+        },
+        paragraph('Outside')
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    const content = restored.content?.[0].content ?? []
+    expect(restored.content?.map((node) => node.type)).toEqual([MarkupNodeType.callout, MarkupNodeType.paragraph])
+    expect(content.map((node) => node.type)).toEqual(Array(4).fill(MarkupNodeType.paragraph))
+    expect(content[0].content?.[0].text).toBe('Before')
+    expect(content[1].content ?? []).toHaveLength(0)
+    expect(content[2].content ?? []).toHaveLength(0)
+    expect(content[3].content?.[0].text).toBe('After')
+    expect(restored.content?.[1].content?.[0].text).toBe('Outside')
+    expect(markupToMarkdown(restored)).toBe(markdown)
+  })
+
   it('accepts a GitHub-style note separately from following Markdown and ordinary blockquotes', () => {
     const doc = markdownToMarkup('> [!NOTE]\n> Note\n>\n> Second\n\nAfter\n\n> Quote')
     expect(doc.content?.map((node) => node.type)).toEqual(['callout', 'paragraph', 'blockquote'])

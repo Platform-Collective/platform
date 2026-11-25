@@ -320,6 +320,16 @@ function newSimpleMarkHandler (spec: ParsingMarkRule, specMark: MarkupMarkType):
   }
 }
 
+function isHtmlWhitespaceParagraph (node: MarkupNode): boolean {
+  const content = nodeContent(node)
+  return (
+    node.type === MarkupNodeType.paragraph &&
+    content.length === 1 &&
+    content[0].type === MarkupNodeType.text &&
+    content[0].text?.trim() === ''
+  )
+}
+
 function tokenHandlers (
   tokensBlock: Record<string, ParsingBlockRule>,
   tokensNode: Record<string, ParsingNodeRule>,
@@ -354,7 +364,8 @@ function tokenHandlers (
         state.closeNode()
         return
       }
-      const markup = htmlParser(tok.content)
+      const inCallout = state.stack.some((node) => node.type === MarkupNodeType.callout)
+      const markup = htmlParser(inCallout ? `<p>${tok.content}</p>` : tok.content)
       if (markup.content !== undefined) {
         // unwrap content from wrapping paragraph
         const shouldUnwrap =
@@ -379,7 +390,8 @@ function tokenHandlers (
   handlers.html_block = (state: MarkdownParseState, tok: Token) => {
     try {
       const model = htmlParser(tok.content)
-      const content = nodeContent(model)
+      const inCallout = state.top()?.type === MarkupNodeType.callout
+      const content = nodeContent(model).filter((node) => !inCallout || !isHtmlWhitespaceParagraph(node))
       for (const c of content) {
         state.push(c)
       }
