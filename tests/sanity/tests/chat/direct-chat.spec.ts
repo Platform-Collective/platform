@@ -86,6 +86,9 @@ test.describe('Check direct messages channels', () => {
       await openNotifications()
       await expect(nothing.locator('.check svg')).toBeVisible()
       await expect(allMessages.locator('.check svg')).toBeHidden()
+      await navigatorSelector.focus()
+      await page.keyboard.press('Tab')
+      await expect(navigatorSelector).toBeHidden()
     })
 
     await test.step('Exchange messages in the direct chat', async () => {
