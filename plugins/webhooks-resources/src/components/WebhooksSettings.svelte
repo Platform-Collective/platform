@@ -21,14 +21,12 @@
 <div class="webhooks-settings-shell">
   <h2>Webhooks</h2>
   <p>
-    This workspace manages outbound webhook subscriptions here. The
-    management surface ships in a follow-up PR; the plugin descriptor,
-    model, and authorization middleware land first so the server-side
-    rules can be reviewed in isolation.
+    This workspace manages outbound webhook subscriptions here. The management surface ships in a follow-up PR; the
+    plugin descriptor, model, and authorization middleware land first so the server-side rules can be reviewed in
+    isolation.
   </p>
   <p class="dim">
-    See the design document for the planned surface: list, create,
-    edit, test send, rotate secret, delivery history.
+    See the design document for the planned surface: list, create, edit, test send, rotate secret, delivery history.
   </p>
 </div>
 
