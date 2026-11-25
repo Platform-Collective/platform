@@ -630,7 +630,7 @@ export async function createWorkspace (
   }
 
   const decoded = decodeTokenVerbose(ctx, token)
-  const { account } = decoded
+  const { account, extra } = decoded
 
   checkRateLimit(account, workspaceName)
 
@@ -688,7 +688,7 @@ export async function createWorkspace (
     account,
     socialId: socialId._id,
     name: getPersonName(person),
-    token: reissueToken(decoded, workspaceUuid),
+    token: reissueToken(decoded, workspaceUuid, extra),
     endpoint: getEndpoint(workspaceUuid, region, EndpointKind.External),
     workspace: workspaceUuid,
     workspaceUrl,
