@@ -13,17 +13,19 @@
   const dispatch = createEventDispatcher<{ close: undefined }>()
   let loading = false
 
+  function close(): void {
+    dispatch('close')
+  }
+
   function select(result: SelectPopupValueType['id']): void {
     if (typeof result !== 'string') {
-      dispatch('close')
+      close()
       return
     }
 
     loading = true
     void updateDocNotifyLevel(value, result as DocNotifyLevel)
-      .then(() => {
-        dispatch('close')
-      })
+      .then(close)
       .catch((error) => {
         Analytics.handleError(error)
       })
@@ -33,10 +35,4 @@
   }
 </script>
 
-<SelectPopup
-  value={getDocNotifyLevelValues(value)}
-  {loading}
-  onSelect={select}
-  on:close={() => dispatch('close')}
-  on:changeContent
-/>
+<SelectPopup value={getDocNotifyLevelValues(value)} {loading} onSelect={select} on:close={close} on:changeContent />

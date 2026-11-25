@@ -77,9 +77,9 @@ test.describe('Check direct messages channels', () => {
       const directChat = channelPage.channelContainers().filter({ hasText: directChatName })
       await directChat.hover()
       await directChat.locator('.hulyNavItem-actions').click()
-      const notificationsAction = page
-        .locator('.antiPopup')
-        .getByRole('button', { name: 'Notifications', exact: true })
+      const notificationsAction = page.locator('.antiPopup').getByRole('button', { name: 'Notifications', exact: true })
+      await page.mouse.move(0, 0)
+      await page.mouse.move(1200, 800)
       await notificationsAction.dispatchEvent('click')
 
       const navigatorSelector = page.locator('.popup .selectPopup[tabindex="0"]').last()
