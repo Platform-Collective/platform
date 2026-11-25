@@ -615,7 +615,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  renderHtml (node: MarkupNode, escapeText = false): string {
+  renderHtml (node: MarkupNode, escapeText = this.escapeText): string {
     return this.htmlWriter(node, escapeText)
   }
 

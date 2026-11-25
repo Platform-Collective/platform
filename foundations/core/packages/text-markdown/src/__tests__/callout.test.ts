@@ -97,7 +97,10 @@ describe('callout Markdown conversion', () => {
     ['Heading\n---', MarkupNodeType.heading],
     ['3. Item', MarkupNodeType.ordered_list]
   ])('preserves a callout starting with %j', (firstBlock, blockType) => {
-    const block = markdownToMarkup(firstBlock).content?.[0]
+    const block =
+      blockType === MarkupNodeType.horizontal_rule
+        ? { type: MarkupNodeType.horizontal_rule }
+        : markdownToMarkup(firstBlock).content?.[0]
     expect(block?.type).toBe(blockType)
     if (block === undefined) throw new Error('Expected the first Markdown block')
 
@@ -111,6 +114,69 @@ describe('callout Markdown conversion', () => {
     expect(restored).toMatchObject(doc)
     expect(restored.content?.[0].content?.map((node) => node.type)).toEqual([blockType, MarkupNodeType.paragraph])
     expect(markdown).toContain('> [!NOTE]\n>\n')
+  })
+
+  it('preserves callout table content and restores the escape mode afterward', () => {
+    const literal = '<b>literal</b> &amp; '
+    const bold: MarkupNode = {
+      type: MarkupNodeType.text,
+      text: 'bold',
+      marks: [{ type: MarkupMarkType.bold }]
+    }
+    const table: MarkupNode = {
+      type: MarkupNodeType.table,
+      content: [
+        {
+          type: MarkupNodeType.table_row,
+          content: [
+            {
+              type: MarkupNodeType.table_cell,
+              content: [
+                {
+                  type: MarkupNodeType.paragraph,
+                  content: [{ type: MarkupNodeType.text, text: literal }, bold]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [{ type: MarkupNodeType.callout, content: [table, paragraph('Inside')] }, paragraph('Outside'), table]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    expect(restored.content?.map((node) => node.type)).toEqual([
+      MarkupNodeType.callout,
+      MarkupNodeType.paragraph,
+      MarkupNodeType.table
+    ])
+    const callout = restored.content?.[0]
+    expect(callout?.attrs).toEqual({ kind: 'info', emoji: null })
+    expect(callout?.content?.map((node) => node.type)).toEqual([MarkupNodeType.table, MarkupNodeType.paragraph])
+    expect(callout?.content?.[1]).toMatchObject(paragraph('Inside'))
+    expect(restored.content?.[1]).toMatchObject(paragraph('Outside'))
+
+    const restoredTable = callout?.content?.[0]
+    expect(restoredTable).toMatchObject({
+      content: [{ type: MarkupNodeType.table_row, content: [{ type: MarkupNodeType.table_cell }] }]
+    })
+    const cell = restoredTable?.content?.[0].content?.[0]
+    expect(cell?.content?.map((node) => node.type)).toEqual([MarkupNodeType.paragraph])
+    const text = cell?.content?.[0].content ?? []
+    const literalNodes = text.slice(0, -1)
+    expect(literalNodes.map((node) => node.text).join('')).toBe(literal)
+    expect(literalNodes.every((node) => node.type === MarkupNodeType.text)).toBe(true)
+    expect(literalNodes.flatMap((node) => node.marks ?? [])).toEqual([])
+    expect(text.at(-1)).toEqual(bold)
+
+    expect(markdown).toContain('> [!NOTE]\n>\n> <table>')
+    expect(markdown.split('\n').at(-1)).toBe(
+      '<table><tbody><tr><td><p><b>literal</b> &amp; <strong>bold</strong></p></td></tr></tbody></table>'
+    )
   })
 
   it.each([
