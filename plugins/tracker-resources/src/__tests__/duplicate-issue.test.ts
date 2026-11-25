@@ -79,6 +79,9 @@ const ops = {
   commit: jest.fn()
 }
 const client = { findOne: jest.fn(), findAll: jest.fn(), apply: jest.fn() }
+const writableActiveProjects = activeProjects as unknown as {
+  set: (value: Map<Project['_id'], Project>) => void
+}
 let documents: Map<string, unknown>
 
 function setTaskType (update: Partial<TaskType> = {}): void {
@@ -97,7 +100,7 @@ beforeEach(() => {
     array: [open, done, canceled]
   })
   setTaskType()
-  activeProjects.set(
+  writableActiveProjects.set(
     new Map([
       [duplicate.space, { _id: duplicate.space, type: taskType.parent }],
       [original.space, { _id: original.space, type: taskType.parent }]
