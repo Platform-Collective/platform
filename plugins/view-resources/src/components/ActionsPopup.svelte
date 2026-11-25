@@ -52,7 +52,7 @@
   import { Action, ActionCategory, ViewContext } from '@hcengineering/view'
   import { createEventDispatcher, onMount, tick } from 'svelte'
   import { filterActions, getSelection, normalizeActionContext } from '../actions'
-  import { getActionPopupValue } from '../actionContext'
+  import { filterActionsByInput, getActionPopupValue } from '../actionContext'
   import view from '../plugin'
   import { focusStore, selectionStore } from '../selection'
   import { openDoc } from '../utils'
@@ -123,9 +123,9 @@
     for (const d of docs) {
       fActions = filterActions(client, d, fActions)
     }
+    fActions = filterActionsByInput(fActions, docs)
 
     if (docs.length === 0) {
-      fActions = fActions.filter((it) => it.input === 'none')
       const overrideRemove: Array<Ref<Action>> = []
       for (const fAction of fActions) {
         if (fAction.override !== undefined) {

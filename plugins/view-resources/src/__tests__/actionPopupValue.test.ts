@@ -2,7 +2,7 @@
 
 import core, { type Doc, type Ref } from '@hcengineering/core'
 
-import { getActionPopupValue } from '../actionContext'
+import { filterActionsByInput, getActionPopupValue } from '../actionContext'
 
 function document (id: string): Doc {
   return {
@@ -31,5 +31,25 @@ describe('getActionPopupValue', () => {
     const docs = [document('first'), document('second')]
 
     expect(getActionPopupValue(docs)).toBe(docs)
+  })
+})
+
+describe('filterActionsByInput', () => {
+  const actions = [
+    { id: 'focus', input: 'focus' },
+    { id: 'selection', input: 'selection' },
+    { id: 'any', input: 'any' },
+    { id: 'none', input: 'none' }
+  ] as const
+
+  it('allows focus actions only for a single context', () => {
+    const docs = [document('first'), document('second')]
+
+    expect(filterActionsByInput(actions, [docs[0]]).map(({ id }) => id)).toEqual(['focus', 'selection', 'any', 'none'])
+    expect(filterActionsByInput(actions, docs).map(({ id }) => id)).toEqual(['selection', 'any', 'none'])
+  })
+
+  it('allows only context-free actions without a document', () => {
+    expect(filterActionsByInput(actions, []).map(({ id }) => id)).toEqual(['none'])
   })
 })
