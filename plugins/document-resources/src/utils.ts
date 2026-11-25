@@ -36,7 +36,7 @@ import {
   getCurrentResolvedLocation,
   getPanelURI
 } from '@hcengineering/ui'
-import { accessDeniedStore, openDoc } from '@hcengineering/view-resources'
+import { SimpleNotification, accessDeniedStore, openDoc } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
 import { type Editor } from '@tiptap/core'
 import slugify from 'slugify'
@@ -105,8 +105,11 @@ export async function createEmptyDocument (
 }
 
 async function notifySubpageLinkFailure (title: string): Promise<void> {
-  const message = await translate(document.string.SubpageLinkFailed, { title })
-  addNotification(message, '', undefined as any, undefined, NotificationSeverity.Warning)
+  const [heading, message] = await Promise.all([
+    translate(document.string.Subpage, {}),
+    translate(document.string.SubpageLinkFailed, { title })
+  ])
+  addNotification(heading, message, SimpleNotification, undefined, NotificationSeverity.Warning)
 }
 
 /**
@@ -127,12 +130,11 @@ export async function createSubpage (editor: Editor, pos: number, parent: Docume
     return
   }
 
-  const doc = await client.findOne(document.class.Document, { _id: id })
-  if (doc === undefined) return
-
+  let doc: Document | undefined
   let inserted = false
   try {
-    if (!editor.isDestroyed) {
+    doc = await client.findOne(document.class.Document, { _id: id })
+    if (doc !== undefined && !editor.isDestroyed) {
       const at = resolvePosition()
       if (at !== null && !editor.isDestroyed) {
         const inline = editor.state.doc.resolve(at).parent.inlineContent
@@ -147,8 +149,8 @@ export async function createSubpage (editor: Editor, pos: number, parent: Docume
     Analytics.handleError(err)
   }
 
-  if (!inserted) {
-    await notifySubpageLinkFailure(doc.title)
+  if (!inserted || doc === undefined) {
+    await notifySubpageLinkFailure(doc?.title ?? title)
     return
   }
   await openDoc(client.getHierarchy(), doc)
