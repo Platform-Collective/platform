@@ -15,6 +15,7 @@
 
 import type {
   AccountClient,
+  InviteDetails,
   LoginInfo,
   OtpInfo,
   RegionInfo,
@@ -666,6 +667,11 @@ export async function getInviteLink (
   const frontUrl = getMetadata(presentation.metadata.FrontUrl)
   const host = frontUrl ?? document.location.origin
   return concatLink(host, url)
+}
+
+export async function listWorkspaceInvites (): Promise<InviteDetails[]> {
+  const token = getMetadata(presentation.metadata.Token)
+  return await getAccountClient(token).listWorkspaceInvites()
 }
 
 /**

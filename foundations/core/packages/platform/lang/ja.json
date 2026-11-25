@@ -27,6 +27,6 @@
     "ReadOnlyAccount": "匿名ゲストデモ",
     "SystemAccount": "システムアカウント",
     "SocialIdAlreadyExists": "ソーシャルIDは既に存在します",
-    "EmailVerificationUnavailable": "メールドメインに制限された招待にはメールアドレスの確認が必要ですが、このサーバーにはメールサービスが設定されていません。"
+    "EmailVerificationUnavailable": "メールドメインに制限された招待にはメールアドレスの確認が必要です。このサーバーでメールサービスを設定するか、ドメイン制限を解除してください。"
   }
 }

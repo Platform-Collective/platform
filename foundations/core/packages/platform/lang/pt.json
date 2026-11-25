@@ -28,6 +28,6 @@
     "ReadOnlyAccount": "Demonstração anônima de convidado",
     "SystemAccount": "Conta do sistema",
     "SocialIdAlreadyExists": "ID social já existe",
-    "EmailVerificationUnavailable": "Os convites limitados a domínios de e-mail exigem a verificação do e-mail, mas não está configurado nenhum serviço de e-mail neste servidor."
+    "EmailVerificationUnavailable": "Os convites limitados a domínios de e-mail exigem a verificação do e-mail. Configure um serviço de e-mail neste servidor ou remova a restrição de domínios."
   }
 }

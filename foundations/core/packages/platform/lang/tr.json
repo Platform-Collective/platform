@@ -27,6 +27,6 @@
     "ReadOnlyAccount": "Anonim Misafir Demo",
     "SystemAccount": "Sistem hesabı",
     "SocialIdAlreadyExists": "Sosyal ID zaten mevcut",
-    "EmailVerificationUnavailable": "E-posta alan adlarıyla sınırlı davetler e-posta doğrulaması gerektirir, ancak bu sunucuda bir posta hizmeti yapılandırılmamış."
+    "EmailVerificationUnavailable": "E-posta alan adlarıyla sınırlı davetler e-posta doğrulaması gerektirir. Bu sunucuda bir posta hizmeti yapılandırın veya alan adı kısıtlamasını kaldırın."
   }
 }

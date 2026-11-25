@@ -206,6 +206,36 @@ describe('checkInvite with allowed domains', () => {
     await expect(checkInvite(ctx, invite, '')).rejects.toThrow()
   })
 
+  test('omits emails and invite records from rejection logs', async () => {
+    const cases = [
+      {
+        invite: makeInvite({ remainingUses: 0 }),
+        email: 'person@example.com',
+        message: 'Invite limit exceeded'
+      },
+      {
+        invite: makeInvite({ expiresOn: Date.now() - 1000 }),
+        email: 'person@example.com',
+        message: 'Invite link expired'
+      },
+      {
+        invite: makeInvite({ email: 'other@example.com' }),
+        email: 'person@example.com',
+        message: "Invite doesn't allow this email address"
+      },
+      {
+        invite: makeInvite({ allowedDomains: 'example.com' }),
+        email: 'person@other.test',
+        message: "Invite doesn't allow this email domain"
+      }
+    ]
+
+    for (const { invite, email, message } of cases) {
+      await expect(checkInvite(ctx, invite, email)).rejects.toThrow()
+      expect(ctx.warn).toHaveBeenLastCalledWith(message, { inviteId: invite.id })
+    }
+  })
+
   describe('without a mail service', () => {
     beforeEach(() => {
       setMetadata(accountPlugin.metadata.MAIL_URL, '')

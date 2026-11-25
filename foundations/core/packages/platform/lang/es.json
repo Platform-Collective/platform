@@ -28,6 +28,6 @@
     "ReadOnlyAccount": "Demo de invitado anónimo",
     "SystemAccount": "Cuenta del sistema",
     "SocialIdAlreadyExists": "El ID social ya existe",
-    "EmailVerificationUnavailable": "Las invitaciones limitadas a dominios de correo requieren verificar el correo electrónico, pero este servidor no tiene configurado ningún servicio de correo."
+    "EmailVerificationUnavailable": "Las invitaciones limitadas a dominios de correo requieren verificar el correo electrónico. Configure un servicio de correo en este servidor o elimine la restricción de dominios."
   }
 }

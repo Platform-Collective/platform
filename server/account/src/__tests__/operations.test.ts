@@ -60,8 +60,10 @@ import {
   getSubscriptions,
   leaveWorkspace,
   checkJoin,
+  checkAutoJoin,
   joinByToken,
   getInviteInfo,
+  listWorkspaceInvites,
   mergeSpecifiedPersons,
   canMergeSpecifiedPersons,
   getMethods
@@ -131,6 +133,7 @@ describe('account operations', () => {
     invite: {
       insertOne: jest.fn(),
       findOne: jest.fn(),
+      find: jest.fn(),
       update: jest.fn()
     },
     getWorkspaceRole: jest.fn(),
@@ -168,7 +171,6 @@ describe('account operations', () => {
   })
 
   describe('getMailboxSecret', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const getMailboxSecret = getMethods().getMailboxSecret!
     const mailbox = 'alice@example.com'
     const request = { id: 1, params: { mailbox } }
@@ -316,6 +318,72 @@ describe('account operations', () => {
           })
         ).resolves.toBe('new-invite-id')
       })
+    })
+  })
+
+  describe('listWorkspaceInvites', () => {
+    test('returns normalized domains of existing restricted invites for maintainers', async () => {
+      ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.Maintainer)
+      ;(mockDb.invite.find as jest.Mock).mockResolvedValue([
+        {
+          id: 'restricted',
+          workspaceUuid: mockWorkspace.uuid,
+          expiresOn: -1,
+          remainingUses: -1,
+          role: AccountRole.User,
+          allowedDomains: 'example.com,example.org'
+        },
+        {
+          id: 'unrestricted',
+          workspaceUuid: mockWorkspace.uuid,
+          expiresOn: -1,
+          remainingUses: -1,
+          role: AccountRole.User
+        }
+      ])
+
+      await expect(listWorkspaceInvites(mockCtx, mockDb, mockBranding, mockToken, {})).resolves.toEqual([
+        { id: 'restricted', allowedDomains: ['example.com', 'example.org'] }
+      ])
+      expect(mockDb.invite.find).toHaveBeenCalledWith({ workspaceUuid: mockWorkspace.uuid })
+    })
+
+    test('rejects non-maintainers before reading invites', async () => {
+      ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.User)
+
+      await expect(listWorkspaceInvites(mockCtx, mockDb, mockBranding, mockToken, {})).rejects.toThrow(
+        new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+      )
+      expect(mockDb.invite.find).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('checkAutoJoin', () => {
+    test('omits the email and invite record when rejecting a domain', async () => {
+      const invite = {
+        id: 'restricted-auto-join',
+        workspaceUuid: mockWorkspace.uuid,
+        expiresOn: -1,
+        remainingUses: -1,
+        role: AccountRole.Guest,
+        autoJoin: true,
+        email: 'person@other.test',
+        allowedDomains: 'example.com'
+      }
+      const getWorkspaceInviteSpy = jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(invite)
+      const getWorkspaceByIdSpy = jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
+
+      try {
+        await expect(checkAutoJoin(mockCtx, mockDb, mockBranding, '', { inviteId: invite.id })).rejects.toThrow(
+          new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+        )
+        expect(mockCtx.warn).toHaveBeenCalledWith("Auto-join invite doesn't allow this email domain", {
+          inviteId: invite.id
+        })
+      } finally {
+        getWorkspaceInviteSpy.mockRestore()
+        getWorkspaceByIdSpy.mockRestore()
+      }
     })
   })
 

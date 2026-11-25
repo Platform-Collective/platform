@@ -46,6 +46,7 @@
     "UseWorkspaceInviteSettings": "Utilizar definições de convite para o espaço de trabalho",
     "LinkValidHours": "Link válido (horas):",
     "AllowedEmailDomains": "Domínios de email permitidos",
+    "ExistingInviteDomains": "Domínios permitidos em convites existentes",
     "AllowedEmailDomainsPlaceholder": "ex.: example.com, example.org (vazio = qualquer)",
     "InvalidEmailDomains": "Introduza domínios válidos separados por vírgulas, ex.: example.com",
     "InviteLimitedToDomains": "Este convite está limitado a endereços de e-mail de {domains}",

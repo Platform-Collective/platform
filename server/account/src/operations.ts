@@ -75,6 +75,7 @@ import {
   SubscriptionStatus,
   type Query,
   type InviteInfo,
+  type InviteDetails,
   type WorkspaceInvite
 } from './types'
 import { hasDomainRestriction, isEmailAllowedByDomains, serializeAllowedDomains } from './inviteDomains'
@@ -1158,6 +1159,32 @@ export async function getInviteInfo (
   return { workspaceName: workspace.name, ...(domains.length > 0 ? { allowedDomains: domains } : {}) }
 }
 
+export async function listWorkspaceInvites (
+  ctx: MeasureContext,
+  db: AccountDB,
+  _branding: Branding | null,
+  token: string,
+  _params: {}
+): Promise<InviteDetails[]> {
+  const { account, workspace: workspaceUuid, extra } = decodeTokenVerbose(ctx, token)
+  if (workspaceUuid == null) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.WorkspaceNotFound, { workspaceUuid }))
+  }
+
+  const callerRole = await db.getWorkspaceRole(account, workspaceUuid)
+  verifyAllowedRole(callerRole, AccountRole.Maintainer, extra)
+
+  const invites = await db.invite.find({ workspaceUuid })
+  const result: InviteDetails[] = []
+  for (const invite of invites) {
+    const { domains } = parseEmailDomains(invite.allowedDomains)
+    if (domains.length > 0) {
+      result.push({ id: invite.id, allowedDomains: domains })
+    }
+  }
+  return result
+}
+
 /**
  * Returns the verified e-mail of the account to check an invite against.
  * For invites bound to an e-mail and/or restricted to e-mail domains, a verified
@@ -1316,7 +1343,7 @@ export async function checkAutoJoin (
   }
 
   if (!isEmailAllowedByDomains(normalizedEmail, invite.allowedDomains)) {
-    ctx.warn("Auto-join invite doesn't allow this email domain", { email: normalizedEmail, ...invite })
+    ctx.warn("Auto-join invite doesn't allow this email domain", { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -3671,6 +3698,7 @@ export type AccountMethods =
   | 'checkJoin'
   | 'checkAutoJoin'
   | 'getInviteInfo'
+  | 'listWorkspaceInvites'
   | 'signUpJoin'
   | 'confirm'
   | 'checkHasPassword'
@@ -3758,6 +3786,7 @@ export function getMethods (hasSignUp: boolean = true): Partial<Record<AccountMe
     checkJoin: wrap(checkJoin),
     checkAutoJoin: wrap(checkAutoJoin),
     getInviteInfo: wrap(getInviteInfo),
+    listWorkspaceInvites: wrap(listWorkspaceInvites),
     signUpJoin: wrap(signUpJoin),
     confirm: wrap(confirm),
     checkHasPassword: wrap(checkHasPassword),

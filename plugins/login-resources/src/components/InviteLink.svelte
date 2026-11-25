@@ -13,16 +13,17 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { type InviteDetails } from '@hcengineering/account-client'
   import { AccountRole, getCurrentAccount, hasAccountRole, Timestamp } from '@hcengineering/core'
   import { copyTextToClipboard, createQuery } from '@hcengineering/presentation'
   import setting, { RoleCapability } from '@hcengineering/setting'
   import { getDefaultInviteRole, resolveInviteSettings } from '@hcengineering/setting-resources'
-  import { getResource, PlatformError, type Status } from '@hcengineering/platform'
+  import { getResource, PlatformError, type Status, unknownError } from '@hcengineering/platform'
   import { AnySvelteComponent, Button, EditBox, Grid, Label, Loading, MiniToggle, ticker } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
 
   import login from '../plugin'
-  import { getInviteLink, normalizeAllowedDomains } from '../utils'
+  import { getInviteLink, listWorkspaceInvites, normalizeAllowedDomains } from '../utils'
   import InviteWorkspace from './icons/InviteWorkspace.svelte'
   import StatusControl from './StatusControl.svelte'
 
@@ -147,6 +148,21 @@
 
   let link: string | undefined
   let loading = false
+  let existingInvites: InviteDetails[] = []
+  let existingInvitesError: Status | undefined
+
+  async function loadExistingInvites(): Promise<void> {
+    try {
+      existingInvites = await listWorkspaceInvites()
+      existingInvitesError = undefined
+    } catch (err: any) {
+      existingInvitesError = err instanceof PlatformError ? err.status : unknownError(err)
+    }
+  }
+
+  if (isOwnerOrMaintainer) {
+    void loadExistingInvites()
+  }
 
   function handleInviteRoleSelected(e: CustomEvent<AccountRole>): void {
     role = e.detail
@@ -219,6 +235,22 @@
       {/if}
     </div>
   {/if}
+  {#if isOwnerOrMaintainer && (existingInvites.length > 0 || existingInvitesError !== undefined)}
+    <div class="existing-invites">
+      <Label label={login.string.ExistingInviteDomains} />
+      {#if existingInvitesError !== undefined}
+        <div class="domains-error">
+          <StatusControl status={existingInvitesError} />
+        </div>
+      {:else}
+        {#each existingInvites as invite (invite.id)}
+          <div class="existing-invite-domains" data-id="existing-invite-domains">
+            {invite.allowedDomains.map((domain) => '@' + domain).join(', ')}
+          </div>
+        {/each}
+      {/if}
+    </div>
+  {/if}
   {#if loading}
     <Loading />
   {:else if link !== undefined}
@@ -278,6 +310,15 @@
     .domains-error {
       margin-top: 0.5rem;
       color: var(--theme-error-color);
+    }
+
+    .existing-invites {
+      margin-top: 1.5rem;
+    }
+
+    .existing-invite-domains {
+      margin-top: 0.5rem;
+      overflow-wrap: break-word;
     }
 
     .link {

@@ -1371,12 +1371,12 @@ export async function createWorkspaceRecord (
 
 export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite, email: string): Promise<WorkspaceUuid> {
   if (invite.remainingUses === 0) {
-    ctx.warn('Invite limit exceeded', { email, ...invite })
+    ctx.warn('Invite limit exceeded', { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
   if (invite.expiresOn > 0 && invite.expiresOn < Date.now()) {
-    ctx.warn('Invite link expired', { email, ...invite })
+    ctx.warn('Invite link expired', { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.ExpiredLink, {}))
   }
 
@@ -1393,7 +1393,7 @@ export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite,
   // }
 
   if (invite.email != null && invite.email.trim().length > 0 && invite.email !== email) {
-    ctx.warn("Invite doesn't allow this email address", { email, ...invite })
+    ctx.warn("Invite doesn't allow this email address", { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -1405,7 +1405,7 @@ export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite,
       throw new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
     }
     if (!isEmailAllowedByDomains(email, invite.allowedDomains)) {
-      ctx.warn("Invite doesn't allow this email domain", { email, ...invite })
+      ctx.warn("Invite doesn't allow this email domain", { inviteId: invite.id })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
     }
   }

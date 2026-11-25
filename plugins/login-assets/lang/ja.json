@@ -37,6 +37,7 @@
     "UseWorkspaceInviteSettings": "ワークスペースの招待設定を使用",
     "LinkValidHours": "リンクの有効時間（時間）:",
     "AllowedEmailDomains": "許可するメールドメイン",
+    "ExistingInviteDomains": "既存の招待で許可されているドメイン",
     "AllowedEmailDomainsPlaceholder": "例: example.com, example.org（空欄 = すべて）",
     "InvalidEmailDomains": "有効なドメインをカンマ区切りで入力してください（例: example.com）",
     "InviteLimitedToDomains": "この招待は {domains} のメールアドレスに限定されています",

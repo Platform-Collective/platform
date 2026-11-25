@@ -74,6 +74,7 @@ export default plugin(loginId, {
     LogIn: '' as IntlString,
     LinkValidHours: '' as IntlString,
     AllowedEmailDomains: '' as IntlString,
+    ExistingInviteDomains: '' as IntlString,
     AllowedEmailDomainsPlaceholder: '' as IntlString,
     InvalidEmailDomains: '' as IntlString,
     InviteLimitedToDomains: '' as IntlString<{ domains: string }>,

@@ -45,6 +45,7 @@ import type {
   LoginInfoByToken,
   LoginInfoRequestData,
   InviteInfo,
+  InviteDetails,
   LoginInfoWithWorkspaces,
   MailboxInfo,
   MailboxOptions,
@@ -139,6 +140,7 @@ export interface AccountClient {
   joinByToken: (inviteId: string) => Promise<WorkspaceLoginInfo>
   checkAutoJoin: (inviteId: string, firstName?: string, lastName?: string) => Promise<WorkspaceLoginInfo>
   getInviteInfo: (inviteId: string) => Promise<InviteInfo>
+  listWorkspaceInvites: () => Promise<InviteDetails[]>
   getWorkspaceInfo: (updateLastVisit?: boolean) => Promise<WorkspaceInfoWithStatus>
   getWorkspacesInfo: (workspaces: WorkspaceUuid[]) => Promise<WorkspaceInfoWithStatus[]>
   updateLastVisit: (workspaces: WorkspaceUuid[]) => Promise<void>
@@ -665,6 +667,15 @@ class AccountClientImpl implements AccountClient {
     const request = {
       method: 'getInviteInfo' as const,
       params: { inviteId }
+    }
+
+    return await this.rpc(request)
+  }
+
+  async listWorkspaceInvites (): Promise<InviteDetails[]> {
+    const request = {
+      method: 'listWorkspaceInvites' as const,
+      params: {}
     }
 
     return await this.rpc(request)

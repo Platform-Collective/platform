@@ -27,6 +27,6 @@
     "ReadOnlyAccount": "Anonymous Guest Demo",
     "SystemAccount": "System account",
     "SocialIdAlreadyExists": "Social ID already exists",
-    "EmailVerificationUnavailable": "Invites limited to email domains require email verification, but no mail service is configured on this server."
+    "EmailVerificationUnavailable": "Invites limited to email domains require email verification. Configure a mail service on this server or remove the domain restriction."
   }
 }

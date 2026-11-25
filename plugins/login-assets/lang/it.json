@@ -46,6 +46,7 @@
     "UseWorkspaceInviteSettings": "Usa le impostazioni di invito per lo spazio di lavoro",
     "LinkValidHours": "Link valido (ore):",
     "AllowedEmailDomains": "Domini email consentiti",
+    "ExistingInviteDomains": "Domini consentiti negli inviti esistenti",
     "AllowedEmailDomainsPlaceholder": "es. example.com, example.org (vuoto = qualsiasi)",
     "InvalidEmailDomains": "Inserisci domini validi separati da virgole, es. example.com",
     "InviteLimitedToDomains": "Questo invito è limitato agli indirizzi email {domains}",

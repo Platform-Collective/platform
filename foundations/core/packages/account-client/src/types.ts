@@ -91,6 +91,11 @@ export interface InviteInfo {
   allowedDomains?: string[]
 }
 
+export interface InviteDetails {
+  id: string
+  allowedDomains: string[]
+}
+
 export interface OtpInfo {
   sent: boolean
   retryOn: Timestamp

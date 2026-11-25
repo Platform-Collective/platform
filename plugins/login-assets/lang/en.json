@@ -49,6 +49,7 @@
     "UseWorkspaceInviteSettings": "Use workspace invite settings",
     "LinkValidHours": "Invite link expiration (hours):",
     "AllowedEmailDomains": "Allowed email domains",
+    "ExistingInviteDomains": "Allowed domains on existing invites",
     "AllowedEmailDomainsPlaceholder": "e.g. example.com, example.org (empty = any)",
     "InvalidEmailDomains": "Enter valid domains separated by commas, e.g. example.com",
     "InviteLimitedToDomains": "This invite is limited to email addresses at {domains}",

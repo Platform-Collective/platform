@@ -46,6 +46,7 @@
     "UseWorkspaceInviteSettings": "Çalışma alanı davet ayarlarını kullan",
     "LinkValidHours": "Bağlantı geçerlilik süresi (saat):",
     "AllowedEmailDomains": "İzin verilen e-posta alan adları",
+    "ExistingInviteDomains": "Mevcut davetlerde izin verilen alan adları",
     "AllowedEmailDomainsPlaceholder": "ör. example.com, example.org (boş = tümü)",
     "InvalidEmailDomains": "Virgülle ayrılmış geçerli alan adları girin, ör. example.com",
     "InviteLimitedToDomains": "Bu davet yalnızca {domains} e-posta adresleriyle sınırlıdır",

@@ -46,6 +46,7 @@
     "UseWorkspaceInviteSettings": "Použít nastavení pozvánky pracovního prostoru",
     "LinkValidHours": "Platnost odkazu (hodiny):",
     "AllowedEmailDomains": "Povolené e-mailové domény",
+    "ExistingInviteDomains": "Povolené domény stávajících pozvánek",
     "AllowedEmailDomainsPlaceholder": "např. example.com, example.org (prázdné = libovolné)",
     "InvalidEmailDomains": "Zadejte platné domény oddělené čárkami, např. example.com",
     "InviteLimitedToDomains": "Tato pozvánka je omezena na e-mailové adresy v doménách {domains}",

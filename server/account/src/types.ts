@@ -538,6 +538,11 @@ export interface InviteInfo {
   allowedDomains?: string[]
 }
 
+export interface InviteDetails {
+  id: string
+  allowedDomains: string[]
+}
+
 export interface MailboxOptions {
   availableDomains: string[]
   minNameLength: number
