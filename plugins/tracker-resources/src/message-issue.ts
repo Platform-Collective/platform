@@ -13,6 +13,8 @@ import presentation, {
 import { jsonToMarkup, markupToJSON, type MarkupNode, MarkupMarkType, MarkupNodeType } from '@hcengineering/text'
 
 const MESSAGE_ISSUE_TITLE_LIMIT = 100
+export const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB = 25
+const MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT = MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB * 1024 * 1024
 
 function messageText (node: MarkupNode): string {
   if (node.type === MarkupNodeType.text) return node.text ?? ''
@@ -25,6 +27,13 @@ function messageText (node: MarkupNode): string {
     : text
 }
 
+function referencesToText (node: MarkupNode): MarkupNode {
+  if (node.type === MarkupNodeType.reference) {
+    return { type: MarkupNodeType.text, text: String(node.attrs?.label ?? '') }
+  }
+  return { ...node, content: node.content?.map(referencesToText) }
+}
+
 /** Prepare an issue from message markup, preserving its content and a link to the source. */
 export function getMessageIssueData (
   message: Markup,
@@ -32,7 +41,7 @@ export function getMessageIssueData (
   sourceLabel: string,
   fallbackTitle: string
 ): { title: string, description: Markup } {
-  const doc = markupToJSON(message)
+  const doc = referencesToText(markupToJSON(message))
   const firstLine =
     messageText(doc)
       .split(/\r?\n/)
@@ -76,6 +85,10 @@ export function isMessageBlobId (file: unknown): file is Ref<Blob> {
   return typeof file === 'string' && file.length > 0 && !/[^a-zA-Z0-9_-]/.test(file)
 }
 
+export function isMessageAttachmentWithinSizeLimit (attachment: Pick<AttachedData<Attachment>, 'size'>): boolean {
+  return attachment.size <= MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT
+}
+
 function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string | undefined {
   try {
     const frontUrl = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
@@ -96,25 +109,31 @@ function getMessageAttachmentUrl (attachment: AttachedData<Attachment>): string 
 export async function copyMessageAttachments (
   attachments: AttachedData<Attachment>[],
   description: Markup,
-  sourceAttachments: AttachedData<Attachment>[] = attachments
+  sourceAttachments: AttachedData<Attachment>[] = attachments,
+  onProgress?: (copied: number, total: number) => void
 ): Promise<{ attachments: AttachedData<Attachment>[], description: Markup }> {
   if (attachments.length === 0 && sourceAttachments.length === 0) return { attachments, description }
 
   const doc = markupToJSON(description)
   const files = new Map(
     attachments
-      .filter((attachment) => isMessageBlobId(attachment.file))
+      .filter((attachment) => isMessageBlobId(attachment.file) && isMessageAttachmentWithinSizeLimit(attachment))
       .map((attachment) => [attachment.file, attachment])
   )
   function collectInlineFiles (node: MarkupNode): void {
     const source = sourceAttachments.find(
-      (attachment) => isMessageBlobId(attachment.file) && attachment.file === node.attrs?.['file-id']
+      (attachment) =>
+        isMessageBlobId(attachment.file) &&
+        isMessageAttachmentWithinSizeLimit(attachment) &&
+        attachment.file === node.attrs?.['file-id']
     )
     if (source !== undefined) files.set(source.file, source)
     node.content?.forEach(collectInlineFiles)
   }
   collectInlineFiles(doc)
 
+  if (files.size > 0) onProgress?.(0, files.size)
+  let copied = 0
   const copies = new Map<Ref<Blob>, Ref<Blob>>()
   try {
     for (const attachment of files.values()) {
@@ -132,6 +151,8 @@ export async function copyMessageAttachments (
       const id = generateFileId() as Ref<Blob>
       copies.set(attachment.file, id)
       await uploadFile(file, id)
+      copied++
+      onProgress?.(copied, files.size)
     }
 
     function updateReferences (node: MarkupNode): void {

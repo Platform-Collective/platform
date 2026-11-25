@@ -3,24 +3,35 @@
 import type { ActivityMessage } from '@hcengineering/activity'
 import attachment from '@hcengineering/attachment'
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
-import { getMessageLink } from '@hcengineering/chunter-resources/src/navigation'
 import type { MessageActionFunction, MessageActionVisibilityTester } from '@hcengineering/communication'
-import { MessageType } from '@hcengineering/communication-types'
-import { isBlobAttachment } from '@hcengineering/communication-shared'
 import { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
-import { inboxId } from '@hcengineering/inbox'
-import { getMetadata, setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
+import { getMetadata, setPlatformStatus, Severity, Status, translate, unknownError } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { jsonToMarkup } from '@hcengineering/text'
-import { markdownToMarkup } from '@hcengineering/text-markdown'
 import { getCurrentResolvedLocation, locationToUrl, showPopup } from '@hcengineering/ui'
 import { encodeObjectURI } from '@hcengineering/view'
 
-import { getMessageAttachmentData, getMessageIssueData, isMessageBlobId } from './message-issue'
+import {
+  getMessageAttachmentData,
+  getMessageIssueData,
+  isMessageAttachmentWithinSizeLimit,
+  isMessageBlobId,
+  MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB
+} from './message-issue'
 import tracker from './plugin'
 
 function canCreateIssue (): boolean {
   return hasAccountRole(getCurrentAccount(), AccountRole.User)
+}
+
+async function warnOnOversizedAttachments (attachments: Array<{ size: number }>): Promise<void> {
+  if (attachments.some((file) => !isMessageAttachmentWithinSizeLimit(file))) {
+    await setPlatformStatus(
+      new Status(Severity.WARNING, tracker.string.MessageAttachmentsTooLarge, {
+        limit: MESSAGE_ISSUE_ATTACHMENT_SIZE_LIMIT_MB
+      })
+    )
+  }
 }
 
 export async function canCreateIssueFromMessage (doc?: ActivityMessage | ActivityMessage[]): Promise<boolean> {
@@ -33,7 +44,7 @@ export async function canCreateIssueFromMessage (doc?: ActivityMessage | Activit
 }
 
 export const canCreateIssueFromCommunicationMessage: MessageActionVisibilityTester = (message) => {
-  return canCreateIssue() && message.type === MessageType.Text
+  return canCreateIssue() && message.type === 'text'
 }
 
 export async function createIssueFromMessage (message: ChatMessage): Promise<void> {
@@ -42,18 +53,20 @@ export async function createIssueFromMessage (message: ChatMessage): Promise<voi
   try {
     const client = getClient()
     const [sourceUrl, sourceLabel, fallbackTitle, attachments] = await Promise.all([
-      getMessageLink(message),
+      import('@hcengineering/chunter-resources').then(async ({ getMessageLink }) => await getMessageLink(message)),
       translate(tracker.string.SourceMessage, {}),
       translate(tracker.string.NewIssue, {}),
       client.findAll(attachment.class.Attachment, { attachedTo: message._id })
     ])
+    const messageAttachments = attachments.filter((file) => isMessageBlobId(file.file))
+    await warnOnOversizedAttachments(messageAttachments)
 
     showPopup(
       tracker.component.CreateIssue,
       {
         shouldSaveDraft: false,
         initialData: getMessageIssueData(message.message, sourceUrl, sourceLabel, fallbackTitle),
-        initialAttachments: attachments.filter((file) => isMessageBlobId(file.file)).map(getMessageAttachmentData)
+        initialAttachments: messageAttachments.filter(isMessageAttachmentWithinSizeLimit).map(getMessageAttachmentData)
       },
       'top'
     )
@@ -66,6 +79,13 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
   if (!canCreateIssueFromCommunicationMessage(message)) return
 
   try {
+    const [{ isBlobAttachment }, { inboxId }, { markdownToMarkup }, sourceLabel, fallbackTitle] = await Promise.all([
+      import('@hcengineering/communication-shared'),
+      import('@hcengineering/inbox'),
+      import('@hcengineering/text-markdown'),
+      translate(tracker.string.SourceMessage, {}),
+      translate(tracker.string.NewIssue, {})
+    ])
     const location = getCurrentResolvedLocation()
     const frontUrl = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
     const sourceUrl =
@@ -74,10 +94,10 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
         path: [...location.path.slice(0, 2), inboxId, encodeObjectURI(card._id, card._class)],
         query: { message: encodeURIComponent(`${message.id}:${message.created.toISOString()}`) }
       })
-    const [sourceLabel, fallbackTitle] = await Promise.all([
-      translate(tracker.string.SourceMessage, {}),
-      translate(tracker.string.NewIssue, {})
-    ])
+    const messageAttachments = message.attachments
+      .filter(isBlobAttachment)
+      .filter((file) => isMessageBlobId(file.params.blobId))
+    await warnOnOversizedAttachments(messageAttachments.map((file) => ({ size: file.params.size })))
 
     showPopup(
       tracker.component.CreateIssue,
@@ -89,9 +109,8 @@ export const createIssueFromCommunicationMessage: MessageActionFunction = async 
           sourceLabel,
           fallbackTitle
         ),
-        initialAttachments: message.attachments
-          .filter(isBlobAttachment)
-          .filter((file) => isMessageBlobId(file.params.blobId))
+        initialAttachments: messageAttachments
+          .filter((file) => isMessageAttachmentWithinSizeLimit({ size: file.params.size }))
           .map((file) => ({
             file: file.params.blobId,
             name: file.params.fileName,

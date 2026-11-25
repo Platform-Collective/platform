@@ -2,10 +2,10 @@
 
 import type { MessageActionFunction } from '@hcengineering/communication'
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
-import { getMessageLink } from '@hcengineering/chunter-resources/src/navigation'
+import { getMessageLink } from '@hcengineering/chunter-resources'
 import { MessageType, type Message } from '@hcengineering/communication-types'
 import { AccountRole, setCurrentAccount, type Account } from '@hcengineering/core'
-import { getMetadata, setPlatformStatus } from '@hcengineering/platform'
+import { getMetadata, setPlatformStatus, Severity } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import { getCurrentResolvedLocation, locationToUrl, showPopup } from '@hcengineering/ui'
 
@@ -33,7 +33,7 @@ jest.mock('@hcengineering/ui', () => ({
   locationToUrl: jest.fn(),
   showPopup: jest.fn()
 }))
-jest.mock('@hcengineering/chunter-resources/src/navigation', () => ({ getMessageLink: jest.fn() }))
+jest.mock('@hcengineering/chunter-resources', () => ({ getMessageLink: jest.fn() }))
 
 const markup = JSON.stringify({
   type: 'doc',
@@ -134,6 +134,35 @@ describe('create issue message actions', () => {
       query: { message: encodeURIComponent(`${message.id}:${message.created.toISOString()}`) }
     })
     expect(findAll).not.toHaveBeenCalled()
+  })
+
+  it('warns about and omits attachments over 25 MiB from both message actions', async () => {
+    const file = { name: 'file.txt', file: 'blob-id', type: 'text/plain', size: 10, lastModified: 0 }
+    const oversized = { ...file, file: 'oversized-blob', size: 25 * 1024 * 1024 + 1 }
+    findAll.mockResolvedValue([file, oversized])
+
+    await createIssueFromMessage(legacyMessage)
+    expect(jest.mocked(showPopup).mock.calls[0][1]).toMatchObject({ initialAttachments: [file] })
+
+    const attachments = [file, oversized].map((source) => ({
+      id: source.file,
+      mimeType: source.type,
+      created: message.created,
+      params: { blobId: source.file, fileName: source.name, size: source.size }
+    })) as Message['attachments']
+    await createIssueFromCommunicationMessage({ ...message, attachments }, card)
+
+    expect(jest.mocked(showPopup).mock.calls[1][1]).toMatchObject({
+      initialAttachments: [{ ...file, lastModified: message.created.getTime() }]
+    })
+    expect(setPlatformStatus).toHaveBeenCalledTimes(2)
+    expect(setPlatformStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: Severity.WARNING,
+        code: tracker.string.MessageAttachmentsTooLarge,
+        params: { limit: 25 }
+      })
+    )
   })
 
   it('hides the actions for guests and non-text activity events', async () => {

@@ -75,6 +75,35 @@ describe('getMessageIssueData', () => {
     expect(getMessageIssueData(message, sourceUrl, 'Source message', 'New issue').title).toBe('Alice: fix this')
   })
 
+  it('converts person and everyone references to plain text throughout the description', () => {
+    const message = markup([
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'reference', attrs: { id: 'everyone', objectclass: 'class', label: '@everyone' } },
+          { type: 'text', text: ' and ' },
+          {
+            type: 'reference',
+            attrs: { id: 'alice', objectclass: 'class', label: 'Alice' },
+            content: [{ type: 'text', text: 'nested text must not survive' }]
+          }
+        ]
+      }
+    ])
+
+    const result = getMessageIssueData(message, sourceUrl, 'Source message', 'New issue')
+    expect(result.title).toBe('@everyone and Alice')
+    expect(JSON.parse(result.description).content[0]).toEqual({
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: '@everyone' },
+        { type: 'text', text: ' and ' },
+        { type: 'text', text: 'Alice' }
+      ]
+    })
+    expect(result.description).not.toContain('"reference"')
+  })
+
   it('truncates long titles to 100 characters without splitting Unicode characters', () => {
     const text = '😀'.repeat(110)
     const result = getMessageIssueData(markup([paragraph(text)]), sourceUrl, 'Source message', 'New issue')
@@ -185,6 +214,19 @@ describe('copyMessageAttachments', () => {
     const result = await copyMessageAttachments([], description, [source])
     expect(result.attachments).toEqual([{ ...source, file: 'copied-blob' }])
     expect(result.description).not.toContain('source-blob')
+  })
+
+  it('skips attachments over 25 MiB before downloading and reports copy progress', async () => {
+    const oversized = { ...source, file: 'oversized-blob' as Ref<Blob>, size: 25 * 1024 * 1024 + 1 }
+    const progress = jest.fn()
+
+    const result = await copyMessageAttachments([oversized, source], description, undefined, progress)
+
+    expect(result.attachments).toEqual([{ ...source, file: 'copied-blob' }])
+    expect(fetchFile).toHaveBeenCalledTimes(1)
+    expect(fetchFile).toHaveBeenCalledWith('https://files.example/source-blob', expect.anything())
+    expect(progress).toHaveBeenNthCalledWith(1, 0, 1)
+    expect(progress).toHaveBeenNthCalledWith(2, 1, 1)
   })
 
   it('does not copy files removed from both the preview and the description', async () => {

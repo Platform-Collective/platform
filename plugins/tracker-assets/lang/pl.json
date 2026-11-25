@@ -310,7 +310,9 @@
     "GanttHelpCalendarDaysDrag": "Przytrzymaj podczas przeciągania, aby ignorować dni robocze (dni kalendarzowe)",
     "GanttDragCalendarDays": "Dni kalendarzowe",
     "CreateIssueFromMessage": "Utwórz zadanie",
-    "SourceMessage": "Wiadomość źródłowa"
+    "SourceMessage": "Wiadomość źródłowa",
+    "CopyingAttachments": "Kopiowanie załączników… {current}/{total}",
+    "MessageAttachmentsTooLarge": "Załączniki większe niż {limit} MB nie zostały dołączone."
   },
   "status": {}
 }

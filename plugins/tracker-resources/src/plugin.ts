@@ -58,6 +58,8 @@ export default mergeIds(trackerId, tracker, {
   string: {
     CreateIssueFromMessage: '' as IntlString,
     SourceMessage: '' as IntlString,
+    CopyingAttachments: '' as IntlString,
+    MessageAttachmentsTooLarge: '' as IntlString,
     More: '' as IntlString,
     Delete: '' as IntlString,
     Open: '' as IntlString,

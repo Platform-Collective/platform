@@ -151,7 +151,7 @@ export async function deleteChatMessage (message: ChatMessage): Promise<void> {
   await client.remove(message)
 }
 
-export { replyToThread } from './navigation'
+export { getMessageLink, replyToThread } from './navigation'
 
 export default async (): Promise<Resources> => ({
   filter: {

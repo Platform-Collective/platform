@@ -123,6 +123,7 @@
   // to the showPopup callback. Stays undefined on cancel → existing callers
   // see no behavior change.
   let createdIssueId: Ref<Issue> | undefined
+  let copyingAttachments: { current: number; total: number } | undefined
   const id: Ref<Issue> = generateId()
   const draftController = new DraftController<IssueDraft>(
     shouldSaveDraft ? (mDraftController.getNext() ?? id) : undefined,
@@ -476,7 +477,16 @@
     // TODO: We need a measure client and mark all operations with it as measure under one root,
     // to prevent other operations to infer our measurement.
     try {
-      const copied = await copyMessageAttachments(initialAttachments, object.description, sourceMessageAttachments)
+      const copied = await copyMessageAttachments(
+        initialAttachments,
+        object.description,
+        sourceMessageAttachments,
+        (current, total) => {
+          copyingAttachments = { current, total }
+        }
+      ).finally(() => {
+        copyingAttachments = undefined
+      })
       copiedAttachments = copied.attachments
       const operations = client.apply(undefined, 'tracker.createIssue')
 
@@ -1139,7 +1149,8 @@
         loading={okProcessing}
         focusIndex={10001}
         disabled={canSave !== true}
-        label={okLabel}
+        label={copyingAttachments !== undefined ? tracker.string.CopyingAttachments : okLabel}
+        labelParams={copyingAttachments ?? {}}
         kind={'primary'}
         size={'large'}
         on:click={handleOkClick}

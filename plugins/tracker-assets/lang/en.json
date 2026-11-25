@@ -580,7 +580,9 @@
     "GanttMissingStartDates": "{count} issues have no start date.",
     "GanttSetDatesHint": "Set start and due dates in an issue to show its timeline.",
     "CreateIssueFromMessage": "Create issue",
-    "SourceMessage": "Source message"
+    "SourceMessage": "Source message",
+    "CopyingAttachments": "Copying attachments… {current}/{total}",
+    "MessageAttachmentsTooLarge": "Attachments larger than {limit} MB were not included."
   },
   "status": {}
 }

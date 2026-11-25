@@ -326,7 +326,9 @@
     "GanttMissingStartDates": "{count} tarefas não têm data de início.",
     "GanttSetDatesHint": "Defina as datas de início e conclusão de uma tarefa para a apresentar na cronologia.",
     "CreateIssueFromMessage": "Criar problema",
-    "SourceMessage": "Mensagem original"
+    "SourceMessage": "Mensagem original",
+    "CopyingAttachments": "A copiar anexos… {current}/{total}",
+    "MessageAttachmentsTooLarge": "Os anexos com mais de {limit} MB não foram incluídos."
   },
   "status": {}
 }

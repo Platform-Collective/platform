@@ -580,7 +580,9 @@
     "GanttMissingStartDates": "Für {count} Aufgaben ist kein Startdatum festgelegt.",
     "GanttSetDatesHint": "Legen Sie für ein Issue Start- und Fälligkeitsdatum fest, damit es auf der Zeitachse erscheint.",
     "CreateIssueFromMessage": "Aufgabe erstellen",
-    "SourceMessage": "Ursprüngliche Nachricht"
+    "SourceMessage": "Ursprüngliche Nachricht",
+    "CopyingAttachments": "Anhänge werden kopiert… {current}/{total}",
+    "MessageAttachmentsTooLarge": "Anhänge größer als {limit} MB wurden nicht übernommen."
   },
   "status": {}
 }
