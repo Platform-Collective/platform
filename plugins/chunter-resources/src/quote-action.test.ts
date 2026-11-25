@@ -2,15 +2,15 @@
 
 import chunter, { type ChatMessage, type ThreadMessage } from '@hcengineering/chunter'
 import { type Doc, type Ref } from '@hcengineering/core'
-import { setPlatformStatus } from '@hcengineering/platform'
-import { EmptyMarkup, markupToJSON } from '@hcengineering/text'
-import type { Readable, Writable } from 'svelte/store'
+import { setPlatformStatus, translate } from '@hcengineering/platform'
+import { EmptyMarkup, markupToJSON, MarkupMarkType, MarkupNodeType } from '@hcengineering/text'
+import type * as svelteStore from 'svelte/store'
 import { getMessageLink } from './navigation'
 import { canQuoteMessage, quoteMessage, registerQuoteInput } from './quote-action'
 import { activeQuoteInputStore, quoteInputsStore } from './stores'
 
 jest.mock('svelte/store', () => ({
-  writable: <T> (value: T): Writable<T> => {
+  writable: <T> (value: T): svelteStore.Writable<T> => {
     const subscribers = new Set<(value: T) => void>()
     const set = (next: T): void => {
       value = next
@@ -32,7 +32,7 @@ jest.mock('svelte/store', () => ({
       }
     }
   },
-  get: <T> (store: Readable<T>): T => {
+  get: <T> (store: svelteStore.Readable<T>): T => {
     let value!: T
     store.subscribe((current) => {
       value = current
@@ -46,8 +46,8 @@ jest.mock('./utils', () => ({
   isThreadMessage: (message: ChatMessage) => message._class === chunter.class.ThreadMessage
 }))
 jest.mock('./stores', () => ({
-  quoteInputsStore: jest.requireMock<typeof import('svelte/store')>('svelte/store').writable(new Set()),
-  activeQuoteInputStore: jest.requireMock<typeof import('svelte/store')>('svelte/store').writable(undefined)
+  quoteInputsStore: jest.requireMock<typeof svelteStore>('svelte/store').writable(new Set()),
+  activeQuoteInputStore: jest.requireMock<typeof svelteStore>('svelte/store').writable(undefined)
 }))
 jest.mock('@hcengineering/contact-resources', () => ({
   getPersonByPersonId: jest.fn(),
@@ -56,7 +56,8 @@ jest.mock('@hcengineering/contact-resources', () => ({
 jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual('@hcengineering/platform'),
-  setPlatformStatus: jest.fn()
+  setPlatformStatus: jest.fn(),
+  translate: jest.fn()
 }))
 jest.mock('@hcengineering/workbench-resources', () => ({
   isElementFromSidebar: (element: HTMLElement) => element.id === 'sidebar'
@@ -72,9 +73,13 @@ describe('quote action', () => {
   const link = 'https://huly.app/message'
 
   beforeEach(() => {
+    jest.clearAllMocks()
     quoteInputsStore.set(new Set())
     activeQuoteInputStore.set(undefined)
     jest.mocked(getMessageLink).mockResolvedValue(link)
+    jest.mocked(translate).mockImplementation(async (_id, params) => {
+      return params.author !== undefined ? `${String(params.author)} wrote:` : 'Show original'
+    })
   })
 
   it('is unavailable without a composer for the message channel', async () => {
@@ -87,14 +92,25 @@ describe('quote action', () => {
     expect(appendMarkup).not.toHaveBeenCalled()
   })
 
-  it('appends a quote to the channel composer and unregisters it when closed', async () => {
+  it('appends a localized quote with a separate original-message link and unregisters the composer', async () => {
     const appendMarkup = jest.fn()
     const unregister = registerQuoteInput({ objectId: message.attachedTo, isSidebar: false, appendMarkup })
 
     expect(await canQuoteMessage(message)).toBe(true)
     await quoteMessage(message)
     expect(appendMarkup).toHaveBeenCalledTimes(1)
-    expect(markupToJSON(appendMarkup.mock.calls[0][0]).content?.[0].type).toBe('blockquote')
+    const quote = markupToJSON(appendMarkup.mock.calls[0][0])
+    expect(quote.content?.[0].type).toBe(MarkupNodeType.blockquote)
+    expect(quote.content?.[0].content?.[0].content).toEqual([
+      { type: MarkupNodeType.text, text: `${link} wrote:` },
+      { type: MarkupNodeType.text, text: ' ' },
+      {
+        type: MarkupNodeType.text,
+        text: 'Show original',
+        marks: [{ type: MarkupMarkType.link, attrs: { href: link } }]
+      }
+    ])
+    expect(translate).toHaveBeenCalledWith(chunter.string.QuoteWrote, { author: link })
 
     unregister()
     expect(await canQuoteMessage(message)).toBe(false)
@@ -112,7 +128,7 @@ describe('quote action', () => {
     expect(appendMain).not.toHaveBeenCalled()
   })
 
-  it('quotes a thread message into its channel rather than the thread composer', async () => {
+  it('hides quoting for thread messages instead of targeting the channel composer', async () => {
     const appendMarkup = jest.fn()
     registerQuoteInput({ objectId: message.attachedTo, isSidebar: false, appendMarkup })
     const reply = {
@@ -122,10 +138,10 @@ describe('quote action', () => {
       objectId: message.attachedTo
     } as unknown as ThreadMessage
 
-    expect(await canQuoteMessage(reply)).toBe(true)
+    expect(await canQuoteMessage(reply)).toBe(false)
     await quoteMessage(reply)
 
-    expect(appendMarkup).toHaveBeenCalledTimes(1)
+    expect(appendMarkup).not.toHaveBeenCalled()
   })
 
   it('keeps the source composer when a context menu renders outside the sidebar', async () => {

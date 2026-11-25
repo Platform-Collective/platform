@@ -66,6 +66,7 @@
     "NoResults": "No results",
     "CopyLink": "Copy link",
     "Quote": "Quote",
+    "QuoteWrote": "{author} wrote:",
     "FilterBacklinks": "Backlinks",
     "DM": "Direct message",
     "DMNotification": "Sent you a message",

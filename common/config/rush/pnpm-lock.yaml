@@ -7056,6 +7056,9 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
+      '@hcengineering/text-editor':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/text-editor
       '@hcengineering/ui':
         specifier: workspace:^0.7.0
         version: link:../../packages/ui
