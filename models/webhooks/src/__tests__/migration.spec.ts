@@ -240,36 +240,93 @@ async function readRecordedStates (client: MigrationClient): Promise<string[]> {
   return states
 }
 
+describe('webhooksOperation.migrate (fresh install)', () => {
+  it('creates the dedicated space + seeds Owner members + records state on the first pass', async () => {
+    // Fresh workspace: DOMAIN_SPACE starts empty. First-pass
+    // migration must create the row AND seed its members AND record
+    // the state in a single successful pass, so a later upgrade is a
+    // no-op. Michael's Nov 25 review: the previous shape returned
+    // normally when the space was missing, so `tryMigrate` recorded
+    // the seed as complete even though no Owner was added.
+    const h = makeMigrationClient({
+      findRows: [],
+      members: [member(1), member(2, AccountRole.Maintainer), member(3)]
+    })
+
+    await webhooksOperation.migrate(h.client, 'upgrade')
+
+    // One create for the dedicated space itself, one for the
+    // MigrationState record `tryMigrate` emits on success.
+    const spaceCreates = h.create.mock.calls.filter(
+      ([domain, doc]) => domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks
+    )
+    expect(spaceCreates).toHaveLength(1)
+    const [, createdSpace] = spaceCreates[0]
+    const createdSpaceDoc = createdSpace as Partial<Space>
+    expect(createdSpaceDoc).toMatchObject({
+      _id: webhooks.space.Webhooks,
+      name: 'Webhooks',
+      description: 'Dedicated private space for webhook subscriptions',
+      private: true,
+      archived: false,
+      members: []
+    })
+
+    // Owner seed landed in the same pass on the newly-created row.
+    expect(h.update).toHaveBeenCalledTimes(1)
+    expect(h.update.mock.calls[0][0]).toBe(DOMAIN_SPACE)
+    expect(h.update.mock.calls[0][1]).toEqual({ _id: webhooks.space.Webhooks })
+    expect(h.update.mock.calls[0][2].members.sort()).toEqual([uuid(1), uuid(3)].sort())
+
+    expect(await readRecordedStates(h.client)).toEqual(['seedOwnerMembers-v1'])
+  })
+
+  it('is idempotent across two passes on the same migrateState map', async () => {
+    // Simulate two consecutive calls to the operation with the same
+    // in-memory migrateState (as would happen if the caller did not
+    // reload DOMAIN_MIGRATION between passes). Pass 1 creates + seeds
+    // + records state; pass 2 sees the DOMAIN_SPACE row already
+    // exists and re-seeds without re-creating. No duplicate rows.
+    //
+    // The stateful find/create stub mirrors a real DB: once the space
+    // is created, subsequent finds return it.
+    let spaceRowStored: Array<Partial<Space>> = []
+    const h = makeMigrationClient({
+      findImpl: async () => spaceRowStored,
+      members: [member(1)]
+    })
+    h.create.mockImplementation(async (domain, doc) => {
+      if (domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks) {
+        spaceRowStored = [doc as Partial<Space>]
+      }
+    })
+
+    await webhooksOperation.migrate(h.client, 'upgrade')
+    const spaceCreatesPass1 = h.create.mock.calls.filter(
+      ([domain, doc]) => domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks
+    )
+    expect(spaceCreatesPass1).toHaveLength(1)
+    expect(h.update).toHaveBeenCalledTimes(1)
+    const pass1States = await readRecordedStates(h.client)
+    expect(pass1States).toEqual(['seedOwnerMembers-v1'])
+
+    // Simulate persistence of the migrationState between runs the way
+    // the caller would after a successful pass: load the recorded
+    // state into migrateState for the next upgrade. `tryMigrate` then
+    // short-circuits without running the migration function at all,
+    // so no further create/update calls fire.
+    h.client.migrateState.set(webhooksId, new Set(['seedOwnerMembers-v1']))
+
+    await webhooksOperation.migrate(h.client, 'upgrade')
+    const spaceCreatesPass2 = h.create.mock.calls.filter(
+      ([domain, doc]) => domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks
+    )
+    expect(spaceCreatesPass2).toHaveLength(1) // unchanged from pass 1
+    expect(h.update).toHaveBeenCalledTimes(1) // unchanged from pass 1
+  })
+})
+
 describe('webhooksOperation.migrate (retriable failure cases)', () => {
-  it('throws for a missing dedicated space and does NOT record state', async () => {
-    const h = makeMigrationClient({ findRows: [] })
-
-    // tryMigrate swallows the throw. The test asserts that NO state
-    // was recorded by checking the create mock.
-    await webhooksOperation.migrate(h.client, 'upgrade')
-
-    expect(h.update).not.toHaveBeenCalled()
-    expect(await readRecordedStates(h.client)).toEqual([])
-  })
-
-  it('throws WebhooksMigrationIncompleteError when the dedicated space is missing (direct invocation)', async () => {
-    // Drive the migration function directly via tryMigrate's single
-    // migration to capture the actual throw. tryMigrate catches it,
-    // so we unwrap by stealing the func reference through the state.
-    const h = makeMigrationClient({ findRows: [] })
-
-    // Replace tryMigrate's catch-and-continue with a direct assertion
-    // by running the migration function ourselves with the same stub.
-    // We re-import it via the public operation; the function lives on
-    // the first element of tryMigrate's arg list. Since that is not
-    // exported, we instead assert the observable invariant: after
-    // migrate returns, update was never called AND no state recorded.
-    await webhooksOperation.migrate(h.client, 'upgrade')
-    expect(h.update).not.toHaveBeenCalled()
-    expect(await readRecordedStates(h.client)).toEqual([])
-    expect(h.logMessages.some((m) => m.msg.includes('Failed to run migration'))).toBe(true)
-  })
-
   it('throws for a transient account-service failure and does NOT record state', async () => {
     const h = makeMigrationClient({
       findRows: [spaceRow([])],
@@ -295,50 +352,48 @@ describe('webhooksOperation.migrate (retriable failure cases)', () => {
     expect(await readRecordedStates(h.client)).toEqual([])
   })
 
-  it('retries a transient account-service failure on the next pass and records state', async () => {
-    // First pass fails, second pass succeeds. Both share the same
-    // migrateState map so if the first had recorded state, the second
-    // would short-circuit and never try again. Michael's exact
-    // concern - verify the full round-trip.
-    const state = new Set<string>()
+  it('retries a transient account-service failure on the next pass; space create is idempotent across both passes', async () => {
+    // Fresh workspace. Pass 1 creates the dedicated space row, then
+    // the account service fails before the Owner seed completes;
+    // tryMigrate catches the throw so `seedOwnerMembers-v1` stays
+    // unset. Pass 2 sees the row from pass 1 (idempotent create does
+    // NOT fire again), retrieves Owners successfully, and seeds +
+    // records state. Michael's exact concern: verify the full
+    // round-trip with no duplicate space rows.
+    let spaceRowStored: Array<Partial<Space>> = []
     let attempt = 0
     const h = makeMigrationClient({
-      findRows: [spaceRow([])],
+      findImpl: async () => spaceRowStored,
       membersImpl: async () => {
         attempt++
         if (attempt === 1) throw new Error('ECONNREFUSED accounts.svc:3000')
         return [member(1), member(2, AccountRole.Maintainer)]
-      },
-      initialState: state
+      }
+    })
+    h.create.mockImplementation(async (domain, doc) => {
+      if (domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks) {
+        spaceRowStored = [doc as Partial<Space>]
+      }
     })
 
     await webhooksOperation.migrate(h.client, 'upgrade')
+    // Pass 1: space was created, then account service failed.
+    const pass1SpaceCreates = h.create.mock.calls.filter(
+      ([domain, doc]) => domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks
+    )
+    expect(pass1SpaceCreates).toHaveLength(1)
     expect(h.update).not.toHaveBeenCalled()
     expect(await readRecordedStates(h.client)).toEqual([])
 
-    // Second upgrade pass on the SAME migrateState map.
+    // Second upgrade pass on the SAME stub. Account service recovers.
     await webhooksOperation.migrate(h.client, 'upgrade')
+    const pass2SpaceCreates = h.create.mock.calls.filter(
+      ([domain, doc]) => domain === DOMAIN_SPACE && doc?._id === webhooks.space.Webhooks
+    )
+    expect(pass2SpaceCreates).toHaveLength(1) // no second create; idempotent
     expect(h.update).toHaveBeenCalledTimes(1)
     expect(h.update.mock.calls[0][0]).toBe(DOMAIN_SPACE)
     expect(h.update.mock.calls[0][2]).toEqual({ members: [uuid(1)] })
-    expect(await readRecordedStates(h.client)).toEqual(['seedOwnerMembers-v1'])
-  })
-
-  it('retries a missing dedicated space on the next pass and records state', async () => {
-    let found = false
-    const h = makeMigrationClient({
-      findImpl: async () => (found ? [spaceRow([])] : []),
-      members: [member(1)]
-    })
-
-    // First pass: space missing. tryMigrate catches, state unset.
-    await webhooksOperation.migrate(h.client, 'upgrade')
-    expect(await readRecordedStates(h.client)).toEqual([])
-
-    // Operator seeds the space (or model-apply catches up). Retry.
-    found = true
-    await webhooksOperation.migrate(h.client, 'upgrade')
-    expect(h.update).toHaveBeenCalledTimes(1)
     expect(await readRecordedStates(h.client)).toEqual(['seedOwnerMembers-v1'])
   })
 
@@ -375,14 +430,12 @@ describe('webhooksOperation.migrate (retriable failure cases)', () => {
 
 describe('WebhooksMigrationIncompleteError', () => {
   it('carries a structured reason field for each incomplete-pass branch', () => {
-    const missing = new WebhooksMigrationIncompleteError('dedicated-space-missing', 'x')
     const svc = new WebhooksMigrationIncompleteError('account-service-failed', 'x')
     const dup = new WebhooksMigrationIncompleteError('dedicated-space-collides', 'x')
 
-    expect(missing.reason).toBe('dedicated-space-missing')
     expect(svc.reason).toBe('account-service-failed')
     expect(dup.reason).toBe('dedicated-space-collides')
-    expect(missing.name).toBe('WebhooksMigrationIncompleteError')
+    expect(svc.name).toBe('WebhooksMigrationIncompleteError')
   })
 
   it('preserves the upstream cause when provided', () => {

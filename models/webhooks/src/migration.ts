@@ -6,7 +6,7 @@
 // you may not use this file except in compliance with the License. You may
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
-import {
+import core, {
   AccountRole,
   DOMAIN_SPACE,
   type AccountUuid,
@@ -37,10 +37,10 @@ import webhooks, { webhooksId } from '@hcengineering/webhooks'
  */
 /** @public */
 export class WebhooksMigrationIncompleteError extends Error {
-  readonly reason: 'dedicated-space-missing' | 'account-service-failed' | 'dedicated-space-collides'
+  readonly reason: 'account-service-failed' | 'dedicated-space-collides'
 
   constructor (
-    reason: 'dedicated-space-missing' | 'account-service-failed' | 'dedicated-space-collides',
+    reason: 'account-service-failed' | 'dedicated-space-collides',
     message: string,
     options?: { cause?: unknown }
   ) {
@@ -71,8 +71,11 @@ export class WebhooksMigrationIncompleteError extends Error {
  *
  * Membership flow end-to-end:
  *
- *  1. Migration (this file): seed existing-workspace Owners at
- *     install / upgrade time.
+ *  1. Migration (this file): create the dedicated space row in
+ *     DOMAIN_SPACE idempotently on first install, then seed its
+ *     `members` with the current workspace Owners. Re-runs are a
+ *     no-op: an existing row is read back unchanged and the Owner
+ *     union is skipped when every Owner is already present.
  *  2. Self-heal (server-plugin): the first authenticated Owner Tx
  *     that reaches `WebhookPermissionsMiddleware.tx` adds the caller
  *     if they are not already a member. Covers the "promote to Owner
@@ -87,28 +90,24 @@ export class WebhooksMigrationIncompleteError extends Error {
  *     the space's broadcast. Not shipped in this PR.
  *
  * Idempotency and retry: re-running this migration is a no-op. The
- * migration state key is per-workspace and the write is skipped when
- * the seeded set is already a subset of the current `members` list.
- * The migration preserves any existing non-Owner members (e.g. the
- * service account) because it unions rather than replaces. Any
- * branch that cannot complete the seed throws
+ * migration state key is per-workspace, the dedicated-space create
+ * is skipped when a row already exists, and the member write is
+ * skipped when the seeded set is already a subset of the current
+ * `members` list. The migration preserves any existing non-Owner
+ * members (e.g. the service account) because it unions rather than
+ * replaces. Any branch that cannot complete the seed throws
  * `WebhooksMigrationIncompleteError` so `tryMigrate` leaves the
  * state key unset and the next upgrade retries.
  */
 async function seedWebhooksSpaceMembers (client: MigrationClient): Promise<void> {
-  const current = await readWebhooksSpace(client)
-  if (current === undefined) {
-    // Expected transient state during first install: `tryMigrate`
-    // runs before the model-apply has persisted the space row.
-    // Throwing here keeps the state key unset so the next upgrade
-    // pass picks it up and seeds. Returning normally recorded the
-    // seed as successful even though no Owner was added (Michael,
-    // Nov 25 review).
-    throw new WebhooksMigrationIncompleteError(
-      'dedicated-space-missing',
-      'webhooks: dedicated space missing; leaving migration unset so the next upgrade retries'
-    )
-  }
+  // Create the dedicated space row in DOMAIN_SPACE if it does not
+  // exist yet, then seed its members in the same pass. The model
+  // builder at `models/webhooks/src/index.ts` writes the space to
+  // `core.space.Model` (DOMAIN_MODEL_TX), which is NOT where runtime
+  // Space rows live; on a fresh workspace, DOMAIN_SPACE has no entry
+  // for `webhooks.space.Webhooks` until this migration creates it
+  // (Michael, Nov 25 review).
+  const current = await ensureWebhooksSpaceExists(client)
 
   let members: WorkspaceMemberInfo[]
   try {
@@ -143,6 +142,52 @@ async function seedWebhooksSpaceMembers (client: MigrationClient): Promise<void>
 interface WebhooksSpaceSnapshot {
   _id: Ref<Space>
   members: AccountUuid[]
+}
+
+/**
+ * Idempotent create-or-read of the dedicated webhooks space row in
+ * `DOMAIN_SPACE`. The model declaration at
+ * `models/webhooks/src/index.ts:316-327` writes the space to
+ * `core.space.Model` (DOMAIN_MODEL_TX), but runtime Space rows live
+ * in DOMAIN_SPACE. On a fresh workspace, the migration must create
+ * the DOMAIN_SPACE row itself; on an existing workspace, this returns
+ * the persisted row unchanged. Writes to disk only when the row is
+ * actually missing, so re-running the migration is a no-op.
+ *
+ * Propagates `WebhooksMigrationIncompleteError('dedicated-space-collides')`
+ * if the persisted state contains more than one row for the same `_id`:
+ * operators must resolve that before the migration can proceed. Keeps
+ * the state key unset so the next upgrade retries once the collision
+ * is resolved.
+ */
+async function ensureWebhooksSpaceExists (client: MigrationClient): Promise<WebhooksSpaceSnapshot> {
+  const current = await readWebhooksSpace(client)
+  if (current !== undefined) return current
+
+  // Shape mirrors the model declaration at
+  // `models/webhooks/src/index.ts:316-327` so the runtime row matches
+  // what the model intends. `members: []` on first create; the seed
+  // step below adds Owners in the same pass. `core.account.System` is
+  // the only principal available to a migration.
+  const now = Date.now()
+  await client.create<Space>(DOMAIN_SPACE, {
+    _id: webhooks.space.Webhooks,
+    _class: core.class.Space,
+    space: core.space.Model,
+    modifiedBy: core.account.System,
+    modifiedOn: now,
+    createdBy: core.account.System,
+    createdOn: now,
+    name: 'Webhooks',
+    description: 'Dedicated private space for webhook subscriptions',
+    private: true,
+    archived: false,
+    members: []
+  })
+  client.logger.log('webhooks: created dedicated space row in DOMAIN_SPACE', {
+    _id: webhooks.space.Webhooks
+  })
+  return { _id: webhooks.space.Webhooks, members: [] }
 }
 
 async function readWebhooksSpace (client: MigrationClient): Promise<WebhooksSpaceSnapshot | undefined> {
