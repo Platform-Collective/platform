@@ -20,6 +20,7 @@
         "AccountAlreadyConfirmed": "이미 확인된 계정입니다",
         "WorkspaceAlreadyExists": "이미 존재하는 워크스페이스입니다",
         "InvalidOtp": "잘못된 코드",
+        "OtpLocked": "잘못된 코드 입력이 너무 많습니다. 잠시 후 새 코드를 요청하세요.",
         "PasswordLoginLocked": "로그인 시도가 너무 많아 비밀번호 로그인이 잠겼습니다. OTP 로그인으로 계정 잠금을 해제하세요.",
         "InviteNotFound": "{email}로 보낸 초대를 찾을 수 없습니다.",
         "WorkspaceLimitReached": "워크스페이스 한도에 도달했습니다. 문의해 주세요...",

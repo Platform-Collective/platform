@@ -5,6 +5,7 @@
         "DescriptionLabel": "설명",
         "ColorLabel": "색상",
         "CategoryLabel": "카테고리",
+        "Usage": "사용량",
         "TagReferenceLabel": "태그",
         "TagLabel": "태그",
         "TagName": "{word} 제목 입력",

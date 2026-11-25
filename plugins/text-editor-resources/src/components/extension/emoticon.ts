@@ -1,5 +1,5 @@
-<!--
-// Copyright © 2020, 2021 Anticrm Platform Contributors.
+//
+// Copyright © 2026 Hardcore Engineering Inc.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -11,15 +11,15 @@
 //
 // See the License for the specific language governing permissions and
 // limitations under the License.
--->
-<script lang="ts">
-  import setting from '@hcengineering/setting'
-  import { Icon, Label } from '@hcengineering/ui'
-</script>
+//
 
-<div class="antiComponent">
-  <div class="ac-header short divide">
-    <div class="ac-header__icon"><Icon icon={setting.icon.Terms} size={'medium'} /></div>
-    <div class="ac-header__title"><Label label={setting.string.Terms} /></div>
-  </div>
-</div>
+const wordLikeEndRegex = /[\p{L}\p{N}]$/u
+
+/**
+ * Emoticons ending with a letter or digit (":p", ":D", ":3", ":-o") may just be the beginning of a word
+ * or of a ':' shortcode search (":pizza", ":joy"), so they are converted only once a whitespace follows.
+ * Other emoticons (":)", ";-(", "<3") are converted as soon as they are typed.
+ */
+export function isWordLikeEmoticon (emoticon: string): boolean {
+  return wordLikeEndRegex.test(emoticon)
+}

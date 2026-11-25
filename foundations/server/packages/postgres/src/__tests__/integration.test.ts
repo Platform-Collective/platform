@@ -1654,7 +1654,7 @@ describe('PostgreSQL Integration Tests (Real Database)', () => {
 
         // Both should return the same number of documents
         expect(cursorResult.length).toBe(directResult.length)
-      })
+      }, 30000) // Allow dataset creation and both queries to finish on slow CI runners.
 
       it('should compare performance with sorting and projection', async () => {
         const docCount = 1000

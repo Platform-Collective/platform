@@ -80,6 +80,7 @@ describe('IssueSyncManager state webhooks', () => {
     expect(client.findOne).toHaveBeenCalledTimes(2)
     expect(issue.status).toBe(expectedStatus._id)
     expect(client.diffUpdate).toHaveBeenCalledTimes(shouldUpdate ? 1 : 0)
-    expect(derivedClient.diffUpdate).toHaveBeenCalledTimes(shouldUpdate ? 1 : 0)
+    // The sync data is stored in both cases, so a later poll does not replay the same transition.
+    expect(derivedClient.diffUpdate).toHaveBeenCalledTimes(1)
   })
 })

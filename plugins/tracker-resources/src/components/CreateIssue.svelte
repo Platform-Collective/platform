@@ -83,6 +83,8 @@
   import { ObjectBox } from '@hcengineering/view-resources'
   import { createEventDispatcher, onDestroy } from 'svelte'
 
+  import { fillIssueDefaults } from '../issue-defaults'
+  import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
@@ -242,7 +244,7 @@
   $: updateAssigneeId(object, currentProject)
   $: canSave =
     descriptionBox != null &&
-    getTitle(object.title ?? '').length > 0 &&
+    normalizeIssueTitle(object.title ?? '').length > 0 &&
     object.status !== undefined &&
     kind !== undefined &&
     currentProject !== undefined
@@ -411,10 +413,6 @@
     parentIssue = undefined
   }
 
-  function getTitle(value: string): string {
-    return value.trim()
-  }
-
   let subIssuesComponent: SubIssues
 
   export function canClose(): boolean {
@@ -489,7 +487,7 @@
 
       const value: DocData<Issue> = {
         ...customFields.attributes,
-        title: getTitle(object.title),
+        title: normalizeIssueTitle(object.title),
         description: null,
         assignee: object.assignee,
         component: object.component,
@@ -523,6 +521,7 @@
         kind,
         identifier
       }
+      fillIssueDefaults(hierarchy, object, value)
 
       if (!isEmptyMarkup(object.description)) {
         const collabId = makeCollabId(tracker.class.Issue, _id, 'description')
@@ -583,7 +582,7 @@
       await subIssuesComponent.save(parents, _id)
       addNotification(
         await translate(tracker.string.IssueCreated, {}, $themeStore.language),
-        getTitle(object.title),
+        normalizeIssueTitle(object.title),
         IssueNotification,
         {
           issueId: _id,
@@ -879,6 +878,15 @@
       focusIndex={1}
       bind:value={object.title}
       placeholder={tracker.string.IssueTitlePlaceholder}
+      format="text-multiline"
+      on:keydown={(event) => {
+        handleIssueTitleKeyDown(event, () => {
+          // Focus the description directly; moving to the next focus manager element kept the
+          // focus on the title in the browser checks.
+          if (descriptionBox != null) descriptionBox.focus()
+          else manager.next(1)
+        })
+      }}
       kind={'large-style'}
       autoFocus
       fullSize

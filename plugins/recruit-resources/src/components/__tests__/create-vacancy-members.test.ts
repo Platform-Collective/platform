@@ -55,7 +55,7 @@ const code = ts.transpileModule(
 function createForm (defaultMembers?: string[]): { form: VacancyForm, createDoc: jest.Mock } {
   const createDoc = jest.fn().mockResolvedValue('vacancy-id')
   const client = {
-    getHierarchy: jest.fn().mockReturnValue({}),
+    getHierarchy: jest.fn().mockReturnValue({ getAttribute: jest.fn().mockReturnValue({ name: 'labels' }) }),
     findOne: jest.fn().mockResolvedValue({ _id: 'sequence-id' }),
     update: jest.fn().mockResolvedValue({ object: { sequence: 1 } }),
     apply: jest.fn().mockReturnValue({ createDoc, commit: jest.fn().mockResolvedValue(undefined) }),

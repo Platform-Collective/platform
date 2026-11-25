@@ -86,6 +86,7 @@
     "FreeBusy": "空闲/忙碌",
     "DefaultVisibility": "默认可见性",
     "NotAllPermissions": "未授予所有权限",
+    "IntegrationFailed": "无法连接 Google 日历。请重试。",
     "GooglePrivacy": "Huly 从 Google API 接收的信息的使用和传输将遵守 <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API 服务用户数据政策</a>,包括有限使用要求。",
     "Value": "{value}",
     "Schedule": "公开日程表",

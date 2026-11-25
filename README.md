@@ -1,12 +1,17 @@
 # Platform
 
 ![GitHub License](https://img.shields.io/github/license/Platform-Collective/platform?style=for-the-badge)
+[![Slack](https://img.shields.io/badge/Slack-join-4A154B?style=for-the-badge&logo=slack)](https://join.slack.com/t/platform-collective/shared_invite/zt-4gkzfgk4w-7hWA5V2KL0CGMTldQ~VViw)
 
 ## About
 
 This repository is the Platform Collective platform — a framework for building business applications such as CRM, project management, chat, HRM and ATS systems.
 
 It is a fork of [Huly Platform](https://github.com/hcengineering/platform) by Hardcore Engineering Inc. and is developed independently. For the original project, see the [upstream repository](https://github.com/hcengineering/platform).
+
+## Community
+
+Have questions or want to contribute? Join our [Slack community](https://join.slack.com/t/platform-collective/shared_invite/zt-4gkzfgk4w-7hWA5V2KL0CGMTldQ~VViw).
 
 ## Changelog
 
@@ -39,6 +44,7 @@ For detailed information about the platform architecture, services, and their in
 
 - [Platform](#platform)
   - [About](#about)
+  - [Community](#community)
   - [Changelog](#changelog)
   - [Versions](#versions)
   - [Architecture](#architecture)

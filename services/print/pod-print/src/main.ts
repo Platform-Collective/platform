@@ -8,6 +8,7 @@ import serverToken from '@hcengineering/server-token'
 
 import { storageConfigFromEnv } from '@hcengineering/server-storage'
 import config from './config'
+import { getPrintHostnames } from './print-url'
 import { createServer, listen } from './server'
 
 const setupMetadata = (): void => {
@@ -20,7 +21,7 @@ export const main = async (): Promise<void> => {
   setupMetadata()
 
   const storageConfig = storageConfigFromEnv()
-  const { app, close } = createServer(storageConfig, config.AllowedHostnames)
+  const { app, close } = createServer(storageConfig, getPrintHostnames(config.AllowedHostnames, config.FrontUrl))
   const server = listen(app, config.Port)
   let shuttingDown = false
 

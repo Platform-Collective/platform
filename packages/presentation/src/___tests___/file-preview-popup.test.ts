@@ -1,8 +1,8 @@
 /** @jest-environment jsdom */
 // SPDX-License-Identifier: EPL-2.0
 
-import { readFileSync } from 'fs'
-import { dirname, resolve } from 'path'
+import { existsSync, readFileSync } from 'fs'
+import { dirname, extname, resolve } from 'path'
 import { compile } from 'svelte/compiler'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 import { concatLink } from '@hcengineering/core'
@@ -180,7 +180,12 @@ function createPreview (options: PreviewOptions = {}): PreviewFixture {
         }
         return { default: slot }
       }
-      return load(resolve(dirname(filename), id))
+      const resolved = resolve(dirname(filename), id)
+      // Compile real relative TypeScript sources when the import omits the extension.
+      if (id.startsWith('.') && extname(id) === '' && !existsSync(resolved) && existsSync(`${resolved}.ts`)) {
+        return load(`${resolved}.ts`)
+      }
+      return load(resolved)
     }
     // Execute locally compiled modules in the same browser realm as the mounted components.
     // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval

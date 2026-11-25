@@ -81,9 +81,24 @@ function archiveDocs (docs: ControlledDocument[], txFactory: TxFactory): Tx[] {
   return res
 }
 
-function updateMeta (doc: ControlledDocument, txFactory: TxFactory): Tx[] {
+/**
+ * Keeps the title of the document's metadata in sync with the document.
+ *
+ * Only the stored DocumentMeta the document is attached to receives the title,
+ * and only when it is in the same space as the document.
+ */
+async function updateMeta (doc: ControlledDocument, control: TriggerControl): Promise<Tx[]> {
+  if (!control.hierarchy.isDerived(doc.attachedToClass, documents.class.DocumentMeta)) {
+    return []
+  }
+  const meta = (
+    await control.findAll(control.ctx, documents.class.DocumentMeta, { _id: doc.attachedTo }, { limit: 1 })
+  ).shift()
+  if (meta === undefined || meta.space !== doc.space) {
+    return []
+  }
   return [
-    txFactory.createTxUpdateDoc(doc.attachedToClass, doc.space, doc.attachedTo, {
+    control.txFactory.createTxUpdateDoc(meta._class, meta.space, meta._id, {
       title: `${doc.code} ${doc.title}`
     })
   ]
@@ -279,7 +294,7 @@ export async function OnDocHasBecomeEffective (
 
     result.push(
       ...archiveDocs(olderEffective, control.txFactory),
-      ...updateMeta(doc, control.txFactory),
+      ...(await updateMeta(doc, control)),
       ...updateTemplate(doc, olderEffective, control),
       ...(await createDocumentTrainingRequest(doc, control))
     )
@@ -304,7 +319,7 @@ export async function OnDocTitleChanged (
 
     const olderEffective = await getDocsOlderThanDoc(doc, control, [DocumentState.Effective])
     if (olderEffective.length === 0 && doc.state === DocumentState.Draft) {
-      result.push(...updateMeta(doc, control.txFactory))
+      result.push(...(await updateMeta(doc, control)))
     }
   }
   return result

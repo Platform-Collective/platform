@@ -86,6 +86,7 @@
     "FreeBusy": "Zaneprázdněný/volný",
     "DefaultVisibility": "Výchozí viditelnost",
     "NotAllPermissions": "Ne všechna oprávnění byla udělena",
+    "IntegrationFailed": "Kalendář Google se nepodařilo připojit. Zkuste to prosím znovu.",
     "GooglePrivacy": "Použití a přenos informací přijatých od Google API do jakékoli jiné aplikace bude v souladu s <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">zásadami ochrany osobních údajů Google API</a>, včetně požadavků na omezené použití.",
     "Value": "{value}",
     "Schedule": "Veřejný rozvrh",

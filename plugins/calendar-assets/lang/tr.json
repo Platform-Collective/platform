@@ -86,6 +86,7 @@
     "FreeBusy": "Uygunluk Durumu",
     "DefaultVisibility": "Varsayılan görünürlük",
     "NotAllPermissions": "Tüm izinler verilmedi",
+    "IntegrationFailed": "Google Takvim bağlanamadı. Lütfen tekrar deneyin.",
     "GooglePrivacy": "Huly'nin Google API'lerinden aldığı bilgilerin kullanımı ve diğer uygulamalara aktarımı, Sınırlı Kullanım gereksinimleri dahil olmak üzere <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API Hizmetleri Kullanıcı Verileri Politikası</a>'na uyacaktır.",
     "Value": "{value}",
     "Schedule": "Genel program",

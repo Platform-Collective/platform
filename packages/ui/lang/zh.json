@@ -100,6 +100,7 @@
         "Sidebar": "侧边栏",
         "FontSize": "字体大小",
         "Language": "语言",
+        "AppearanceAndLanguage": "外观和语言",
         "DaysWOValue": "{days, plural, =1 {天} other {天}}",
         "WeeksWOValue": "{weeks, plural, =1 {周} other {周}}",
         "MonthsWOValue": "{months, plural, =1 {月} other {月}}",
@@ -111,6 +112,9 @@
         "ThisYear": "今年",
         "EmojiStyle": "表情样式",
         "EmojiSystem": "系统默认",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "每周开始于",
+        "FirstDayOfWeekSystem": "系统设置（{day}）",
+        "FirstDayOfWeekDefault": "默认（{day}）"
     }
 }

@@ -52,6 +52,7 @@ export default mergeIds(recruitId, recruit, {
     SelectVacancy: '' as IntlString,
     TalentCreateLabel: '' as IntlString,
     CreateTalent: '' as IntlString,
+    TalentCreated: '' as IntlString,
     CreateTalentDialogClose: '' as IntlString,
     CreateTalentDialogCloseNote: '' as IntlString,
     ResumeDraft: '' as IntlString,
@@ -128,11 +129,13 @@ export default mergeIds(recruitId, recruit, {
     Export: '' as IntlString,
     GetTalentIds: '' as IntlString,
     CreateNewSkills: '' as IntlString,
-    SwapFirstAndLastNames: '' as IntlString
+    SwapFirstAndLastNames: '' as IntlString,
+    NumberLabels: '' as IntlString
   },
   category: {
     Other: '' as Ref<TagCategory>,
-    Category: '' as Ref<TagCategory>
+    Category: '' as Ref<TagCategory>,
+    VacancyOther: '' as Ref<TagCategory>
   },
   completion: {
     ApplicationQuery: '' as Resource<ObjectSearchFactory>,

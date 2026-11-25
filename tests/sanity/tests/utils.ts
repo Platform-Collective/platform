@@ -19,6 +19,8 @@ export const PlatformWs = process.env.PLATFORM_WS as string
 export const PlatformSetting = process.env.SETTING as string
 export const PlatformSettingSecond = process.env.SETTING_SECOND as string
 export const PlatformWorkspaceRegion = process.env.WORKSPACE_REGION as string
+export const PlatformOtpURI = process.env.PLATFORM_OTP_URI
+export const MailpitURL = process.env.MAILPIT_URL
 
 export const DefaultWorkspace = 'sanity-ws'
 export const LocalUrl = process.env.LOCAL_URL as string

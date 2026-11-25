@@ -38,6 +38,7 @@ import { ApiError } from './error'
 import { PrintBrowserManager } from './browser'
 import { PrintOptions, print, validKinds, validPageOrientations } from './print'
 import { withMeasureContext } from './middleware'
+import { isAllowedPrintUrl } from './print-url'
 
 function getAccountClient (token: string): AccountClient {
   return getAccountClientRaw(config.AccountsUrl, token)
@@ -194,7 +195,6 @@ export function createServer (
         })
       )
   })
-  const whitelistedHostnames = allowedHostnames.length > 0 ? new Set(allowedHostnames) : null
 
   const app = express()
   app.use(cors())
@@ -213,12 +213,7 @@ export function createServer (
       const rawlink = req.query.link as string
       const link = decodeURIComponent(rawlink)
 
-      // Verify that link is from the same host and protocol is among the allowed
-      const url = new URL(link)
-      if (
-        !['http:', 'https:'].includes(url.protocol) ||
-        (whitelistedHostnames != null && !whitelistedHostnames.has(url.hostname))
-      ) {
+      if (!isAllowedPrintUrl(link, allowedHostnames)) {
         ctx.error('Rejected processing unexpected link', { link })
         throw new ApiError(403, 'Cannot process provided link')
       }
@@ -228,9 +223,9 @@ export function createServer (
       const printRes = await ctx.with(
         'print',
         { kind: options.kind, orientation: options.orientation },
-        (ctx) => print(ctx, link, options, browserManager),
+        (ctx) => print(ctx, link, options, browserManager, allowedHostnames),
         {
-          url,
+          url: new URL(link),
           viewport: options.viewport
         }
       )
@@ -331,7 +326,7 @@ export function createServer (
         const printRes = await ctx.with(
           'print',
           { kind: options.kind, orientation: options.orientation },
-          (ctx) => print(ctx, link, options, browserManager),
+          (ctx) => print(ctx, link, options, browserManager, allowedHostnames),
           {
             link,
             viewport: options.viewport
