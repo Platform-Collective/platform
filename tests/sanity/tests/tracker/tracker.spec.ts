@@ -40,8 +40,8 @@ test.describe('Tracker tests', () => {
     await issues.searchIssueByName(titlePrefix)
 
     const rows = page.locator('.listGrid.antiList__row')
-    const first = rows.filter({ has: issues.issueAnchorByName(firstTitle) })
-    const second = rows.filter({ has: issues.issueAnchorByName(secondTitle) })
+    const first = rows.filter({ has: page.getByRole('link', { name: firstTitle, exact: true }) })
+    const second = rows.filter({ has: page.getByRole('link', { name: secondTitle, exact: true }) })
 
     // Move the real list focus while leaving the palette open over the list.
     const moveFocus = async (row: Locator): Promise<void> => {
