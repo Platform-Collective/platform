@@ -33,7 +33,7 @@ jest.mock(
     concatLink: (base: string, path: string) => `${base}/${path}`,
     getCurrentAccount: () => ({ uuid: 'account' }),
     reduceCalls:
-      <T extends unknown[]>(fn: (...args: T) => Promise<void>) =>
+      <T extends unknown[]> (fn: (...args: T) => Promise<void>) =>
       async (...args: T): Promise<void> => {
         await Promise.resolve()
         await fn(...args)
