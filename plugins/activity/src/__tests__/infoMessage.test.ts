@@ -1,40 +1,53 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { translateCB, type IntlString } from '@hcengineering/platform'
+import { addStringsLoader, type IntlString, type Plugin } from '@hcengineering/platform'
 import { createActivityInfoMessageReference, translateActivityInfoMessage } from '../infoMessage'
 
-jest.mock('@hcengineering/platform', () => ({ translateCB: jest.fn() }), { virtual: true })
+const duplicateOf = 'tracker:string:DuplicateOf' as IntlString
+const markedAsDuplicate = 'tracker:string:MarkedAsDuplicateOfThis' as IntlString
+const otherIssueMessage = 'tracker:string:OtherIssueMessage' as IntlString
+const sectionLocked = 'card:string:SectionLocked' as IntlString
+const sectionUnlocked = 'card:string:SectionUnlocked' as IntlString
+const legacy =
+  '<span data-type="reference" data-id="issue-id" data-objectclass="tracker:class:Issue" data-label="TEST-42">@TEST-42</span>'
+const escapedLegacy =
+  '&lt;span data-type=&quot;reference&quot; data-id=&quot;issue-id&quot; ' +
+  'data-objectclass=&quot;tracker:class:Issue&quot; data-label=&quot;TEST-42&quot;&gt;@TEST-42&lt;/span&gt;'
 
-function translate (message: IntlString, props: Record<string, unknown>): string {
-  let result = ''
-  jest.mocked(translateCB).mockImplementationOnce((_message, params, _language, callback) => {
-    let translated: string = message
-    for (const [name, value] of Object.entries(params)) {
-      translated = translated.replaceAll(`{${name}}`, String(value))
-    }
-    callback(translated)
+addStringsLoader('tracker' as Plugin, async (locale) => ({
+  string: {
+    DuplicateOf: locale === 'en-US' ? 'Duplicate of {issue}: {label}' : 'Duplicate of {issue}',
+    MarkedAsDuplicateOfThis: '{issue} was marked as duplicate of this issue',
+    OtherIssueMessage: 'Issue {issue}'
+  }
+}))
+addStringsLoader('card' as Plugin, async () => ({
+  string: { SectionLocked: 'Section {section} locked', SectionUnlocked: 'Section {section} unlocked' }
+}))
+
+async function translate (message: IntlString, props: Record<string, unknown>, language = 'en'): Promise<string> {
+  return await new Promise((resolve) => {
+    translateActivityInfoMessage(message, props, language, resolve)
   })
-  translateActivityInfoMessage(message, props, 'en', (value) => {
-    result = value
-  })
-  return result
 }
 
-it('escapes translated parameters before rendering them as HTML', () => {
-  const section = '<span data-type="reference">Overview & "Operations"</span>'
-  expect(translate('Section locked: {section}; again: {section}' as IntlString, { section })).toBe(
-    'Section locked: &lt;span data-type=&quot;reference&quot;&gt;Overview &amp; &quot;Operations&quot;&lt;/span&gt;; ' +
-      'again: &lt;span data-type=&quot;reference&quot;&gt;Overview &amp; &quot;Operations&quot;&lt;/span&gt;'
+it('renders the same legacy value as a link in duplicate entries and as text in ordinary entries', async () => {
+  await expect(translate(duplicateOf, { issue: legacy })).resolves.toBe(`Duplicate of ${legacy}`)
+  await expect(translate(markedAsDuplicate, { issue: legacy })).resolves.toBe(
+    `${legacy} was marked as duplicate of this issue`
+  )
+  await expect(translate(sectionLocked, { section: legacy })).resolves.toBe(`Section ${escapedLegacy} locked`)
+  await expect(translate(sectionUnlocked, { section: legacy })).resolves.toBe(`Section ${escapedLegacy} unlocked`)
+  await expect(translate(otherIssueMessage, { issue: legacy })).resolves.toBe(`Issue ${escapedLegacy}`)
+})
+
+it('escapes other parameters even in a duplicate message', async () => {
+  await expect(translate(duplicateOf, { issue: legacy, label: legacy }, 'en-US')).resolves.toBe(
+    `Duplicate of ${legacy}: ${escapedLegacy}`
   )
 })
 
-it('renders legacy string references from validated individual values', () => {
-  const legacy =
-    '<span data-type="reference" data-id="issue-id" data-objectclass="tracker:class:Issue" data-label="TEST-42">@TEST-42</span>'
-  expect(translate('Duplicate of {issue}' as IntlString, { issue: legacy })).toBe(`Duplicate of ${legacy}`)
-})
-
-it('keeps newly written references compatible with legacy string readers', () => {
+it('keeps newly written references compatible with legacy string readers', async () => {
   const reference = createActivityInfoMessageReference({
     id: 'issue-"id"',
     objectClass: 'tracker:class:Issue',
@@ -43,21 +56,16 @@ it('keeps newly written references compatible with legacy string readers', () =>
   expect(reference).toBe(
     '<span data-type="reference" data-id="issue-&quot;id&quot;" data-objectclass="tracker:class:Issue" data-label="T&lt;&amp;-42">@T&lt;&amp;-42</span>'
   )
-  expect(translate('Duplicate of {issue}' as IntlString, { issue: reference })).toBe(`Duplicate of ${reference}`)
+  await expect(translate(duplicateOf, { issue: reference })).resolves.toBe(`Duplicate of ${reference}`)
 })
 
-it('does not trust markup flags or malformed references in stored props', () => {
-  const injected = '<img src=x onerror="alert(1)">'
-  expect(
-    translate('Duplicate of {issue}' as IntlString, {
-      issue: { __activityInfoMessageMarkup: injected }
-    })
-  ).toBe('Duplicate of [object Object]')
-  const malformed =
-    '<span data-type="reference" data-id="issue-id" data-objectclass="tracker:class:Issue" data-label="TEST-42" onclick="alert(1)">@TEST-42</span>'
-  expect(translate('Duplicate of {issue}' as IntlString, { issue: malformed })).toBe(
-    'Duplicate of &lt;span data-type=&quot;reference&quot; data-id=&quot;issue-id&quot; ' +
-      'data-objectclass=&quot;tracker:class:Issue&quot; data-label=&quot;TEST-42&quot; ' +
-      'onclick=&quot;alert(1)&quot;&gt;@TEST-42&lt;/span&gt;'
+it('escapes malformed reference strings and treats stored objects as text', async () => {
+  await expect(translate(duplicateOf, { issue: { __activityInfoMessageMarkup: legacy } })).resolves.toBe(
+    'Duplicate of [object Object]'
+  )
+  await expect(translate(duplicateOf, { issue: `${legacy}\n` })).resolves.toBe(`Duplicate of ${escapedLegacy}\n`)
+  const malformed = legacy.replace('>@TEST-42', ' class="extra">@TEST-42')
+  await expect(translate(duplicateOf, { issue: malformed })).resolves.toBe(
+    `Duplicate of ${escapedLegacy.replace('&gt;@TEST-42', ' class=&quot;extra&quot;&gt;@TEST-42')}`
   )
 })

@@ -8,6 +8,8 @@ export interface ActivityInfoMessageReference {
   readonly label: string
 }
 
+// These persisted message IDs use the legacy string format for their issue parameter.
+const DUPLICATE_MESSAGES = new Set<string>(['tracker:string:DuplicateOf', 'tracker:string:MarkedAsDuplicateOfThis'])
 const referencePattern =
   /^<span data-type="reference" data-id="([^"]*)" data-objectclass="([^"]*)" data-label="([^"]*)">@\3<\/span>$/
 
@@ -47,8 +49,8 @@ function parseReference (value: string): ActivityInfoMessageReference | undefine
   }
 }
 
-function escapeParam (value: unknown): string {
-  if (typeof value === 'string') {
+function escapeParam (value: unknown, isReference: boolean): string {
+  if (isReference && typeof value === 'string') {
     const reference = parseReference(value)
     if (reference !== undefined) return createActivityInfoMessageReference(reference)
   }
@@ -62,8 +64,12 @@ export function translateActivityInfoMessage (
   language: string | undefined,
   resolve: (value: string) => void
 ): void {
+  const isDuplicateMessage = DUPLICATE_MESSAGES.has(message)
   const escapedProps = Object.fromEntries(
-    Object.entries(props ?? {}).map(([name, value]) => [name, escapeParam(value)])
+    Object.entries(props ?? {}).map(([name, value]) => [
+      name,
+      escapeParam(value, isDuplicateMessage && name === 'issue')
+    ])
   )
   translateCB(message, escapedProps, language, resolve)
 }
