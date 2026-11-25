@@ -2,7 +2,7 @@
 
 import core, { type Doc, type Ref } from '@hcengineering/core'
 
-import { getActionPopupValue } from '../actions'
+import { getActionPopupValue } from '../actionContext'
 
 function document (id: string): Doc {
   return {
@@ -15,21 +15,21 @@ function document (id: string): Doc {
 }
 
 describe('getActionPopupValue', () => {
-  it('passes a focused document as a single action context', () => {
+  it('passes a single focused document as a single action context', () => {
     const focus = document('focused')
 
-    expect(getActionPopupValue({ focus }, { docs: [] })).toBe(focus)
+    expect(getActionPopupValue([focus])).toBe(focus)
   })
 
   it('passes a single selected document as a single action context', () => {
     const selected = document('selected')
 
-    expect(getActionPopupValue({}, { docs: [selected] })).toBe(selected)
+    expect(getActionPopupValue([selected])).toBe(selected)
   })
 
   it('preserves multiple selected documents', () => {
     const docs = [document('first'), document('second')]
 
-    expect(getActionPopupValue({}, { docs })).toBe(docs)
+    expect(getActionPopupValue(docs)).toBe(docs)
   })
 })

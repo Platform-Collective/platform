@@ -55,6 +55,42 @@ test.describe('Check direct messages channels', () => {
       await chunterPage.createDirectChat(newUser2)
     })
 
+    await test.step('Manage notifications from focused and navigator menus', async () => {
+      const directChatName = `${newUser2.lastName} ${newUser2.firstName}`
+      await channelPage.clickChooseChannel(directChatName)
+
+      await page.keyboard.press('Meta+k')
+      await page.getByPlaceholder('Search or run a command...').fill('Notifications')
+      await page.locator('.actionsPopup .actionsitem').filter({ hasText: 'Notifications' }).click()
+
+      const actionSelector = page.locator('.actionsPopup .selectPopup[tabindex="0"]')
+      await expect(actionSelector.getByRole('button', { name: 'All messages' })).toBeVisible()
+      await expect(actionSelector.getByRole('button', { name: 'Only mentions' })).toBeHidden()
+      await expect(actionSelector.getByRole('button', { name: 'Nothing' })).toBeVisible()
+      await actionSelector.focus()
+      await page.keyboard.press('Tab')
+      await expect(actionSelector).toBeHidden()
+      await expect(page.getByPlaceholder('Search or run a command...')).toBeVisible()
+      await page.keyboard.press('Escape')
+
+      await channelPage.openNavigator()
+      const directChat = channelPage.channelContainers().filter({ hasText: directChatName })
+      await directChat.hover()
+      await directChat.locator('.hulyNavItem-actions').click()
+      const notificationsAction = page
+        .locator('.antiPopup')
+        .getByRole('button', { name: 'Notifications', exact: true })
+      await notificationsAction.dispatchEvent('click')
+
+      const navigatorSelector = page.locator('.popup .selectPopup[tabindex="0"]').last()
+      await expect(navigatorSelector.getByRole('button', { name: 'All messages' })).toBeVisible()
+      await expect(navigatorSelector.getByRole('button', { name: 'Only mentions' })).toBeHidden()
+      await expect(navigatorSelector.getByRole('button', { name: 'Nothing' })).toBeVisible()
+      await navigatorSelector.focus()
+      await page.keyboard.press('Tab')
+      await expect(navigatorSelector).toBeHidden()
+    })
+
     await test.step('Exchange messages in the direct chat', async () => {
       await channelPage.clickChooseChannel(`${newUser2.lastName} ${newUser2.firstName}`)
       await channelPage.sendMessage('Test direct question')

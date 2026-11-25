@@ -36,22 +36,13 @@ import {
   type ViewActionInput,
   type ViewContextType
 } from '@hcengineering/view'
+import { normalizeActionContext } from './actionContext'
 import Menu from './components/Menu.svelte'
 import view from './plugin'
 import { type FocusSelection, type SelectionStore } from './selection'
 import { restrictionStore } from './utils'
 
-/**
- * Collapses a single-element array to the element, otherwise returns the original value.
- *
- * @public
- */
-export function normalizeActionContext<T extends Doc> (doc: T | T[] | undefined): T | T[] | undefined {
-  if (Array.isArray(doc) && doc.length === 1) {
-    return doc[0]
-  }
-  return doc
-}
+export { normalizeActionContext } from './actionContext'
 
 /**
  * @public
@@ -64,10 +55,6 @@ export function getSelection (focus: FocusSelection, selection: SelectionStore):
     docs = [focus.focus]
   }
   return docs
-}
-
-export function getActionPopupValue (focus: FocusSelection, selection: SelectionStore): Doc | Doc[] {
-  return normalizeActionContext(getSelection(focus, selection)) ?? []
 }
 
 const allActions = new Map<ViewContextType, Action[]>()
