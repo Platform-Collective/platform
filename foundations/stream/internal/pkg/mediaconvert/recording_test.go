@@ -275,6 +275,9 @@ func TestHTTPCompletionVisibility(t *testing.T) {
 				if head.Header().Get("Upload-Offset") != strconv.Itoa(len(data)) || !bytes.Equal(stg.object, data) {
 					t.Fatal("HEAD reported success without the exact downloadable object")
 				}
+				if w.multipart.buffer.Len() != 0 || w.multipart.buffer.Cap() != 0 {
+					t.Fatalf("completed upload retained recording data: len=%d cap=%d", w.multipart.buffer.Len(), w.multipart.buffer.Cap())
+				}
 				if err := w.FinishUpload(ctx); err != nil {
 					t.Fatal(err)
 				}
@@ -623,6 +626,54 @@ func TestLegacyMultipartWriteReportsFlushErrors(t *testing.T) {
 	w := &Stream{info: info, legacy: true, writer: sharedpipe.NewWriter(), multipart: multipart, logger: zap.NewNop()}
 	if _, err := w.WriteChunk(ctx, 0, bytes.NewReader(bytes.Repeat([]byte{7}, minPartSize))); err == nil {
 		t.Fatal("legacy upload reported success after a failed multipart flush")
+	}
+}
+
+func TestLegacyMultipartRetryKeepsReaderAndOffsetInSync(t *testing.T) {
+	w, stg, ctx := newRecording(t)
+	w.legacy = true
+	first := bytes.Repeat([]byte{7}, minPartSize)
+	second := []byte("accepted only once")
+	stg.failPart = true
+
+	n, err := w.WriteChunk(ctx, 0, bytes.NewReader(first))
+	if n != int64(len(first)) || err == nil || w.info.Offset != int64(len(first)) {
+		t.Fatalf("initial write: accepted=%d offset=%d err=%v", n, w.info.Offset, err)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		n, err = w.WriteChunk(ctx, int64(len(first)), bytes.NewReader(second))
+		if n != 0 || err == nil || w.info.Offset != int64(len(first)) {
+			t.Fatalf("failed retry %d: accepted=%d offset=%d err=%v", attempt, n, w.info.Offset, err)
+		}
+	}
+
+	stg.failPart = false
+	n, err = w.WriteChunk(ctx, int64(len(first)), bytes.NewReader(second))
+	if n != int64(len(second)) || err != nil || w.info.Offset != int64(len(first)+len(second)) {
+		t.Fatalf("successful retry: accepted=%d offset=%d err=%v", n, w.info.Offset, err)
+	}
+	if err := w.DeclareLength(ctx, w.info.Offset); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.FinishUpload(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	reader, err := w.GetReader(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	got, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := append(bytes.Clone(first), second...)
+	if !bytes.Equal(got, want) {
+		t.Fatalf("reader bytes differ after retries: got=%d want=%d", len(got), len(want))
+	}
+	if !bytes.Equal(stg.object, want) {
+		t.Fatal("multipart object differs from reader bytes")
 	}
 }
 

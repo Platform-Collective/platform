@@ -81,13 +81,11 @@ func (w *Stream) WriteChunk(ctx context.Context, offset int64, src io.Reader) (i
 	if w.completed || (!w.legacy && offset != w.info.Offset) {
 		return 0, errors.New("recording offset mismatch or upload already completed")
 	}
-	if w.legacy {
+	if w.multipart == nil && w.legacy {
 		written, err := w.writer.Write(data)
 		if err != nil {
 			return int64(written), err
 		}
-	}
-	if w.multipart == nil && w.legacy {
 		w.info.Offset += int64(len(data))
 		return int64(len(data)), nil
 	}
@@ -101,6 +99,12 @@ func (w *Stream) WriteChunk(ctx context.Context, offset int64, src io.Reader) (i
 		defer cancel()
 	}
 	n, err := w.multipart.write(ctx, data, !w.legacy)
+	if w.legacy && n > 0 {
+		written, writeErr := w.writer.Write(data[:n])
+		if writeErr != nil {
+			return int64(written), writeErr
+		}
+	}
 	if err != nil {
 		tracing.RecordError(span, err)
 		w.logger.Error("multipart upload part failed", zap.Error(err))
@@ -256,7 +260,7 @@ func (w *Stream) finishLocked(ctx context.Context) error {
 			info, statErr := w.storage.StatFile(statCtx, w.info.ID)
 			cancel()
 			if statErr == nil && info.Size == w.info.Offset {
-				w.multipart.completed = true
+				w.multipart.markCompleted()
 				err = nil
 				break
 			}

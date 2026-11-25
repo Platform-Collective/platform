@@ -200,8 +200,7 @@ func (w *MultipartUpload) Complete(ctx context.Context) error {
 		return errors.Wrap(err, "failed to complete multipart upload")
 	}
 
-	w.completed = true
-	w.buffer = bytes.NewBuffer(nil)
+	w.markCompleted()
 	w.logger.Info(
 		"multipart upload completed",
 		zap.Int64("bytesUploaded", w.bytesUploaded),
@@ -209,4 +208,9 @@ func (w *MultipartUpload) Complete(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+func (w *MultipartUpload) markCompleted() {
+	w.completed = true
+	w.buffer = bytes.NewBuffer(nil)
 }
