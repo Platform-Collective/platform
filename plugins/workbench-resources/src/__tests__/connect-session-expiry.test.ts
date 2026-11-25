@@ -44,7 +44,7 @@ function mockWritable<T> (initialValue: T): MockStore<T> {
 function mockCreateContext (): MockContext {
   const context: MockContext = {
     metrics: {},
-    with: async <T>(
+    with: async <T> (
       _name: string,
       _options: Record<string, unknown>,
       operation: (context: MockContext) => Promise<T>
@@ -54,7 +54,7 @@ function mockCreateContext (): MockContext {
 }
 
 jest.mock('svelte/store', () => ({
-  get: <T>(store: MockStore<T>): T => {
+  get: <T> (store: MockStore<T>): T => {
     let current!: T
     const unsubscribe = store.subscribe((value: T) => {
       current = value
@@ -62,7 +62,7 @@ jest.mock('svelte/store', () => ({
     unsubscribe()
     return current
   },
-  writable: <T>(initialValue: T): MockStore<T> => mockWritable(initialValue)
+  writable: <T> (initialValue: T): MockStore<T> => mockWritable(initialValue)
 }))
 jest.mock('@hcengineering/account-client', () => ({ getClient: jest.fn() }))
 jest.mock('@hcengineering/analytics', () => ({
