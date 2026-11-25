@@ -27,6 +27,7 @@ import { type Document, type Teamspace, documentId, getFirstRank } from '@hcengi
 import { getMetadata, translate } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { makeRank } from '@hcengineering/rank'
+import { captureEditorPosition } from '@hcengineering/text-editor-resources'
 import { type Location, type ResolvedLocation, getCurrentResolvedLocation, getPanelURI } from '@hcengineering/ui'
 import { accessDeniedStore, openDoc } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
@@ -34,7 +35,7 @@ import { type Editor } from '@tiptap/core'
 import slugify from 'slugify'
 
 import document from './plugin'
-import { createSubpageRollback, makeReferenceContent } from './subpage'
+import { makeReferenceContent } from './subpage'
 
 export async function moveDocument (doc: Document, space: Ref<Teamspace>, parent: Ref<Document>): Promise<void> {
   const client = getClient()
@@ -100,61 +101,29 @@ export async function createEmptyDocument (
  * Create a child document of `parent`, insert a link to it at `pos` and open it,
  * the same way creating a child document from the navigator does.
  */
-export async function createSubpage (
-  editor: Editor,
-  pos: number,
-  parent: Document,
-  flush?: () => Promise<void>
-): Promise<void> {
+export async function createSubpage (editor: Editor, pos: number, parent: Document): Promise<void> {
   const client = getClient()
   const id: Ref<Document> = generateId()
+  const resolvePosition = captureEditorPosition(editor, Math.min(pos, editor.state.doc.content.size))
   const title = await translate(document.string.Untitled, {})
 
-  // Insert the link before the document is created, so it lands where the command was typed
-  // even if the content changes while the document is being created.
-  const at = Math.min(pos, editor.state.doc.content.size)
-  const inline = editor.state.doc.resolve(at).parent.inlineContent
-  const rollback = createSubpageRollback(editor, id)
   try {
-    editor
-      .chain()
-      .focus(at)
-      .insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline))
-      .command(({ tr }) => {
-        rollback.track(tr)
-        return true
-      })
-      .run()
-    rollback.capture()
     await createEmptyDocument(client, id, parent.space, parent._id, { title })
   } catch (err: any) {
-    // Do not leave a link to a document that does not exist
-    const ranges = editor.isDestroyed ? [] : rollback.ranges()
-    if (ranges.length > 0) {
-      const tr = editor.state.tr
-      for (const { from, to } of ranges) {
-        tr.delete(from, to)
-      }
-      editor.view.dispatch(tr)
-    }
     console.error(err)
     Analytics.handleError(err)
     return
-  } finally {
-    rollback.dispose()
   }
 
   const doc = await client.findOne(document.class.Document, { _id: id })
-  if (doc !== undefined) {
-    try {
-      await flush?.()
-    } catch (err: any) {
-      // The child exists, so keep its link and the parent editor open to finish syncing.
-      Analytics.handleError(err)
-      return
-    }
-    await openDoc(client.getHierarchy(), doc)
+  if (doc === undefined) return
+
+  const at = resolvePosition()
+  if (at !== null && !editor.isDestroyed) {
+    const inline = editor.state.doc.resolve(at).parent.inlineContent
+    editor.chain().focus(at).insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline)).run()
   }
+  await openDoc(client.getHierarchy(), doc)
 }
 
 export async function resolveLocation (loc: Location): Promise<ResolvedLocation | undefined> {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Asset, IntlString } from '@hcengineering/platform'
+import { builtInInlineCommands } from '../extension/builtInInlineCommands'
 import type { InlineCommandItem } from '../extension/inlineCommandItems'
 import { inlineCommandsConfig } from '../extensions'
 
@@ -23,7 +24,16 @@ const command: InlineCommandItem = {
   action: async () => {}
 }
 
-describe('host command permissions after the editor is mounted', () => {
+function items (commands: InlineCommandItem[] | (() => InlineCommandItem[]) = []): Array<{ id: string }> {
+  const config = inlineCommandsConfig(async () => {}, [], commands)
+  return (config.suggestion as any).items({})
+}
+
+describe('inline command configuration', () => {
+  it('uses the shared built-in command list', () => {
+    expect(items()).toEqual(builtInInlineCommands)
+  })
+
   it('offers a command when permission data arrives after extension creation', () => {
     let commands: InlineCommandItem[] = []
     const config = inlineCommandsConfig(
@@ -31,10 +41,10 @@ describe('host command permissions after the editor is mounted', () => {
       [],
       () => commands
     )
-    const items = (): Array<{ id: string }> => (config.suggestion as any).items({})
-    expect(items().some(({ id }) => id === command.id)).toBe(false)
+    const getItems = (): Array<{ id: string }> => (config.suggestion as any).items({})
+    expect(getItems().some(({ id }) => id === command.id)).toBe(false)
     commands = [command]
-    expect(items().some(({ id }) => id === command.id)).toBe(true)
+    expect(getItems().some(({ id }) => id === command.id)).toBe(true)
   })
 
   it('removes a command when permission is revoked after extension creation', () => {
@@ -44,9 +54,9 @@ describe('host command permissions after the editor is mounted', () => {
       [],
       () => commands
     )
-    const items = (): Array<{ id: string }> => (config.suggestion as any).items({})
-    expect(items().some(({ id }) => id === command.id)).toBe(true)
+    const getItems = (): Array<{ id: string }> => (config.suggestion as any).items({})
+    expect(getItems().some(({ id }) => id === command.id)).toBe(true)
     commands = []
-    expect(items().some(({ id }) => id === command.id)).toBe(false)
+    expect(getItems().some(({ id }) => id === command.id)).toBe(false)
   })
 })

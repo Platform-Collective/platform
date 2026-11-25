@@ -51,10 +51,6 @@
 
   let collaborativeEditor: CollaborativeTextEditor
 
-  export async function flush(): Promise<void> {
-    await collaborativeEditor.flush()
-  }
-
   export function commands(): TextEditorCommandHandler | undefined {
     return collaborativeEditor?.commands()
   }

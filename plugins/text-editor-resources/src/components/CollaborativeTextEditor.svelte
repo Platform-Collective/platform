@@ -45,7 +45,6 @@
     Button,
     getEventPositionElement,
     getPopupPositionElement,
-    IconScribble,
     IconSize,
     Loading,
     PopupAlignment,
@@ -74,6 +73,7 @@
 
   import { noSelectionRender, renderCursor } from './editor/collaboration'
   import { defaultEditorAttributes } from './editor/editorProps'
+  import { builtInInlineCommands } from './extension/builtInInlineCommands'
   import { SavedBoard } from './extension/drawingBoard'
   import { type InlineCommandItem, mergeInlineCommandItems } from './extension/inlineCommandItems'
   import { type FileAttachFunction } from './extension/types'
@@ -130,10 +130,6 @@
   const contextProvider = getContext<Provider>(CollaborationIds.Provider)
 
   const provider = contextProvider ?? createRemoteProvider(ydoc, collaborativeDoc, content)
-
-  export async function flush(): Promise<void> {
-    await provider.flush?.()
-  }
 
   let contentError = false
   let synced = false
@@ -405,15 +401,7 @@
           },
           items: () =>
             mergeInlineCommandItems(
-              [
-                { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
-                { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
-                { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
-                { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
-                { id: 'todo-list', label: textEditor.string.TodoItem, icon: view.icon.TodoList },
-                { id: 'drawing-board', label: textEditor.string.DrawingBoard, icon: IconScribble as any },
-                { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
-              ],
+              builtInInlineCommands,
               extraInlineCommands.map(({ id, label, icon }) => ({ id, label, icon }))
             ),
           handleSelect: handleLeftMenuClick
