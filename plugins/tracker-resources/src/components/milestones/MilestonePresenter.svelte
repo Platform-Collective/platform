@@ -33,7 +33,11 @@
   export let inline = false
   export let accent: boolean = false
   export let noUnderline: boolean = false
+  // Names the milestone's project where milestones from several projects are listed together.
+  export let spaceLabel: string | undefined = undefined
   export let onClick: (() => void) | undefined = undefined
+
+  $: label = spaceLabel !== undefined && spaceLabel !== '' ? `${spaceLabel} · ${value?.label ?? ''}` : value?.label
 
   const dispatch = createEventDispatcher()
   $: accentColor =
@@ -59,12 +63,12 @@
           </div>
         {/if}
         <span
-          title={value.label}
+          title={label}
           class="overflow-label label"
           class:no-underline={noUnderline || disabled}
           class:fs-bold={accent}
         >
-          {value.label}
+          {label}
         </span>
       </div>
     </DocNavLink>

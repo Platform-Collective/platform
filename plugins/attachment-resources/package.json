@@ -11,7 +11,9 @@
     "svelte-check": "do-svelte-check",
     "_phase:svelte-check": "do-svelte-check",
     "build:watch": "compile ui",
+    "test": "jest --passWithNoTests --silent",
     "_phase:build": "compile ui",
+    "_phase:test": "jest --passWithNoTests --silent",
     "_phase:format": "format src",
     "_phase:validate": "compile validate"
   },
@@ -25,6 +27,7 @@
     "eslint-plugin-promise": "^7.3.0",
     "eslint-plugin-svelte": "^3.23.0",
     "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "prettier": "^3.6.2",
     "prettier-plugin-svelte": "^3.4.0",
     "sass": "^1.80.0",

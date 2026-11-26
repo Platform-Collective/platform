@@ -22,6 +22,7 @@
   import RootBarExtension from './RootBarExtension.svelte'
   import Settings from './Settings.svelte'
   import { isAppFocusedStore } from '../../stores'
+  import { loadFirstDayOfWeek, resolveFirstDayOfWeek } from '../../firstDayOfWeek'
 
   let application: AnyComponent | undefined
 
@@ -203,11 +204,7 @@
     (($deviceInfo.isPortrait && $deviceInfo.docWidth <= 480) ||
       (!$deviceInfo.isPortrait && $deviceInfo.docHeight <= 480))
 
-  const weekInfoFirstDay: number = getLocalWeekStart()
-  const savedFirstDayOfWeek = localStorage.getItem('firstDayOfWeek') ?? 'system'
-  $deviceInfo.firstDayOfWeek =
-    parseInt(savedFirstDayOfWeek === 'system' ? weekInfoFirstDay.toString() : savedFirstDayOfWeek, 10) ??
-    weekInfoFirstDay
+  $deviceInfo.firstDayOfWeek = resolveFirstDayOfWeek(loadFirstDayOfWeek(), getLocalWeekStart())
 </script>
 
 <svelte:window

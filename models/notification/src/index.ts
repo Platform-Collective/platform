@@ -397,7 +397,7 @@ export function createModel (builder: Builder): void {
       component: notification.component.NotificationSettings,
       group: 'settings-account',
       role: AccountRole.Guest,
-      order: 1500
+      order: 1300
     },
     notification.ids.NotificationSettings
   )

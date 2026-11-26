@@ -149,6 +149,7 @@ export const uis = plugin(uiId, {
     Sidebar: '' as IntlString,
     FontSize: '' as IntlString,
     Language: '' as IntlString,
+    AppearanceAndLanguage: '' as IntlString,
     DaysWOValue: '' as IntlString,
     WeeksWOValue: '' as IntlString,
     MonthsWOValue: '' as IntlString,
@@ -160,7 +161,10 @@ export const uis = plugin(uiId, {
 
     EmojiStyle: '' as IntlString,
     EmojiSystem: '' as IntlString,
-    EmojiNoto: '' as IntlString
+    EmojiNoto: '' as IntlString,
+    FirstDayOfWeek: '' as IntlString,
+    FirstDayOfWeekSystem: '' as IntlString,
+    FirstDayOfWeekDefault: '' as IntlString
   },
   metadata: {
     DefaultApplication: '' as Metadata<AnyComponent>,

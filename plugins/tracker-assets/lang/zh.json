@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "日历",
+    "CalendarWithoutDueDate": "没有截止日期的问题：{count}",
+    "CalendarUpdateFailed": "无法更新问题日期。请重试。",
     "TrackerApplication": "追踪器",
     "Projects": "您的项目",
     "More": "更多",
@@ -39,6 +42,7 @@
     "Completed": "已完成",
     "Canceled": "已取消",
     "CreateProject": "创建项目",
+    "CreateNewProject": "创建新项目…",
     "NewProject": "新项目",
     "ProjectTitle": "项目标题",
     "ProjectTitlePlaceholder": "新项目",
@@ -202,6 +206,7 @@
     "AllFilters": "所有过滤器",
     "NoDescription": "无描述",
     "SearchIssue": "搜索任务…",
+    "SearchMilestone": "搜索里程碑…",
 
     "StatusHistory": "状态历史",
     "NewSubIssue": "添加子问题…",

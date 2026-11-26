@@ -43,7 +43,7 @@
   "dependencies": {
     "@hcengineering/text-core": "workspace:^0.7.19",
     "@hcengineering/text-html": "workspace:^0.7.19",
-    "markdown-it": "^14.0.0",
+    "markdown-it": "^14.3.3",
     "fast-equals": "^5.2.2"
   },
   "repository": {

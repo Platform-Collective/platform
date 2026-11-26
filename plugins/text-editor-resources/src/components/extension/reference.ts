@@ -21,18 +21,20 @@ import { SvelteRenderer } from '../node-view'
 import { ReferenceNode, type ReferenceNodeProps, type ReferenceOptions } from '@hcengineering/text'
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionOptions, type SuggestionProps } from './suggestion'
 
-import { type Blob, type Class, type Doc, type Ref } from '@hcengineering/core'
+import { type Blob, type Class, type Doc, type Ref, type Space } from '@hcengineering/core'
 import { getMetadata, getResource, translate } from '@hcengineering/platform'
 import presentation, { createQuery, getBlobRef, getClient, MessageBox } from '@hcengineering/presentation'
 import view, { type ObjectTooltip, type ReferenceObjectProvider } from '@hcengineering/view'
 import activity, { type ActivityMessage } from '@hcengineering/activity'
 import contact from '@hcengineering/contact'
-import { parseLocation, showPopup, tooltip, type LabelAndProps, type Location, fromCodePoint } from '@hcengineering/ui'
+import { parseLocation, showPopup, tooltip, type LabelAndProps, type Location } from '@hcengineering/ui'
+import { getEmojiFromCodePoints } from '@hcengineering/emoji'
 import workbench, { type Application } from '@hcengineering/workbench'
 
 export interface ReferenceExtensionOptions extends ReferenceOptions {
   suggestion: Omit<SuggestionOptions, 'editor'>
   docClass?: Ref<Class<Doc>>
+  getObjectSpace?: () => Ref<Space> | undefined
   multipleMentions?: boolean
   openDocument?: (_class: Ref<Class<Doc>>, _id: Ref<Doc>, event?: MouseEvent) => void | Promise<void>
 }
@@ -268,6 +270,7 @@ export const ReferenceExtension = ReferenceNode.extend<ReferenceExtensionOptions
       Suggestion({
         editor: this.editor,
         docClass: this.options.docClass,
+        getObjectSpace: this.options.getObjectSpace,
         multipleMentions: this.options.multipleMentions,
         ...this.options.suggestion
       }),
@@ -624,17 +627,18 @@ function makeQuery (obj: Record<string, string | number | boolean | null | undef
 }
 
 function parseEmoji (icon: number | number[] | Ref<Blob>): string | undefined {
-  if (typeof icon === 'object' && '__ref' in icon) {
+  if (typeof icon !== 'number' && !Array.isArray(icon)) {
     return undefined
   }
   try {
-    return Array.isArray(icon) ? fromCodePoint(...icon) : fromCodePoint(icon as number)
+    return getEmojiFromCodePoints(icon)
   } catch (err) {}
   return undefined
 }
 
 function createEmojiElement (emojiCode: number | number[] | Ref<Blob>): HTMLElement {
   const root = document.createElement('span')
+  root.classList.add('emoji')
   Object.assign(root.style, {
     display: 'inline',
     flexShrink: '0',

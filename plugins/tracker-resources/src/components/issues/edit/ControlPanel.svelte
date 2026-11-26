@@ -68,6 +68,8 @@
     'component',
     'startDate',
     'dueDate',
+    // Rendered via dedicated DeadlineEditor below.
+    'deadline',
     'milestone',
     'relations',
     'blockedBy',

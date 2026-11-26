@@ -14,6 +14,7 @@
 //
 
 import {
+  getOrderedListStart,
   type AttrValue,
   type MarkupMark,
   type MarkupNode,
@@ -312,7 +313,8 @@ const nodeRules: Record<string, HtmlNodeRule> = {
     node: MarkupNodeType.ordered_list,
     getAttrs: (attributes: Record<string, string>) => {
       return {
-        start: parseInt(attributes.starts ?? '1')
+        // HTML exports use start; apply the same numeric validation on import.
+        start: getOrderedListStart({ start: attributes.start })
       }
     }
   },

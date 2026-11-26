@@ -31,7 +31,7 @@ import {
   WorkspaceStatusMongoDbCollection,
   MongoAccountDB
 } from '../collections/mongo'
-import { type WorkspaceInfoWithStatus, type WorkspaceStatus } from '../types'
+import { type Query, type WorkspaceInfoWithStatus, type WorkspaceStatus } from '../types'
 
 interface TestWorkspace {
   _id?: string
@@ -212,8 +212,10 @@ describe('MongoDbCollection', () => {
   })
 
   describe('deleteMany', () => {
-    it('should delete documents matching query', async () => {
-      await collection.deleteMany({ mode: 'deleted' as const })
+    it('should delete documents matching query and return deleted count', async () => {
+      ;(mockCollection.deleteMany as jest.Mock).mockResolvedValueOnce({ deletedCount: 2 })
+
+      expect(await collection.deleteMany({ mode: 'deleted' as const })).toBe(2)
 
       expect(mockCollection.deleteMany).toHaveBeenCalledWith({ mode: 'deleted' })
     })
@@ -506,9 +508,7 @@ describe('WorkspaceStatusMongoDbCollection', () => {
       expect(mockWsCollection.find).toHaveBeenCalledWith(
         {
           uuid: 'ws1',
-          status: {
-            mode: 'active'
-          }
+          'status.mode': 'active'
         },
         undefined,
         undefined
@@ -525,6 +525,26 @@ describe('WorkspaceStatusMongoDbCollection', () => {
         }
       ])
     })
+  })
+
+  test.each<[Query<WorkspaceStatus>, Record<string, unknown>]>([
+    [{ mode: { $in: ['pending-restore', 'restoring'] } }, { 'status.mode': { $in: ['pending-restore', 'restoring'] } }],
+    [
+      { mode: 'restoring', processingAttempts: 3 },
+      { 'status.mode': 'restoring', 'status.processingAttempts': 3 }
+    ],
+    [{ mode: 'restoring' }, { 'status.mode': 'restoring' }],
+    [{ lastProcessingTime: { $lte: 123 } }, { 'status.lastProcessingTime': { $lte: 123 } }]
+  ])('passes status guards to Mongo as dotted predicates: %j', async (query, expected) => {
+    const updateMany = jest.fn().mockResolvedValue({})
+    const db = { collection: () => ({ updateMany }) } as unknown as Db
+    const collection = new WorkspaceStatusMongoDbCollection(
+      new MongoDbCollection<WorkspaceInfoWithStatus, 'uuid'>('workspace', db, 'uuid')
+    )
+
+    await collection.update({ workspaceUuid: 'ws1' as WorkspaceUuid, ...query }, { processingProgress: 0 })
+
+    expect(updateMany).toHaveBeenCalledWith({ uuid: 'ws1', ...expected }, { $set: { 'status.processingProgress': 0 } })
   })
 
   describe('updateMany', () => {
@@ -583,11 +603,9 @@ describe('WorkspaceStatusMongoDbCollection', () => {
       expect(mockWsCollection.update).toHaveBeenCalledWith(
         {
           uuid: 'ws1',
-          status: {
-            mode: { $in: ['active', 'creating'] },
-            processingProgress: { $lt: 50 },
-            processingAttempts: { $gte: 3 }
-          }
+          'status.mode': { $in: ['active', 'creating'] },
+          'status.processingProgress': { $lt: 50 },
+          'status.processingAttempts': { $gte: 3 }
         },
         {
           'status.mode': 'active'
@@ -618,9 +636,7 @@ describe('WorkspaceStatusMongoDbCollection', () => {
       expect(mockWsCollection.update).toHaveBeenCalledWith(
         {
           uuid: 'ws1',
-          status: {
-            mode: { $in: ['active', 'creating'] }
-          }
+          'status.mode': { $in: ['active', 'creating'] }
         },
         {
           $inc: {
@@ -659,13 +675,13 @@ describe('WorkspaceStatusMongoDbCollection', () => {
     it('should transform query for deletion', async () => {
       const query = { workspaceUuid: 'ws1' as WorkspaceUuid, mode: 'active' as const }
 
-      await wsStatusCollection.deleteMany(query)
+      ;(mockWsCollection.deleteMany as jest.Mock).mockResolvedValueOnce(1)
+
+      expect(await wsStatusCollection.deleteMany(query)).toBe(1)
 
       expect(mockWsCollection.deleteMany).toHaveBeenCalledWith({
         uuid: 'ws1',
-        status: {
-          mode: 'active'
-        }
+        'status.mode': 'active'
       })
     })
   })

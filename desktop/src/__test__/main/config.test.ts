@@ -420,16 +420,16 @@ describe('config', () => {
         expect(result?._version).toBe('1.0.0')
       })
 
-      test('handles QMS server URL update scenario', () => {
+      test('handles server URL update scenario', () => {
         const oldUserDataConfig: PackedConfig = {
-          server: 'https://old.tracex.co',
-          updatesChannelKey: 'tracex',
+          server: 'https://old.example.com',
+          updatesChannelKey: 'custom-channel',
           _version: '0.7.100'
         }
 
         const newBundledConfig: PackedConfig = {
-          server: 'https://app.tracex.co/',
-          updatesChannelKey: 'tracex'
+          server: 'https://app.example.com/',
+          updatesChannelKey: 'custom-channel'
         }
 
         let readCallCount = 0
@@ -462,8 +462,8 @@ describe('config', () => {
         const result = readPackedConfig()
 
         // Server URL should be updated from bundled config
-        expect(result?.server).toBe('https://app.tracex.co/')
-        expect(result?.updatesChannelKey).toBe('tracex')
+        expect(result?.server).toBe('https://app.example.com/')
+        expect(result?.updatesChannelKey).toBe('custom-channel')
         expect(result?._version).toBe('1.0.0')
       })
     })

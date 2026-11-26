@@ -45,6 +45,23 @@ function isPlainObject (value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const LIST_OPERATORS = ['$in', '$nin', '$all']
+
+/**
+ * A tick-list filter with nothing ticked. Its empty list would match no document at all (`$in: []`), while
+ * the user asked for nothing, so such a filter is left out of the query.
+ *
+ * Only modes where the user ticks the values count. A mode without a value selector (dates, "has active
+ * applicant") and a nested filter compute their list from other documents, so an empty list there is a real
+ * result that matches nothing and must be kept.
+ */
+function isEmptySelection (filter: Filter, mode: FilterMode, result: unknown): boolean {
+  if (mode.disableValueSelector === true || filter.nested !== undefined) return false
+  if (!Array.isArray(filter.value) || filter.value.length > 0) return false
+  if (!isPlainObject(result)) return false
+  return LIST_OPERATORS.some((op) => Array.isArray(result[op]) && result[op].length === 0)
+}
+
 /**
  * Deep-clone a query so the helper never mutates the caller's `base`.
  * Prefers `hierarchy.clone()` when available (it knows about huly's
@@ -85,6 +102,7 @@ export async function makeFilterQuery (
     }
 
     if (isUnsafeKey(filterKey)) continue
+    if (isEmptySelection(filter, mode, result)) continue
 
     const target = out as Record<string, any>
     const existing = Object.prototype.hasOwnProperty.call(target, filterKey) ? target[filterKey] : undefined
