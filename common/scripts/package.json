@@ -2,6 +2,11 @@
   "name": "@hcengineering/scripts",
   "version": "0.7.0",
   "scripts": {
+    "build": "node --check safe-publish.js && node --check bump.js",
+    "_phase:build": "node --check safe-publish.js && node --check bump.js",
+    "_phase:validate": "node --check release-scripts.test.js",
+    "test": "jest --runInBand --no-cache",
+    "_phase:test": "jest --runInBand --no-cache",
     "format": "echo \"No format specified\"",
     "safe-publish": "node safe-publish.js"
   },
@@ -17,7 +22,8 @@
     "eslint-plugin-secure-coding": "^5.4.4",
     "eslint-plugin-n": "^18.3.0",
     "eslint": "^9.39.5",
-    "@typescript-eslint/parser": "^8.67.0"
+    "@typescript-eslint/parser": "^8.67.0",
+    "jest": "^30.4.2"
   },
   "private": true
 }
