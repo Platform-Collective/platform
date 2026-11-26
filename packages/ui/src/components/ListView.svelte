@@ -78,7 +78,7 @@
       dispatch('changeContent')
     }}
   >
-    {#each array as _, row (getKey(row))}
+    {#each array as entry, row (getKey(row))}
       {#if lazy}
         <div style="min-height: {minHeight}">
           <Lazy>
@@ -103,10 +103,10 @@
               })}
             >
               <svelte:fragment slot="category" let:item={itemIndex}>
-                <slot name="category" item={itemIndex} value={_} />
+                <slot name="category" item={itemIndex} value={entry} />
               </svelte:fragment>
               <svelte:fragment slot="item" let:item={itemIndex}>
-                <slot name="item" item={itemIndex} value={_} />
+                <slot name="item" item={itemIndex} value={entry} />
               </svelte:fragment>
             </ListViewItem>
           </Lazy>
@@ -133,10 +133,10 @@
           })}
         >
           <svelte:fragment slot="category" let:item={itemIndex}>
-            <slot name="category" item={itemIndex} value={_} />
+            <slot name="category" item={itemIndex} value={entry} />
           </svelte:fragment>
           <svelte:fragment slot="item" let:item={itemIndex}>
-            <slot name="item" item={itemIndex} value={_} />
+            <slot name="item" item={itemIndex} value={entry} />
           </svelte:fragment>
         </ListViewItem>
       {/if}
