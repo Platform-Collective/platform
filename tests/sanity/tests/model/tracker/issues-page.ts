@@ -143,7 +143,7 @@ export class IssuesPage extends CommonTrackerPage {
   createButton = (): Locator => this.page.locator('button:has-text("Create")')
   spentTimeInput = (): Locator => this.page.locator('[placeholder="Spent time"]')
 
-  timeSpentReports = (): Locator => this.page.getByText('Time spent reports', { exact: true })
+  timeSpentReports = (): Locator => this.page.locator('.antiCard-header__title', { hasText: /^Time spent reports$/ })
   addTimeReport = (): Locator => this.page.locator('text="Add time report"')
   issueName = (name: string): Locator => this.page.locator(`text="${name}"`)
   issuesButton = (): Locator => this.page.locator('.antiPanel-navigator').locator('text="Issues"')
