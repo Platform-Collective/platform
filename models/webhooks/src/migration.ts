@@ -26,14 +26,17 @@ import webhooks, { webhooksId } from '@hcengineering/webhooks'
 /**
  * Thrown by the webhooks migration when a pass cannot complete. The
  * class is distinct so operators can grep for it in logs, and so
- * tests can assert the branch that tripped. Every subclass throws
- * BEFORE any `client.update` call, so partial writes are impossible.
+ * tests can assert the branch that tripped.
  *
- * `tryMigrate` catches any throw from a migration function and
- * `continue`s past the state-record `create()` at the end of its
- * loop body (`foundations/core/packages/model/src/migration.ts:187-207`).
- * Thrown-from paths therefore leave `seedOwnerMembers-v1` unset, and
- * the next upgrade retries. Addresses MichaelUray's Nov 25 review.
+ * The guarantee is NOT that nothing has been written: the dedicated
+ * space row can already exist from an earlier pass, or `ensure…` may
+ * have just created it in this pass, before the Owner seed fails. The
+ * guarantee is that `tryMigrate` catches any throw from a migration
+ * function and `continue`s past the state-record `create()` at the end
+ * of its loop body (`foundations/core/packages/model/src/migration.ts:187-207`).
+ * Thrown-from paths therefore leave `seedOwnerMembers-v1` unset, so
+ * the next upgrade retries. The space-ensure step is idempotent so a
+ * retry reuses the existing row. Addresses MichaelUray's Nov 25 review.
  */
 /** @public */
 export class WebhooksMigrationIncompleteError extends Error {
