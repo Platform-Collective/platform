@@ -210,7 +210,7 @@ function combineByCreateThreshold (docUpdateMessages: DocUpdateMessage[]): DocUp
     }
 
     // Preserve other authors' collaborative edits while folding the creator's initial markup.
-    if (message.attributeUpdates?.attrClass === core.class.TypeMarkup && createMsg.createdBy !== message.createdBy) {
+    if (isMarkupUpdate(message) && createMsg.createdBy !== message.createdBy) {
       return true
     }
 
@@ -259,23 +259,35 @@ export function combineActivityMessages (
     return sortActivityMessages(uncombined, sortingOrder)
   }
 
-  const result: Array<DisplayActivityMessage | undefined> = [...uncombined]
+  // Only markup is combined per author run, in chronological order. Every other update keeps the
+  // generic grouping and the incoming order.
+  const result: Array<DisplayActivityMessage | undefined> = [
+    ...uncombined,
+    ...combineMarkupUpdates(docUpdateMessages.filter(isMarkupUpdate))
+  ]
 
-  const authorRuns = new Map<string, { author: DocUpdateMessage['createdBy'], run: number }>()
-  const groupedByType = groupByArray(sortActivityMessages([...docUpdateMessages]), (message) => {
-    if (message.attributeUpdates?.attrClass !== core.class.TypeMarkup) return getDocUpdateMessageKey(message)
-    const key = `${message.attachedTo}_${message.attributeUpdates?.attrKey ?? ''}`
-    const previous = authorRuns.get(key)
-    const run = previous === undefined ? 0 : previous.run + (previous.author === message.createdBy ? 0 : 1)
-    authorRuns.set(key, { author: message.createdBy, run })
-    return `${getDocUpdateMessageKey(message)}_${run}`
-  })
+  const groupedByType: Map<string, DocUpdateMessage[]> = groupByArray(
+    docUpdateMessages.filter((message) => !isMarkupUpdate(message)),
+    getDocUpdateMessageKey
+  )
 
   for (const [, groupedMessages] of groupedByType) {
-    for (const messagesForMerge of groupByTime(groupedMessages)) {
+    const cantMerge = groupedMessages.filter(
+      (message, index) => index !== groupedMessages.length - 1 && !canCombineMessage(message)
+    )
+    const cantMergeIds = new Set(cantMerge.map(({ _id }) => _id))
+
+    const canMerge = groupedMessages.filter(({ _id }) => !cantMergeIds.has(_id))
+    const forMerge = groupByTime(canMerge)
+
+    forMerge.forEach((messagesForMerge) => {
       const mergedNotification = mergeDocUpdateMessages(messagesForMerge)
-      if (mergedNotification !== undefined) result.push(mergedNotification)
-    }
+
+      if (mergedNotification !== undefined) {
+        result.push(mergedNotification)
+      }
+    })
+    result.push(...cantMerge)
   }
 
   return sortActivityMessages(
@@ -303,20 +315,70 @@ function canCombineMessage (message: ActivityMessage): boolean {
   return !hasReactions && !isPinned && !hasReplies
 }
 
-function groupByTime (messages: DocUpdateMessage[]): DocUpdateMessage[][] {
+function isMarkupUpdate (message: DocUpdateMessage): boolean {
+  return message.attributeUpdates?.attrClass === core.class.TypeMarkup
+}
+
+/** Combines consecutive compatible markup diffs of each author run, in chronological order. */
+function combineMarkupUpdates (messages: DocUpdateMessage[]): DisplayDocUpdateMessage[] {
+  const authorRuns = new Map<string, { author: DocUpdateMessage['createdBy'], run: number }>()
+  const groupedByRun = groupByArray(sortActivityMessages(messages), (message) => {
+    const key = `${message.attachedTo}_${message.attributeUpdates?.attrKey ?? ''}`
+    const previous = authorRuns.get(key)
+    const run = previous === undefined ? 0 : previous.run + (previous.author === message.createdBy ? 0 : 1)
+    authorRuns.set(key, { author: message.createdBy, run })
+    return `${getDocUpdateMessageKey(message)}_${run}`
+  })
+
+  const result: DisplayDocUpdateMessage[] = []
+  for (const [, groupedMessages] of groupedByRun) {
+    for (const messagesForMerge of groupByAuthorRun(groupedMessages)) {
+      const mergedNotification = mergeDocUpdateMessages(messagesForMerge)
+      if (mergedNotification !== undefined) result.push(mergedNotification)
+    }
+  }
+  return result
+}
+
+function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
+  const result: T[][] = []
+
+  for (const message1 of messages) {
+    if (result.some((forMerge) => forMerge.includes(message1))) {
+      continue
+    }
+
+    const forMerge: T[] = [message1]
+
+    for (const message2 of messages) {
+      if (message1._id === message2._id) {
+        continue
+      }
+
+      const timeDiff = (message2.createdOn ?? message2.modifiedOn) - (message1.createdOn ?? message1.modifiedOn)
+
+      if (timeDiff >= 0 && timeDiff < combineThresholdMs) {
+        forMerge.push(message2)
+      }
+    }
+
+    result.push(forMerge)
+  }
+
+  return result
+}
+
+function groupByAuthorRun (messages: DocUpdateMessage[]): DocUpdateMessage[][] {
   const result: DocUpdateMessage[][] = []
   for (const message of messages) {
     const run = result[result.length - 1]
     const previous = run?.[run.length - 1]
-    const compatibleMarkup =
-      message.attributeUpdates?.attrClass !== core.class.TypeMarkup ||
-      previous?.attributeUpdates?.set[0] === message.attributeUpdates.prevValue
     if (
       previous !== undefined &&
       previous.createdBy === message.createdBy &&
+      previous.attributeUpdates?.set[0] === message.attributeUpdates?.prevValue &&
       canCombineMessage(previous) &&
       canCombineMessage(message) &&
-      compatibleMarkup &&
       getMessageTime(message) - getMessageTime(run[0]) < combineThresholdMs
     ) {
       run.push(message)
