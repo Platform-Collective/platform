@@ -10,6 +10,7 @@ const scriptsDirectory = __dirname
 let fixture
 let registry
 let registryUrl
+let registryVersions
 
 function writeExecutable(name, source) {
   const filename = path.join(fixture, 'bin', name)
@@ -113,8 +114,12 @@ beforeEach(async () => {
     }
   `
   )
+  registryVersions = {}
   registry = http.createServer((request, response) => {
-    response.writeHead(404).end()
+    const [name, version] = decodeURIComponent(request.url.slice(1)).split(/\/(?=[^/]+$)/)
+    const found = registryVersions[name]?.[version]
+    if (found === undefined) response.writeHead(404).end()
+    else response.writeHead(200).end(JSON.stringify({ version: found }))
   })
   await new Promise((resolve) => registry.listen(0, '127.0.0.1', resolve))
   registryUrl = `http://127.0.0.1:${registry.address().port}`
@@ -125,31 +130,106 @@ afterEach(async () => {
   fs.rmSync(fixture, { recursive: true, force: true })
 })
 
-test('packing keeps the source scope and normalizes peer ranges without aliases', async () => {
+test('packing renames packages to the npm scope and aliases published dependencies', async () => {
   const projects = [
     addPackage('@hcengineering/core', {
-      peerDependencies: { '@hcengineering/platform': 'workspace:^1.0.0' }
+      dependencies: { '@hcengineering/platform': 'workspace:^1.0.0', lodash: '^4.0.0' },
+      peerDependencies: { '@hcengineering/platform': 'workspace:^1.0.0' },
+      devDependencies: { '@hcengineering/platform-rig': 'workspace:^1.0.0' }
     }),
     addPackage('@hcengineering/platform')
+  ]
+  const packDirectory = path.join(fixture, 'packed')
+
+  const result = await runScript('safe-publish.js', ['--pack', packDirectory], projects, {
+    FIXTURE_ROOT: fixture
+  })
+
+  expect(result.status).toBe(0)
+  const packed = JSON.parse(fs.readFileSync(path.join(fixture, 'packed-package.json'), 'utf8'))
+  expect(packed.name).toBe('@platformcollective/core')
+  expect(packed.dependencies).toEqual({
+    '@hcengineering/platform': 'npm:@platformcollective/platform@^1.0.0',
+    lodash: '^4.0.0'
+  })
+  expect(packed.peerDependencies['@hcengineering/platform']).toBe('npm:@platformcollective/platform@^1.0.0')
+  expect(packed.devDependencies['@hcengineering/platform-rig']).toBe('^1.0.0')
+  const metadata = JSON.parse(fs.readFileSync(path.join(packDirectory, 'packages.json'), 'utf8'))
+  expect(metadata.find((pkg) => pkg.name === '@platformcollective/core').dependencies).toEqual([
+    '@platformcollective/platform'
+  ])
+  // The source manifest is restored after packing.
+  expect(JSON.parse(fs.readFileSync(path.join(projects[0].fullPath, 'package.json'), 'utf8')).name).toBe(
+    '@hcengineering/core'
+  )
+})
+
+test('packing fails on a runtime dependency that is not published', async () => {
+  const projects = [
+    addPackage('@hcengineering/core', { dependencies: { '@hcengineering/internal': 'workspace:^1.0.0' } })
   ]
 
   const result = await runScript('safe-publish.js', ['--pack', path.join(fixture, 'packed')], projects, {
     FIXTURE_ROOT: fixture
   })
 
-  expect(result.status).toBe(0)
-  const packed = JSON.parse(fs.readFileSync(path.join(fixture, 'packed-package.json'), 'utf8'))
-  expect(packed.name).toBe('@hcengineering/core')
-  expect(packed.peerDependencies['@hcengineering/platform']).toBe('^1.0.0')
+  expect(result.status).toBe(1)
+  expect(result.stderr).toContain('@hcengineering/internal is not published')
+})
+
+test('packed publishing rejects packages outside the npm scope', async () => {
+  const packed = path.join(fixture, 'packed')
+  fs.mkdirSync(packed)
+  fs.writeFileSync(
+    path.join(packed, 'packages.json'),
+    JSON.stringify([{ name: '@hcengineering/core', version: '1.0.0', filename: 'core-1.0.0.tgz', dependencies: [] }])
+  )
+  fs.writeFileSync(path.join(packed, 'core-1.0.0.tgz'), '')
+
+  const result = await runScript('safe-publish.js', ['--publish-packed', packed])
+
+  expect(result.status).toBe(1)
+  expect(publishedFiles()).toEqual([])
+})
+
+test('version check requires a release above the configured baseline', async () => {
+  const { baselineVersion } = JSON.parse(
+    fs.readFileSync(path.join(scriptsDirectory, '..', 'config', 'npm-publish.json'), 'utf8')
+  )
+  const projects = [addPackage('@hcengineering/core')]
+  const check = async (version) =>
+    await runScript('safe-publish.js', ['--check-version', version], projects, { FIXTURE_ROOT: fixture })
+
+  const atBaseline = await check(baselineVersion)
+  expect(atBaseline.status).toBe(1)
+  expect(atBaseline.stderr).toContain(`greater than ${baselineVersion}`)
+  expect((await check('1.0.0-rc.1')).status).toBe(1)
+  expect((await check('1000.0.0')).status).toBe(0)
+})
+
+test('version check derives the floor from the registry under the npm scope', async () => {
+  const projects = [addPackage('@hcengineering/core'), addPackage('@hcengineering/platform')]
+  registryVersions['@platformcollective/platform'] = { latest: '1000.2.0' }
+  // Upstream packages under the source scope do not count.
+  registryVersions['@hcengineering/core'] = { latest: '2000.0.0' }
+  const check = async (version) =>
+    await runScript('safe-publish.js', ['--check-version', version], projects, { FIXTURE_ROOT: fixture })
+
+  const lower = await check('1000.1.9')
+  expect(lower.status).toBe(1)
+  expect(lower.stderr).toContain('@platformcollective/platform@1000.2.0')
+  // Equal to the registry latest, so a partially published release can resume.
+  expect((await check('1000.2.0')).status).toBe(0)
+  expect((await check('1000.2.1')).status).toBe(0)
 })
 
 test('packed publishing follows dependency order', async () => {
   const packed = path.join(fixture, 'packed')
   fs.mkdirSync(packed)
   const packages = [
-    { name: '@hcengineering/app', dependencies: ['@hcengineering/core'] },
-    { name: '@hcengineering/core', dependencies: ['@hcengineering/platform'] },
-    { name: '@hcengineering/platform', dependencies: [] }
+    { name: '@platformcollective/app', dependencies: ['@platformcollective/core'] },
+    { name: '@platformcollective/core', dependencies: ['@platformcollective/platform'] },
+    { name: '@platformcollective/platform', dependencies: [] }
   ]
   fs.writeFileSync(
     path.join(packed, 'packages.json'),
@@ -157,11 +237,11 @@ test('packed publishing follows dependency order', async () => {
       packages.map((pkg) => ({
         ...pkg,
         version: '1.0.0',
-        filename: `${pkg.name.slice(15)}-1.0.0.tgz`
+        filename: `${pkg.name.split('/')[1]}-1.0.0.tgz`
       }))
     )
   )
-  for (const pkg of packages) fs.writeFileSync(path.join(packed, `${pkg.name.slice(15)}-1.0.0.tgz`), '')
+  for (const pkg of packages) fs.writeFileSync(path.join(packed, `${pkg.name.split('/')[1]}-1.0.0.tgz`), '')
 
   const result = await runScript('safe-publish.js', ['--publish-packed', packed])
 
@@ -173,8 +253,8 @@ test('a failed packed publish prints its resume command and stops dependents', a
   const packed = path.join(fixture, 'packed')
   fs.mkdirSync(packed)
   const packages = [
-    { name: '@hcengineering/core', dependencies: [] },
-    { name: '@hcengineering/app', dependencies: ['@hcengineering/core'] }
+    { name: '@platformcollective/core', dependencies: [] },
+    { name: '@platformcollective/app', dependencies: ['@platformcollective/core'] }
   ]
   fs.writeFileSync(
     path.join(packed, 'packages.json'),
@@ -182,11 +262,11 @@ test('a failed packed publish prints its resume command and stops dependents', a
       packages.map((pkg) => ({
         ...pkg,
         version: '1.0.0',
-        filename: `${pkg.name.slice(15)}-1.0.0.tgz`
+        filename: `${pkg.name.split('/')[1]}-1.0.0.tgz`
       }))
     )
   )
-  for (const pkg of packages) fs.writeFileSync(path.join(packed, `${pkg.name.slice(15)}-1.0.0.tgz`), '')
+  for (const pkg of packages) fs.writeFileSync(path.join(packed, `${pkg.name.split('/')[1]}-1.0.0.tgz`), '')
 
   const result = await runScript('safe-publish.js', ['--publish-packed', packed], [], {
     FAIL_PUBLISH: 'core-1.0.0.tgz'
