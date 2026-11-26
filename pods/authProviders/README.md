@@ -46,10 +46,10 @@ Rollout:
    variable does not retroactively invalidate them.
 
 Rollback: first unset the variable on all account-service replicas and restart
-them. Keep the new transactors/frontend through the longest previously configured
-lifetime so already-issued bounded sessions still expire correctly. Only then
-roll back the implementation. Removing the variable affects future logins; it
-does not extend existing bounded sessions.
+them. Keep the new account-service replicas, transactors and frontend through the
+longest previously configured lifetime so already-issued bounded sessions still
+expire correctly. Only then roll back the implementation. Removing the variable
+affects future logins; it does not extend existing bounded sessions.
 
 This stage is a fixed-TTL mitigation for #10833. It does **not** adopt IdP-granted
 lifetimes, store provider credentials, refresh tokens, or immediately revoke access
