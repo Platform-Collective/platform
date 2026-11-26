@@ -79,7 +79,7 @@
     "@hcengineering/workbench-resources": "workspace:^0.7.0",
     "@tanstack/svelte-virtual": "^3.13.6",
     "fast-equals": "^5.2.2",
-    "jspdf": "^2.5.2",
+    "jspdf": "^4.2.1",
     "svelte": "^4.2.20"
   }
 }

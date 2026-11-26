@@ -11,7 +11,8 @@ import account, {
   getAccountDB,
   getAllTransactors,
   getMethods,
-  cleanExpiredOtp
+  cleanExpiredOtp,
+  isProviderSignUpDisabled
 } from '@hcengineering/account'
 import accountEn from '@hcengineering/account/lang/en.json'
 import accountRu from '@hcengineering/account/lang/ru.json'
@@ -41,6 +42,12 @@ const KEEP_ALIVE_HEADERS = {
   'Content-Type': 'application/json',
   Connection: 'keep-alive',
   'Keep-Alive': 'timeout=5, max=1000'
+}
+
+// Unset, empty or non-numeric values fall back to the default instead of becoming NaN
+function parseIntEnv (name: string, fallback: number): number {
+  const value = parseInt(process.env[name] ?? '', 10)
+  return Number.isFinite(value) ? value : fallback
 }
 
 /**
@@ -125,8 +132,9 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
   setMetadata(account.metadata.Transactors, transactorUri)
   setMetadata(platform.metadata.locale, lang)
   setMetadata(account.metadata.ProductName, productName)
-  setMetadata(account.metadata.OtpTimeToLiveSec, parseInt(process.env.OTP_TIME_TO_LIVE ?? '60'))
-  setMetadata(account.metadata.OtpRetryDelaySec, parseInt(process.env.OTP_RETRY_DELAY ?? '60'))
+  setMetadata(account.metadata.OtpTimeToLiveSec, parseIntEnv('OTP_TIME_TO_LIVE', 60))
+  setMetadata(account.metadata.OtpRetryDelaySec, parseIntEnv('OTP_RETRY_DELAY', 60))
+  setMetadata(account.metadata.OtpMaxAttempts, parseIntEnv('OTP_MAX_ATTEMPTS', 5))
   setMetadata(account.metadata.MAIL_URL, mailUrl)
   setMetadata(account.metadata.MAIL_AUTH_TOKEN, mailAuthToken)
 
@@ -173,7 +181,7 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
     serverSecret,
     frontURL,
     brandings,
-    !hasSignUp,
+    isProviderSignUpDisabled(),
     authProviderShutdownController.signal
   )
 

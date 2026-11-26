@@ -14,10 +14,11 @@
 -->
 <script lang="ts">
   import { EmployeeBox, getPersonRefByPersonIdCb } from '@hcengineering/contact-resources'
-  import core, { Class, ClassifierKind, Doc, Mixin, Ref } from '@hcengineering/core'
+  import core, { Class, Doc, Mixin, Ref } from '@hcengineering/core'
   import { AttributeBarEditor, createQuery, getClient, KeyedAttribute } from '@hcengineering/presentation'
   import { Person } from '@hcengineering/contact'
   import tags from '@hcengineering/tags'
+  import { taskTypeStore } from '@hcengineering/task-resources'
   import type { Issue } from '@hcengineering/tracker'
   import { Component, Label } from '@hcengineering/ui'
   import {
@@ -41,6 +42,7 @@
   import StatusEditor from '../StatusEditor.svelte'
   import SchedulingModeEditor from '../SchedulingModeEditor.svelte'
   import notification from '@hcengineering/notification'
+  import { getIssueMixins } from './issue-mixins'
 
   export let issue: Issue
   export let showAllMixins: boolean = false
@@ -66,6 +68,8 @@
     'component',
     'startDate',
     'dueDate',
+    // Rendered via dedicated DeadlineEditor below.
+    'deadline',
     'milestone',
     'relations',
     'blockedBy',
@@ -83,7 +87,11 @@
 
   let mixins: Mixin<Doc>[] = []
 
-  $: _mixins = getDocMixins(issue, showAllMixins)
+  $: taskType = $taskTypeStore.get(issue.kind)
+  $: _mixins = getIssueMixins(
+    getDocMixins(issue, showAllMixins),
+    taskType === undefined ? undefined : hierarchy.getClass(taskType.targetClass)
+  )
 
   $: mixins = _mixins.find((p) => p._id === notification.mixin.Collaborators)
     ? _mixins

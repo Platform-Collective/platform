@@ -1,5 +1,5 @@
 
-FROM platformcollective/base-slim:v20261006
+FROM platformcollective/base-slim:v20261102
 WORKDIR /usr/src/app
 
 COPY bundle/bundle.js ./

@@ -15,8 +15,8 @@
 <script lang="ts">
   import { Asset, Metadata } from '@hcengineering/platform'
   import {
+    Button,
     ButtonIcon,
-    fromCodePoint,
     Scroller,
     getPlatformColor,
     getPlatformColorDef,
@@ -24,7 +24,7 @@
     Label,
     Component
   } from '@hcengineering/ui'
-  import emojiPlugin from '@hcengineering/emoji'
+  import emojiPlugin, { getEmojiFromCodePoints } from '@hcengineering/emoji'
   import { createEventDispatcher } from 'svelte'
   import { iconsLibrary } from '../icons'
   import view from '../plugin'
@@ -36,6 +36,7 @@
   export let color: number | number[] = 0
   export let showColor: boolean = true
   export let showEmoji: boolean = true
+  export let showReset: boolean = false
 
   const dispatch = createEventDispatcher()
 
@@ -91,18 +92,28 @@
       is={emojiPlugin.component.EmojiPopup}
       props={{
         selected:
-          typeof color === 'string'
-            ? color
-            : Array.isArray(color)
-              ? fromCodePoint(...color)
+          icon !== iconWithEmoji
+            ? undefined
+            : typeof color === 'string'
+              ? color
               : color
-                ? fromCodePoint(color)
+                ? getEmojiFromCodePoints(color)
                 : undefined
       }}
       on:close={(evt) => {
         dispatch('close', { icon: iconWithEmoji, color: evt.detail.codes })
       }}
     />
+  {/if}
+  {#if showReset}
+    <div class="flex-row-reverse mb-2 mr-2">
+      <Button
+        label={view.string.RestoreDefaults}
+        size={'x-small'}
+        kind={'link'}
+        on:click={() => dispatch('close', { icon: undefined, color: undefined })}
+      />
+    </div>
   {/if}
 </div>
 

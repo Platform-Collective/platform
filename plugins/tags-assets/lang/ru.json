@@ -5,6 +5,7 @@
     "DescriptionLabel": "Описание",
     "ColorLabel": "Цвет",
     "CategoryLabel": "Категория",
+    "Usage": "Использование",
     "TagReferenceLabel": "Тег",
     "TagLabel": "Тег",
     "TagName": "Пожалуйста, введите название {word}",

@@ -477,7 +477,7 @@ export function createModel (builder: Builder): void {
       group: 'settings-account',
       role: AccountRole.Guest,
       feature: 'love',
-      order: 1600
+      order: 1400
     },
     love.ids.Settings
   )

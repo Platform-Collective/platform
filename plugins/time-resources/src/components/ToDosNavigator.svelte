@@ -2,9 +2,11 @@
   import calendar from '@hcengineering/calendar'
   import { ScheduleNavSection } from '@hcengineering/calendar-resources'
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import { Ref, getCurrentAccount } from '@hcengineering/core'
+  import core, { Ref, type Space, getCurrentAccount } from '@hcengineering/core'
   import { Asset, getMetadata, getResource, IntlString } from '@hcengineering/platform'
   import { createQuery } from '@hcengineering/presentation'
+  import type { ToDo, WorkSlot } from '@hcengineering/time'
+  import tracker, { type Issue } from '@hcengineering/tracker'
   import { NavFooter } from '@hcengineering/workbench-resources'
   import tagsPlugin, { TagElement as TagElementType } from '@hcengineering/tags'
   import ui, {
@@ -26,6 +28,8 @@
   } from '@hcengineering/ui'
   import { ToDosMode } from '..'
   import time from '../plugin'
+  import { getPlannerMarkers, getPlannerMonthRange } from './planner-markers'
+  import { countVisibleUnplannedToDos } from '../to-do-query'
 
   export let mode: ToDosMode
   export let tag: Ref<TagElementType> | undefined
@@ -89,26 +93,56 @@
 
   $: tags = allTags.filter((p) => myTags.has(p._id))
 
-  const unplannedQuery = createQuery()
-
-  unplannedQuery.query(
-    time.class.ToDo,
-    {
-      user: currentUser,
-      doneOn: null,
-      workslots: 0
+  // Todos of archived spaces are hidden in the planner, so they must not be counted either
+  const archivedSpacesQuery = createQuery()
+  let archivedSpaces: Ref<Space>[] = []
+  archivedSpacesQuery.query(
+    core.class.Space,
+    { archived: true },
+    (result) => {
+      archivedSpaces = result.map((project) => project._id)
     },
-    (res) => {
-      counters.unplanned = res.total
-    },
-    {
-      total: true,
-      limit: 1
-    }
+    { projection: { _id: 1 }, showArchived: true }
   )
 
+  let viewDate = new Date(mode === 'date' ? currentDate : new Date())
+  let todos: ToDo[] = []
+  let issues: Issue[] = []
+  let workslots: WorkSlot[] = []
+  const todosQuery = createQuery()
+  const issuesQuery = createQuery()
+  const workslotsQuery = createQuery()
+
+  todosQuery.query(time.class.ToDo, { user: currentUser, doneOn: null }, (result) => {
+    todos = result
+  })
+
   const counters: Record<string, number> = {}
-  const today: Date = new Date()
+  $: counters.unplanned = countVisibleUnplannedToDos(todos, new Set(archivedSpaces))
+
+  $: monthRange = getPlannerMonthRange(viewDate)
+  $: issuesQuery.query(
+    tracker.class.Issue,
+    {
+      _id: { $in: todos.map((todo) => todo.attachedTo as Ref<Issue>) },
+      dueDate: { $gte: monthRange.start, $lt: monthRange.end }
+    },
+    (result) => {
+      issues = result
+    }
+  )
+  $: workslotsQuery.query(
+    time.class.WorkSlot,
+    {
+      attachedTo: { $in: todos.map((todo) => todo._id) },
+      date: { $lt: monthRange.end },
+      dueDate: { $gt: monthRange.start }
+    },
+    (result) => {
+      workslots = result
+    }
+  )
+  $: markers = getPlannerMarkers(viewDate, todos, issues, workslots, new Set(archivedSpaces))
 
   let pressed: boolean = false
 
@@ -170,6 +204,7 @@
 
       <div class="hulyAccordionItem-container border" class:noBorder={tags.length === 0}>
         <Month
+          bind:viewDate
           currentDate={mode === 'date' ? currentDate : null}
           on:update={(event) => {
             if (event.detail) {
@@ -194,12 +229,12 @@
             </div>
           </svelte:fragment>
           <svelte:fragment let:day>
-            <!-- {#if areDatesEqual(day.date, today)}
+            {#if markers.due.has(day.date.getTime()) || markers.scheduled.has(day.date.getTime())}
               <div class="dots">
-                <div class="dot red" />
-                <div class="dot blue" />
+                {#if markers.due.has(day.date.getTime())}<div class="dot red" />{/if}
+                {#if markers.scheduled.has(day.date.getTime())}<div class="dot blue" />{/if}
               </div>
-            {/if} -->
+            {/if}
           </svelte:fragment>
         </Month>
       </div>

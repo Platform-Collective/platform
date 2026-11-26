@@ -13,62 +13,110 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { getMetadata, translate } from '@hcengineering/platform'
-  import { Button, Html, IconClose, Label, themeStore } from '@hcengineering/ui'
-  import { createEventDispatcher } from 'svelte'
+  import { Analytics } from '@hcengineering/analytics'
+  import { getMetadata, translate, type IntlString } from '@hcengineering/platform'
+  import { Button, Html, IconClose, IconError, Label, themeStore } from '@hcengineering/ui'
+  import { createEventDispatcher, onDestroy } from 'svelte'
   import calendar from '../plugin'
   import { concatLink } from '@hcengineering/core'
   import presentation from '@hcengineering/presentation'
   import { calendarId } from '@hcengineering/calendar'
+  import { connectCalendar } from '../connect'
 
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{ close: void }>()
+
+  function close(): void {
+    dispatch('close')
+  }
 
   let connecting = false
+  let error: IntlString | undefined
+  let authWindow: Window | null = null
+  let popupCheck: ReturnType<typeof setInterval> | undefined
   const calendarUrl = getMetadata(calendar.metadata.CalendarServiceURL) ?? ''
+  const redirectURL = (getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin) + `/${calendarId}`
+  const callbackOrigin = new URL(redirectURL).origin
+
+  function stopWaiting(): void {
+    connecting = false
+    clearInterval(popupCheck)
+    popupCheck = undefined
+  }
+
+  function handleAuthResult(event: MessageEvent<unknown>): void {
+    if (!connecting || authWindow === null || event.source !== authWindow || event.origin !== callbackOrigin) return
+    const result = event.data
+    if (
+      result === null ||
+      typeof result !== 'object' ||
+      !('type' in result) ||
+      result.type !== 'calendar-auth-result' ||
+      !('error' in result) ||
+      (result.error !== null && typeof result.error !== 'string')
+    )
+      return
+
+    stopWaiting()
+    if (result.error === null) {
+      dispatch('close')
+    } else {
+      error =
+        result.error === calendar.string.NotAllPermissions
+          ? calendar.string.NotAllPermissions
+          : calendar.string.FailedToConnect
+    }
+  }
+
+  onDestroy(stopWaiting)
 
   async function sendRequest(): Promise<void> {
     connecting = true
-    const link = concatLink(calendarUrl, '/signin')
-    const url = new URL(link)
-    url.search = new URLSearchParams({
-      redirectURL: (getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin) + `/${calendarId}`
-    }).toString()
+    error = undefined
+    authWindow?.close()
+    authWindow = null
+    try {
+      const link = concatLink(calendarUrl, '/signin')
+      const url = new URL(link)
+      url.search = new URLSearchParams({ redirectURL }).toString()
 
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        Authorization: 'Bearer ' + getMetadata(presentation.metadata.Token),
-        'Content-Type': 'application/json'
+      authWindow = await connectCalendar(url, getMetadata(presentation.metadata.Token))
+      if (!connecting) return
+      if (authWindow === null) {
+        stopWaiting()
+        dispatch('close')
+        return
       }
-    })
-    if (res.status !== 200) {
-      connecting = false
-      return
+      popupCheck = setInterval(() => {
+        if (authWindow?.closed === true) {
+          error = calendar.string.FailedToConnect
+          stopWaiting()
+        }
+      }, 500)
+    } catch (err) {
+      error = calendar.string.FailedToConnect
+      stopWaiting()
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
     }
-    const redirectTo = await res.text()
-    window.open(redirectTo, '_blank', 'location=yes,height=870,width=720,scrollbars=yes,status=yes')
-    dispatch('close')
   }
 
   let label = ''
 
-  $: translate(calendar.string.GooglePrivacy, {}, $themeStore.language).then((res) => {
-    label = res
-  })
+  async function updateLabel(language: string): Promise<void> {
+    label = await translate(calendar.string.GooglePrivacy, {}, language)
+  }
+
+  $: updateLabel($themeStore.language).catch(Analytics.handleError)
 </script>
+
+<svelte:window on:message={handleAuthResult} />
 
 <div class="card">
   <div class="flex-between header">
     <div class="overflow-label fs-title"><Label label={calendar.string.ConnectCalendar} /></div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div
-      class="tool"
-      on:click={() => {
-        dispatch('close')
-      }}
-    >
-      <IconClose size={'small'} />
+    <div class="tool" on:click={close}>
+      <IconClose size="small" />
     </div>
   </div>
   <div class="content">
@@ -79,10 +127,17 @@
       <Html value={label} />
     </div>
 
+    {#if error !== undefined}
+      <div class="flex-row-center gap-2 pt-2" role="alert">
+        <IconError size="medium" />
+        <Label label={error} />
+      </div>
+    {/if}
+
     <img class="image" src={getMetadata(calendar.image.Permissions)} alt="" />
   </div>
   <div class="footer">
-    <Button label={calendar.string.Connect} kind={'primary'} disabled={connecting} on:click={sendRequest} />
+    <Button label={calendar.string.Connect} kind="primary" disabled={connecting} on:click={sendRequest} />
   </div>
 </div>
 

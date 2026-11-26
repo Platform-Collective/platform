@@ -488,7 +488,7 @@
   }
   button:focus-visible,
   .gantt-tb-date-wrap:focus-within {
-    outline: 2px solid var(--theme-content-accent-color);
+    outline: 2px solid var(--primary-button-outline);
     outline-offset: 2px;
   }
   .gantt-tb-today-btn[disabled] {

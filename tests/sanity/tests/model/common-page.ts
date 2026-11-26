@@ -203,8 +203,8 @@ export class CommonPage {
     await expect(this.infoSpan()).not.toBeAttached()
   }
 
-  async selectMention (mentionName: string, categoryName?: string): Promise<void> {
-    await this.mentionPopupListItem(mentionName, categoryName).first().click()
+  async selectMention (mentionName: string, categoryName?: string, timeout?: number): Promise<void> {
+    await this.mentionPopupListItem(mentionName, categoryName).first().click({ timeout })
   }
 
   async selectListItem (name: string): Promise<void> {

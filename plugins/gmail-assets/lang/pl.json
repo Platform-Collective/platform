@@ -18,6 +18,7 @@
     "Subject": "Temat",
     "Send": "Wyślij",
     "Resend": "Wyślij ponownie",
+    "IntegrationUnavailable": "Integracja z Gmailem jest niedostępna. Połącz ponownie Gmaila w ustawieniach i wyślij tę wiadomość ponownie.",
     "NewMessage": "Nowa wiadomość",
     "NewMessageTo": "Nowa wiadomość do",
     "Cancel": "Anuluj",

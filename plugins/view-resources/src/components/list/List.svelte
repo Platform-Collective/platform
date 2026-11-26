@@ -33,6 +33,7 @@
   import { buildConfigLookup } from '../../utils'
   import { getResultOptions, getResultQuery } from '../../viewOptions'
   import ListCategories from './ListCategories.svelte'
+  import { getListSorting } from './sorting'
 
   export let _class: Ref<Class<Doc>>
   export let space: Ref<Space> | undefined = undefined
@@ -100,12 +101,13 @@
   const docsQuery = createQuery()
   const docsQuerySlow = createQuery()
 
+  let configOptions: FindOptions<Doc> | undefined
   $: lookup = buildConfigLookup(client.getHierarchy(), _class, config, options?.lookup)
   $: configOptions = options
   $: resultOptions = {
     ...configOptions,
     ...(Object.keys(lookup).length > 0 ? { lookup } : {}),
-    ...(orderBy !== undefined ? { sort: { [orderBy[0]]: orderBy[1] } } : {})
+    ...(orderBy !== undefined ? { sort: getListSorting(hierarchy, _class, orderBy) } : {})
   }
 
   const updateOptions = reduceCalls(async function (options: FindOptions<Doc> | undefined, viewOptions: ViewOptions) {
