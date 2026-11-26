@@ -29,12 +29,7 @@ import core, {
 import { getResource } from '@hcengineering/platform'
 import { addRefreshListener, getClient } from '@hcengineering/presentation'
 import { getEventPositionElement, showPopup } from '@hcengineering/ui'
-import {
-  type Action,
-  type ActionGroup,
-  type ActionIgnore,
-  type ViewContextType
-} from '@hcengineering/view'
+import { type Action, type ActionGroup, type ActionIgnore, type ViewContextType } from '@hcengineering/view'
 import { filterActionsByInput, normalizeActionContext } from './actionContext'
 import Menu from './components/Menu.svelte'
 import view from './plugin'
