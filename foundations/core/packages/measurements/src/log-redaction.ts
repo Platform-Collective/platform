@@ -44,7 +44,16 @@ function isSensitiveKey (key: string): boolean {
 // Fields of HTTP client errors (axios/gaxios/fetch wrappers) that carry request headers or response bodies
 const SENSITIVE_ERROR_FIELDS = new Set(['config', 'request', 'response', 'headers', 'options'])
 
-const errorPrinter = ({ message, stack, ...rest }: Error): object => {
+// Key suffixes (lowercase) whose string values are treated as URLs and passed through `redactUrl`
+const URL_KEY_SUFFIXES = ['url', 'uri', 'href']
+
+function isUrlKey (key: string): boolean {
+  const lower = key.toLowerCase()
+  return URL_KEY_SUFFIXES.some((suffix) => lower.endsWith(suffix))
+}
+
+const errorPrinter = (err: Error): object => {
+  const { message, stack, ...rest } = err
   const safe: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(rest)) {
     if (SENSITIVE_ERROR_FIELDS.has(k)) continue
@@ -52,12 +61,16 @@ const errorPrinter = ({ message, stack, ...rest }: Error): object => {
   }
   const status = (rest as { response?: { status?: unknown } }).response?.status
   if (status !== undefined) safe.responseStatus = status
+  // `cause` is non-enumerable, so it is not part of `rest`; the replacer sanitizes it recursively
+  const cause = (err as { cause?: unknown }).cause
+  if (cause !== undefined) safe.cause = cause
   return { message, stack, ...safe }
 }
 
 /**
  * JSON replacer used for log output: expands errors without request/response details
  * and masks values of sensitive keys (matched by normalized suffix, e.g. `idToken`, `x-api-key`).
+ * String values of URL-like keys (`url`, `redirectUri`, `href`, ...) are passed through `redactUrl`.
  * Boolean flags (e.g. `hasPassword`) are kept as is.
  * @public
  */
@@ -65,27 +78,42 @@ export function logReplacer (key: string, value: any): any {
   if (value != null && value !== '' && typeof value !== 'boolean' && isSensitiveKey(key)) {
     return REDACTED
   }
+  if (typeof value === 'string' && isUrlKey(key)) {
+    return redactUrl(value)
+  }
   return value instanceof Error ? errorPrinter(value) : value
 }
 
 type SafeReplacer = (this: unknown, key: string, value: unknown) => unknown
 
 /**
- * Creates a replacer that applies `logReplacer`, replaces circular references and converts BigInt to string,
- * so serialization never fails on these values.
+ * Creates a replacer that applies `logReplacer`, replaces circular references, converts BigInt to string
+ * and replaces binary values with a short placeholder, so serialization never fails on these values.
  */
-function createSafeReplacer (): SafeReplacer {
+function createSafeReplacer (rootKey: string): SafeReplacer {
+  // Objects on the current path as serialized (`replaced`) and as they were before `logReplacer` (`originals`).
+  // Errors are replaced by a new object on every visit, so cycles through errors are detected by the originals.
   const ancestors: unknown[] = []
+  const originals: unknown[] = []
+  let isRoot = true
   return function (this: unknown, key: string, value: unknown): unknown {
-    const replaced = logReplacer(key, value)
+    // The first call is for the root value (key ''); it is masked by the field name it is logged under
+    const replaced = logReplacer(isRoot ? rootKey : key, value)
+    isRoot = false
     if (typeof replaced === 'bigint') return replaced.toString()
     if (replaced === null || typeof replaced !== 'object') return replaced
+    // `toJSON` runs before the replacer, so a Buffer arrives here as `{ type, data: [...] }`;
+    // the holder (`this`) still keeps the raw value
+    const raw = this !== null && typeof this === 'object' ? (this as Record<string, unknown>)[key] : undefined
+    if (ArrayBuffer.isView(raw)) return `[binary ${raw.byteLength} bytes]`
     // `this` is the object holding `key`; drop ancestors which are not on the current path
     while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
       ancestors.pop()
+      originals.pop()
     }
-    if (ancestors.includes(replaced)) return CIRCULAR
+    if (ancestors.includes(replaced) || originals.includes(value)) return CIRCULAR
     ancestors.push(replaced)
+    originals.push(value)
     return replaced
   }
 }
@@ -99,8 +127,7 @@ function createSafeReplacer (): SafeReplacer {
  */
 export function safeLogStringify (value: any, key: string = ''): string | undefined {
   try {
-    const replacer = createSafeReplacer()
-    return JSON.stringify(replacer.call({ [key]: value }, key, value), replacer)
+    return JSON.stringify(value, createSafeReplacer(key))
   } catch {
     return JSON.stringify(UNSERIALIZABLE)
   }
@@ -143,7 +170,10 @@ const SENSITIVE_QUERY_PARAMS = new Set([
   'secret',
   'password',
   'code',
-  'otp'
+  'otp',
+  'signature',
+  'sig',
+  'x-amz-signature'
 ])
 
 // JWT-like values: three base64url segments, header starts with `eyJ`
@@ -165,13 +195,18 @@ function redactPath (path: string): string {
     .join('/')
 }
 
+// User info of an absolute URL (`scheme://user:password@host`). Anchored; the authority part ends at the first
+// `/`, `?` or `#`, and the last `@` before it is taken, so passwords with an unencoded `@` are masked entirely.
+const URL_USER_INFO_PATTERN = /^([a-z][a-z0-9+.-]*:\/\/)[^/?#]*@/i
+
 /**
- * Removes credentials from URL before logging: sensitive query parameters (tokens, invite ids, OAuth codes)
- * and JWT-like values in query parameters or path segments.
+ * Removes credentials from URL before logging: user info (`user:password@`), sensitive query parameters
+ * (tokens, invite ids, OAuth codes, signatures) and JWT-like values in query parameters or path segments.
  * @public
  */
 export function redactUrl (url: string | undefined): string {
   if (url === undefined) return ''
+  url = url.replace(URL_USER_INFO_PATTERN, `$1${REDACTED}@`)
   const qIdx = url.indexOf('?')
   if (qIdx === -1) return redactPath(url)
   const parts = url
@@ -181,8 +216,13 @@ export function redactUrl (url: string | undefined): string {
       const eq = part.indexOf('=')
       if (eq === -1) return part
       const key = part.slice(0, eq)
+      const decodedKey = safeDecode(key)
       const value = safeDecode(part.slice(eq + 1))
-      if (SENSITIVE_QUERY_PARAMS.has(safeDecode(key).toLowerCase()) || JWT_PATTERN.test(value)) {
+      if (
+        SENSITIVE_QUERY_PARAMS.has(decodedKey.toLowerCase()) ||
+        isSensitiveKey(decodedKey) ||
+        JWT_PATTERN.test(value)
+      ) {
         return `${key}=${REDACTED}`
       }
       return part

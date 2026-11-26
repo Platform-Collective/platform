@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { consoleLogger } from '../context'
 import {
   logReplacer,
   redactUrl,
@@ -83,6 +84,12 @@ describe('logReplacer', () => {
       responseStatus: 401
     })
   })
+
+  it('redacts string values of URL-like keys', () => {
+    expect(logReplacer('url', '/a?token=abc')).toBe('/a?token=[REDACTED]')
+    expect(logReplacer('redirectUri', 'https://u:p@host/cb')).toBe('https://[REDACTED]@host/cb')
+    expect(logReplacer('href', '/plain')).toBe('/plain')
+  })
 })
 
 describe('safeLogStringify', () => {
@@ -102,6 +109,47 @@ describe('safeLogStringify', () => {
     const printed = safeLogStringify({ req })
     expect(printed).not.toContain('SECRET-VALUE')
     expect(printed).toContain('[Circular]')
+  })
+
+  it('replaces circular references through errors', () => {
+    const err: any = new Error('x')
+    err.self = err
+    const printed = safeLogStringify({ err })
+    expect(printed).not.toBe('"[UNSERIALIZABLE]"')
+    expect(JSON.parse(printed ?? '')).toMatchObject({ err: { message: 'x', self: '[Circular]' } })
+
+    const e1: any = new Error('e1')
+    const e2: any = new Error('e2')
+    e1.other = e2
+    e2.other = e1
+    expect(JSON.parse(safeLogStringify(e1) ?? '')).toMatchObject({
+      message: 'e1',
+      other: { message: 'e2', other: '[Circular]' }
+    })
+  })
+
+  it('keeps sanitized error cause', () => {
+    const cause: HttpClientError = new Error('inner')
+    cause.config = { headers: { authorization: SECRET } }
+    const err = new Error('outer', { cause })
+    const printed = safeLogStringify({ err })
+    expect(printed).not.toContain('SECRET-VALUE')
+    expect(JSON.parse(printed ?? '')).toMatchObject({ err: { message: 'outer', cause: { message: 'inner' } } })
+  })
+
+  it('replaces binary values with a placeholder', () => {
+    // Behaves like Node's Buffer: `toJSON` expands every byte before the replacer sees the value
+    class BufferLike extends Uint8Array {
+      toJSON (): { type: string, data: number[] } {
+        return { type: 'Buffer', data: Array.from(this) }
+      }
+    }
+    expect(JSON.parse(safeLogStringify({ buf: new BufferLike(3), arr: new Uint8Array(5) }) ?? '')).toEqual({
+      buf: '[binary 3 bytes]',
+      arr: '[binary 5 bytes]'
+    })
+    expect(sanitizeForLog(new BufferLike(1024))).toBe('[binary 1024 bytes]')
+    expect(safeLogStringify(new BufferLike(3), 'token')).toBe('"[REDACTED]"')
   })
 
   it('keeps repeated non-circular references', () => {
@@ -168,6 +216,23 @@ describe('redactUrl', () => {
     expect(redactUrl(`/files/${JWT}/blob?x=1`)).toBe('/files/[REDACTED]/blob?x=1')
   })
 
+  it('masks query parameters matched by sensitive key suffix and presigned URL signatures', () => {
+    expect(redactUrl('/a?accessToken=1&authToken=2&workspaceToken=3&page=4')).toBe(
+      '/a?accessToken=[REDACTED]&authToken=[REDACTED]&workspaceToken=[REDACTED]&page=4'
+    )
+    expect(
+      redactUrl('https://s3/b/k?X-Amz-Credential=c&X-Amz-Signature=s&X-Amz-Security-Token=t&X-Amz-Expires=60&sig=x')
+    ).toBe(
+      'https://s3/b/k?X-Amz-Credential=[REDACTED]&X-Amz-Signature=[REDACTED]&X-Amz-Security-Token=[REDACTED]&X-Amz-Expires=60&sig=[REDACTED]'
+    )
+  })
+
+  it('masks user info in absolute URLs', () => {
+    expect(redactUrl('https://user:password@host/path?x=1')).toBe('https://[REDACTED]@host/path?x=1')
+    expect(redactUrl('postgres://u:p@ss@db:5432/name')).toBe('postgres://[REDACTED]@db:5432/name')
+    expect(redactUrl('https://host/path?email=a@b.c')).toBe('https://host/path?email=a@b.c')
+  })
+
   it('keeps URLs without credentials unchanged', () => {
     expect(redactUrl('/files/blob-id?workspace=w')).toBe('/files/blob-id?workspace=w')
     expect(redactUrl(undefined)).toBe('')
@@ -188,5 +253,38 @@ describe('safeHttpLogFormat', () => {
     expect(safeHttpLogFormat(tokens, { originalUrl: '/a?token=abc' }, {})).toBe(
       '127.0.0.1 - GET /a?token=[REDACTED] HTTP/1.1 200 12 - 3.1 ms'
     )
+  })
+})
+
+describe('consoleLogger', () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it('masks sensitive values in log output', () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => {})
+    consoleLogger({}).info('request', {
+      token: SECRET,
+      headers: { authorization: SECRET },
+      url: '/a?token=abc',
+      user: 'u1'
+    })
+    const printed = info.mock.calls[0].join(' ')
+    expect(printed).not.toContain('SECRET-VALUE')
+    expect(printed).not.toContain('token=abc')
+    expect(printed).toContain('token="[REDACTED]"')
+    expect(printed).toContain('"authorization":"[REDACTED]"')
+    expect(printed).toContain('url="/a?token=[REDACTED]"')
+    expect(printed).toContain('user="u1"')
+  })
+
+  it('does not lose errors with cyclic references', () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {})
+    const err: any = new Error('boom')
+    err.self = err
+    consoleLogger({}).error('failed', { err })
+    const printed = error.mock.calls[0].join(' ')
+    expect(printed).toContain('"message":"boom"')
+    expect(printed).not.toContain('[UNSERIALIZABLE]')
   })
 })
