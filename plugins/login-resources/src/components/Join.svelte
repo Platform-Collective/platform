@@ -25,15 +25,7 @@
   } from '@hcengineering/ui'
   import presentation from '@hcengineering/presentation'
 
-  import {
-    checkJoined,
-    getInviteWorkspaceName,
-    join,
-    joinByToken,
-    setLoginInfo,
-    signUpJoin,
-    getLoginInfo
-  } from '../utils'
+  import { checkJoined, getPublicInviteInfo, join, joinByToken, setLoginInfo, signUpJoin, getLoginInfo } from '../utils'
   import Form from './Form.svelte'
   import StatusControl from './StatusControl.svelte'
 
@@ -55,6 +47,10 @@
   let currentAccountName: string | undefined
   let joiningWithAccount = false
   let inviteWorkspaceName: string | undefined
+  let inviteAllowedDomains: string[] = []
+
+  $: allowedDomainsHint =
+    inviteAllowedDomains.length > 0 ? inviteAllowedDomains.map((domain) => `@${domain}`).join(', ') : undefined
 
   $: signupStore.setSignUpFlow(page === 'signUp')
 
@@ -154,8 +150,9 @@
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
 
     const inviteId = location.query.inviteId
-    const [result, workspaceName] = await Promise.all([checkJoined(inviteId), getInviteWorkspaceName(inviteId)])
-    inviteWorkspaceName = workspaceName
+    const [result, inviteInfo] = await Promise.all([checkJoined(inviteId), getPublicInviteInfo(inviteId)])
+    inviteWorkspaceName = inviteInfo?.workspaceName
+    inviteAllowedDomains = inviteInfo?.allowedDomains ?? []
     status = OK
 
     if (result != null) {
@@ -272,6 +269,11 @@
           <Label label={login.string.SignedInAs} params={{ name: currentAccountName }} />
         </div>
       {/if}
+      {#if allowedDomainsHint !== undefined}
+        <div class="join-allowed-domains pb-4" data-id="join-allowed-domains">
+          <Label label={login.string.InviteLimitedToDomains} params={{ domains: allowedDomainsHint }} />
+        </div>
+      {/if}
       {#if status.severity !== Severity.OK}
         <div class="join-status">
           <StatusControl {status} />
@@ -317,7 +319,15 @@
       recoveryAction
     ]}
     withProviders
-  />
+  >
+    <svelte:fragment slot="before-fields">
+      {#if allowedDomainsHint !== undefined}
+        <div class="join-allowed-domains form-hint" data-id="join-allowed-domains">
+          <Label label={login.string.InviteLimitedToDomains} params={{ domains: allowedDomainsHint }} />
+        </div>
+      {/if}
+    </svelte:fragment>
+  </Form>
 {/if}
 
 <style lang="scss">
@@ -330,6 +340,16 @@
   .join-subtitle {
     font-size: 0.95rem;
     color: var(--theme-content-color);
+  }
+
+  .join-allowed-domains {
+    font-size: 0.875rem;
+    color: var(--theme-content-color);
+    overflow-wrap: anywhere;
+
+    &.form-hint {
+      grid-column: 1 / -1;
+    }
   }
 
   .join-checking {

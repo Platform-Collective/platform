@@ -76,6 +76,7 @@ import {
   type DBFlavor
 } from './types'
 import { isAdminEmail } from './admin'
+import { hasDomainRestriction, isEmailAllowedByDomains } from './inviteDomains'
 import { type Sql } from 'postgres'
 
 export const GUEST_ACCOUNT = 'b6996120-416f-49cd-841e-e4a5d2e49c9b' as PersonUuid
@@ -1370,12 +1371,12 @@ export async function createWorkspaceRecord (
 
 export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite, email: string): Promise<WorkspaceUuid> {
   if (invite.remainingUses === 0) {
-    ctx.warn('Invite limit exceeded', { email, ...invite })
+    ctx.warn('Invite limit exceeded', { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
   if (invite.expiresOn > 0 && invite.expiresOn < Date.now()) {
-    ctx.warn('Invite link expired', { email, ...invite })
+    ctx.warn('Invite link expired', { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.ExpiredLink, {}))
   }
 
@@ -1392,8 +1393,21 @@ export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite,
   // }
 
   if (invite.email != null && invite.email.trim().length > 0 && invite.email !== email) {
-    ctx.warn("Invite doesn't allow this email address", { email, ...invite })
+    ctx.warn("Invite doesn't allow this email address", { inviteId: invite.id })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
+
+  if (hasDomainRestriction(invite.allowedDomains)) {
+    // Without a mail service sign up confirms e-mail addresses automatically, so an address
+    // from an allowed domain would not prove that the user owns it. Fail closed instead.
+    if (!isMailServiceConfigured()) {
+      ctx.warn('Domain restricted invite can not be used without a mail service', { inviteId: invite.id })
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
+    }
+    if (!isEmailAllowedByDomains(email, invite.allowedDomains)) {
+      ctx.warn("Invite doesn't allow this email domain", { inviteId: invite.id })
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+    }
   }
 
   return invite.workspaceUuid
@@ -1570,6 +1584,15 @@ export async function getSocialIdByKey (db: AccountDB, socialKey: string): Promi
 
 export async function getEmailSocialId (db: AccountDB, email: string): Promise<SocialId | null> {
   return await db.socialId.findOne({ type: SocialIdType.EMAIL, value: email })
+}
+
+/**
+ * Returns true if a mail service is configured, i.e. e-mail addresses are verified by a
+ * confirmation mail instead of being confirmed automatically on sign up.
+ */
+export function isMailServiceConfigured (): boolean {
+  const mailURL = getMetadata(accountPlugin.metadata.MAIL_URL)
+  return mailURL !== undefined && mailURL !== ''
 }
 
 export function getMailUrl (): { mailURL: string, mailAuth: string | undefined } {

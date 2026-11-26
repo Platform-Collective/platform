@@ -27,6 +27,7 @@
     "WorkspaceLimitReached": "Ha alcanzado el límite de espacios de trabajo. Póngase en contacto con nosotros...",
     "ReadOnlyAccount": "Demo de invitado anónimo",
     "SystemAccount": "Cuenta del sistema",
-    "SocialIdAlreadyExists": "El ID social ya existe"
+    "SocialIdAlreadyExists": "El ID social ya existe",
+    "EmailVerificationUnavailable": "Las invitaciones limitadas a dominios de correo requieren verificar el correo electrónico. Configure un servicio de correo en este servidor o elimine la restricción de dominios."
   }
 }

@@ -15,6 +15,7 @@
 
 import type {
   AccountClient,
+  InviteDetails,
   LoginInfo,
   OtpInfo,
   RegionInfo,
@@ -32,6 +33,7 @@ import {
   AccountRole,
   concatLink,
   getCurrentAccount,
+  parseEmailDomains,
   type AccountUuid,
   type Person,
   type WorkspaceUuid,
@@ -595,15 +597,18 @@ export async function checkJoined (inviteId: string): Promise<WorkspaceLoginInfo
 }
 
 /**
- * Fetches workspace name for a valid invite (no auth required). Returns undefined for invalid or expired invites.
+ * Fetches public invite details (no auth required): the workspace name (undefined for invalid
+ * or expired invites) and the e-mail domains the invite is limited to (empty if not restricted).
  */
-export async function getInviteWorkspaceName (inviteId: string): Promise<string | undefined> {
+export async function getPublicInviteInfo (
+  inviteId: string
+): Promise<{ workspaceName: string | undefined, allowedDomains: string[] } | undefined> {
   try {
     const client = getAccountClient(null)
     const info = await client.getInviteInfo(inviteId)
-    return info.workspaceName ?? undefined
+    return { workspaceName: info.workspaceName ?? undefined, allowedDomains: info.allowedDomains ?? [] }
   } catch (err: any) {
-    console.error('Failed to get invite workspace name', err)
+    console.error('Failed to get invite info', err)
     if (!(err instanceof PlatformError)) {
       Analytics.handleError(err)
     }
@@ -643,9 +648,10 @@ export async function getInviteLink (
   mask: string,
   limit: number | undefined,
   role: AccountRole,
-  navigateUrl?: string
+  navigateUrl?: string,
+  allowedDomains?: string
 ): Promise<string> {
-  const inviteId = await getInviteLinkId(expHours, mask, limit ?? -1, role)
+  const inviteId = await getInviteLinkId(expHours, mask, limit ?? -1, role, allowedDomains)
   const loc = getCurrentLocation()
   loc.path[0] = loginId
   loc.path[1] = 'join'
@@ -665,11 +671,28 @@ export async function getInviteLink (
   return concatLink(host, url)
 }
 
+export async function listWorkspaceInvites (): Promise<InviteDetails[]> {
+  const token = getMetadata(presentation.metadata.Token)
+  return await getAccountClient(token).listWorkspaceInvites()
+}
+
+/**
+ * Client-side pre-check of the "allowed email domains" invite input, using the same
+ * parser as the server (the server re-validates and enforces it).
+ * Returns a normalized comma separated list, '' for no restriction,
+ * or undefined if any entry is not a valid domain.
+ */
+export function normalizeAllowedDomains (input: string): string | undefined {
+  const { domains, invalid } = parseEmailDomains(input)
+  return invalid.length > 0 ? undefined : domains.join(',')
+}
+
 export async function getInviteLinkId (
   expHours: number,
   emailMask: string,
   limit: number,
-  role: AccountRole = AccountRole.User
+  role: AccountRole = AccountRole.User,
+  allowedDomains?: string
 ): Promise<string> {
   const exp = expHours < 0 ? -1 : expHours * 1000 * 60 * 60
   const token = getMetadata(presentation.metadata.Token)
@@ -683,7 +706,7 @@ export async function getInviteLinkId (
     return ''
   }
 
-  const inviteLink = await getAccountClient(token).createInvite(exp, emailMask, limit, role)
+  const inviteLink = await getAccountClient(token).createInvite(exp, emailMask, limit, role, allowedDomains)
 
   Analytics.handleEvent('Get invite link', { invite_id: inviteLink })
 

@@ -45,6 +45,7 @@ import type {
   LoginInfoByToken,
   LoginInfoRequestData,
   InviteInfo,
+  InviteDetails,
   LoginInfoWithWorkspaces,
   MailboxInfo,
   MailboxOptions,
@@ -107,7 +108,13 @@ export interface AccountClient {
     workspaceUrl: string
   ) => Promise<WorkspaceLoginInfo>
   join: (email: string, password: string, inviteId: string, workspaceUrl: string) => Promise<WorkspaceLoginInfo>
-  createInvite: (exp: number, emailMask: string, limit: number, role: AccountRole) => Promise<string>
+  createInvite: (
+    exp: number,
+    emailMask: string,
+    limit: number,
+    role: AccountRole,
+    allowedDomains?: string
+  ) => Promise<string>
   /**
    * @param options.personalized
    * If true, will generate a link with a personalized token for one person access
@@ -133,6 +140,7 @@ export interface AccountClient {
   joinByToken: (inviteId: string) => Promise<WorkspaceLoginInfo>
   checkAutoJoin: (inviteId: string, firstName?: string, lastName?: string) => Promise<WorkspaceLoginInfo>
   getInviteInfo: (inviteId: string) => Promise<InviteInfo>
+  listWorkspaceInvites: () => Promise<InviteDetails[]>
   getWorkspaceInfo: (updateLastVisit?: boolean) => Promise<WorkspaceInfoWithStatus>
   getWorkspacesInfo: (workspaces: WorkspaceUuid[]) => Promise<WorkspaceInfoWithStatus[]>
   updateLastVisit: (workspaces: WorkspaceUuid[]) => Promise<void>
@@ -617,10 +625,16 @@ class AccountClientImpl implements AccountClient {
     return await this.rpc(request)
   }
 
-  async createInvite (exp: number, emailMask: string, limit: number, role: AccountRole): Promise<string> {
+  async createInvite (
+    exp: number,
+    emailMask: string,
+    limit: number,
+    role: AccountRole,
+    allowedDomains?: string
+  ): Promise<string> {
     const request = {
       method: 'createInvite' as const,
-      params: { exp, emailMask, limit, role }
+      params: { exp, emailMask, limit, role, ...(allowedDomains !== undefined ? { allowedDomains } : {}) }
     }
 
     return await this.rpc(request)
@@ -657,6 +671,15 @@ class AccountClientImpl implements AccountClient {
     const request = {
       method: 'getInviteInfo' as const,
       params: { inviteId }
+    }
+
+    return await this.rpc(request)
+  }
+
+  async listWorkspaceInvites (): Promise<InviteDetails[]> {
+    const request = {
+      method: 'listWorkspaceInvites' as const,
+      params: {}
     }
 
     return await this.rpc(request)
