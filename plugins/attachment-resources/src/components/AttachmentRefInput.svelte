@@ -75,6 +75,9 @@
   export function submit(): void {
     refInput.submit()
   }
+  export function appendMarkup(markup: Markup): void {
+    refInput.appendMarkup(markup)
+  }
   export let placeholder: IntlString | undefined = undefined
   export let extraActions: RefAction[] = []
   export let boundary: HTMLElement | undefined = undefined

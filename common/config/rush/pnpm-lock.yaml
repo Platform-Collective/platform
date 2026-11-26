@@ -7056,6 +7056,9 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
+      '@hcengineering/text-editor':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/text-editor
       '@hcengineering/ui':
         specifier: workspace:^0.7.0
         version: link:../../packages/ui
@@ -18093,6 +18096,9 @@ importers:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../foundations/utils/packages/platform-rig
+      '@hcengineering/text-markdown':
+        specifier: workspace:^0.7.21
+        version: link:../../foundations/core/packages/text-markdown
       '@types/html-to-text':
         specifier: ^8.1.1
         version: 8.1.1

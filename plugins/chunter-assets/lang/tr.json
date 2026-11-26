@@ -65,6 +65,8 @@
     "Messages": "Mesajlar",
     "NoResults": "Sonuç yok",
     "CopyLink": "Bağlantıyı kopyala",
+    "Quote": "Alıntıla",
+    "QuoteWrote": "{author} yazdı:",
     "FilterBacklinks": "Geri bağlantılar",
     "DM": "Direkt mesaj",
     "DMNotification": "Size mesaj gönderdi",

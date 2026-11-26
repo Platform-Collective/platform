@@ -20,6 +20,7 @@ import activity from '@hcengineering/activity'
 import workbench from '@hcengineering/model-workbench'
 import core from '@hcengineering/model-core'
 import contact from '@hcengineering/contact'
+import textEditor from '@hcengineering/text-editor'
 
 import chunter from './plugin'
 
@@ -61,6 +62,20 @@ export function defineActions (builder: Builder): void {
 }
 
 function defineMessageActions (builder: Builder): void {
+  createAction(builder, {
+    action: chunter.actionImpl.QuoteMessage,
+    label: chunter.string.Quote,
+    icon: textEditor.icon.Quote,
+    input: 'focus',
+    category: chunter.category.Chunter,
+    target: chunter.class.ChatMessage,
+    visibilityTester: chunter.function.CanQuoteMessage,
+    context: {
+      mode: 'context',
+      group: 'edit'
+    }
+  })
+
   createAction(
     builder,
     {
