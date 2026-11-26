@@ -18,7 +18,7 @@
   import { getClient } from '@hcengineering/presentation'
   import { Action, Menu } from '@hcengineering/ui'
   import { ActionGroup, Action as ViewAction, ViewContextType } from '@hcengineering/view'
-  import { getActions, invokeAction } from '../actions'
+  import { getActions, invokeAction, normalizeActionContext } from '../actions'
 
   export let object: Doc | Doc[]
   export let baseMenuClass: Ref<Class<Doc>> | undefined = undefined
@@ -42,7 +42,9 @@
     remove: 7
   }
 
-  void getActions(getClient(), object, baseMenuClass, mode).then((result) => {
+  const target = Array.isArray(object) ? [...object] : object
+
+  void getActions(getClient(), target, baseMenuClass, mode).then((result) => {
     const filtered = result.filter((a) => {
       if (excludedActions.includes(a._id)) {
         return false
@@ -62,13 +64,13 @@
       group: a.context.group ?? 'other',
       action: async (_: any, evt: Event) => {
         if (overrides?.has(a._id)) {
-          overrides.get(a._id)?.(object, evt)
+          overrides.get(a._id)?.(target, evt)
           return
         }
-        invokeAction(object, evt, a)
+        await invokeAction(target, evt, a)
       },
       component: a.actionPopup,
-      props: { ...a.actionProps, value: object }
+      props: { ...a.actionProps, value: a.input === 'focus' ? normalizeActionContext(target) : target }
     }))
 
     resActions = [...newActions, ...actions].sort(

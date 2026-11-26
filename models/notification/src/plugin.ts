@@ -71,6 +71,7 @@ export default mergeIds(notificationId, notification, {
     Unsubscribe: '' as ViewAction,
     UnpinDocNotifyContext: '' as ViewAction,
     PinDocNotifyContext: '' as ViewAction,
+    SetDocNotifyLevel: '' as ViewAction,
     UnReadNotifyContext: '' as ViewAction,
     ReadNotifyContext: '' as ViewAction,
     ArchiveContextNotifications: '' as ViewAction,

@@ -41,6 +41,7 @@ import notification, {
   type ActivityInboxNotification,
   type DisplayInboxNotification,
   type DocNotifyContext,
+  type DocNotifyLevel,
   type InboxNotification,
   type MentionInboxNotification,
   notificationId,
@@ -60,6 +61,7 @@ import {
   navigate,
   parseLocation,
   type ResolvedLocation,
+  SelectPopup,
   showPopup
 } from '@hcengineering/ui'
 import view, { decodeObjectURI, encodeObjectURI, type LinkIdProvider } from '@hcengineering/view'
@@ -69,6 +71,7 @@ import { get, writable } from 'svelte/store'
 
 import { isDesktopClient } from './desktop'
 import { InboxNotificationsClientImpl } from './inboxNotificationsClient'
+import { getDocNotifyLevelValues } from './notifyLevelOptions'
 import { type InboxData, type InboxNotificationsFilter } from './types'
 
 export const providersSettings = writable<NotificationProviderSetting[]>([])
@@ -306,6 +309,22 @@ export async function unpinDocNotifyContext (object: DocNotifyContext): Promise<
 
   await client.updateDoc(object._class, object.space, object._id, {
     isPinned: false
+  })
+}
+
+export async function updateDocNotifyLevel (object: DocNotifyContext, level: DocNotifyLevel): Promise<void> {
+  if (level === (object.notifyLevel ?? 'all')) return
+
+  const client = getClient()
+  await client.updateDoc(object._class, object.space, object._id, { notifyLevel: level })
+}
+
+export async function setDocNotifyLevel (object: DocNotifyContext): Promise<void> {
+  const value = getDocNotifyLevelValues(object)
+
+  showPopup(SelectPopup, { value }, undefined, async (result?: DocNotifyLevel) => {
+    if (result === undefined) return
+    await updateDocNotifyLevel(object, result)
   })
 }
 

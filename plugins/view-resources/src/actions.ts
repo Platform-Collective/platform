@@ -29,29 +29,14 @@ import core, {
 import { getResource } from '@hcengineering/platform'
 import { addRefreshListener, getClient } from '@hcengineering/presentation'
 import { getEventPositionElement, showPopup } from '@hcengineering/ui'
-import {
-  type Action,
-  type ActionGroup,
-  type ActionIgnore,
-  type ViewActionInput,
-  type ViewContextType
-} from '@hcengineering/view'
+import { type Action, type ActionGroup, type ActionIgnore, type ViewContextType } from '@hcengineering/view'
+import { filterActionsByInput, normalizeActionContext } from './actionContext'
 import Menu from './components/Menu.svelte'
 import view from './plugin'
 import { type FocusSelection, type SelectionStore } from './selection'
 import { restrictionStore } from './utils'
 
-/**
- * Collapses a single-element array to the element, otherwise returns the original value.
- *
- * @public
- */
-export function normalizeActionContext<T extends Doc> (doc: T | T[] | undefined): T | T[] | undefined {
-  if (Array.isArray(doc) && doc.length === 1) {
-    return doc[0]
-  }
-  return doc
-}
+export { normalizeActionContext } from './actionContext'
 
 /**
  * @public
@@ -114,10 +99,7 @@ export async function filterAvailableActions (
     actions
   )
 
-  const input = (['none'] as ViewActionInput[])
-    .concat(Array.isArray(doc) && doc.length > 0 ? ['selection', 'any'] : [])
-    .concat(!Array.isArray(doc) || doc.length === 1 ? ['focus', 'any'] : [])
-  actions = actions.filter((it) => input.includes(it.input))
+  actions = filterActionsByInput(actions, doc)
 
   const result: Action[] = []
   for (const action of actions) {
@@ -200,10 +182,7 @@ function filterAvailableActionsSync (
     actions
   )
 
-  const input = (['none'] as ViewActionInput[])
-    .concat(Array.isArray(doc) && doc.length > 0 ? ['selection', 'any'] : [])
-    .concat(!Array.isArray(doc) || doc.length === 1 ? ['focus', 'any'] : [])
-  actions = actions.filter((it) => input.includes(it.input))
+  actions = filterActionsByInput(actions, doc)
 
   const result: Action[] = []
   for (const action of actions) {

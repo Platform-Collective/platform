@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { type Locator, expect, test } from '@playwright/test'
 import { readFileSync } from 'fs'
+import { StatusBar } from '../model/statusbar'
 import { CommonTrackerPage } from '../model/tracker/common-tracker-page'
 import { IssuesDetailsPage } from '../model/tracker/issues-details-page'
 import { IssuesPage } from '../model/tracker/issues-page'
@@ -28,6 +29,62 @@ const panelStatusMap = new Map([
 ])
 
 test.describe('Tracker tests', () => {
+  test('an open action palette selector keeps its original issue when focus moves', async ({ page }) => {
+    const tracker = new CommonTrackerPage(page)
+    const issues = new IssuesPage(page)
+    const titlePrefix = getIssueName()
+    const firstTitle = `${titlePrefix}-first`
+    const secondTitle = `${titlePrefix}-second`
+    await navigate(page)
+    await createIssue(page, { name: firstTitle, priority: 'Low' })
+    await createIssue(page, { name: secondTitle, priority: 'High' })
+    await tracker.selectPanelAndViewlet('Issues', ViewletSelectors.Table)
+    await issues.clickModelSelectorAll()
+    await issues.searchIssueByName(titlePrefix)
+
+    const rows = page.locator('.listGrid.antiList__row')
+    const first = rows.filter({ has: page.getByRole('link', { name: firstTitle, exact: true }) })
+    const second = rows.filter({ has: page.getByRole('link', { name: secondTitle, exact: true }) })
+
+    // Move the real list focus while leaving the palette open over the list.
+    const moveFocus = async (row: Locator): Promise<void> => {
+      await row.dispatchEvent('mouseenter', { screenX: 20, screenY: 20 })
+      await row.dispatchEvent('mouseover', { screenX: 40, screenY: 40 })
+      await row.dispatchEvent('mouseover', { screenX: 60, screenY: 60 })
+      await expect(row).toHaveClass(/mListGridSelected/)
+    }
+
+    await moveFocus(first)
+    await new StatusBar(page).clickButtonSearch()
+    const palette = page.locator('.actionsPopup')
+    const filter = palette.locator('.actionsInput')
+    await filter.fill('/priority')
+    await palette.locator('.actionsitem').getByText('Priority', { exact: true }).click()
+
+    const lowPriority = palette.getByRole('button', { name: 'Low', exact: true })
+    await expect(lowPriority.locator('.check svg')).toBeVisible()
+    await moveFocus(second)
+    await expect(lowPriority.locator('.check svg')).toBeVisible()
+    await palette.getByRole('button', { name: 'Urgent', exact: true }).click()
+
+    await expect(issues.priorityContainer(first)).toHaveAttribute('href', /#priority-urgent$/)
+    await expect(issues.priorityContainer(second)).toHaveAttribute('href', /#priority-high$/)
+
+    await filter.fill('/relations')
+    const relations = palette.locator('.actionsitem').getByText('Relations', { exact: true })
+    await expect(relations).toBeVisible()
+    const firstCheckbox = first.locator('.antiList-cells__checkCell input')
+    const secondCheckbox = second.locator('.antiList-cells__checkCell input')
+    await firstCheckbox.dispatchEvent('click')
+    await secondCheckbox.dispatchEvent('click')
+    await expect(firstCheckbox).toBeChecked()
+    await expect(secondCheckbox).toBeChecked()
+    await expect(relations).toBeHidden()
+
+    await secondCheckbox.dispatchEvent('click')
+    await expect(relations).toBeVisible()
+  })
+
   test('issues-status-display', async ({ page }) => {
     await navigate(page)
     for (const status of DEFAULT_STATUSES) {

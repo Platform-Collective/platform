@@ -55,6 +55,42 @@ test.describe('Check direct messages channels', () => {
       await chunterPage.createDirectChat(newUser2)
     })
 
+    await test.step('Persist notification level from the navigator menu', async () => {
+      const directChatName = `${newUser2.lastName} ${newUser2.firstName}`
+      await channelPage.clickChooseChannel(directChatName)
+
+      const openNotifications = async (): Promise<void> => {
+        await channelPage.openNavigator()
+        const directChat = channelPage.channelContainers().filter({ hasText: directChatName })
+        await directChat.hover()
+        await directChat.locator('.hulyNavItem-actions').click()
+        await page.locator('.antiPopup').getByRole('button', { name: 'Notifications' }).click()
+      }
+      const navigatorSelector = page.locator('.popup .selectPopup[tabindex="0"]').last()
+      const allMessages = navigatorSelector.getByRole('button', { name: 'All messages' })
+      const nothing = navigatorSelector.getByRole('button', { name: 'Nothing' })
+
+      await openNotifications()
+      await expect(allMessages).toBeVisible()
+      await expect(allMessages.locator('.check svg')).toBeVisible()
+      await expect(navigatorSelector.getByRole('button', { name: 'Only mentions' })).toBeHidden()
+      await expect(nothing).toBeVisible()
+      await navigatorSelector.focus()
+      await page.keyboard.press('Tab')
+      await expect(navigatorSelector).toBeHidden()
+
+      await openNotifications()
+      await nothing.click()
+      await expect(navigatorSelector).toBeHidden()
+
+      await openNotifications()
+      await expect(nothing.locator('.check svg')).toBeVisible()
+      await expect(allMessages.locator('.check svg')).toBeHidden()
+      await navigatorSelector.focus()
+      await page.keyboard.press('Tab')
+      await expect(navigatorSelector).toBeHidden()
+    })
+
     await test.step('Exchange messages in the direct chat', async () => {
       await channelPage.clickChooseChannel(`${newUser2.lastName} ${newUser2.firstName}`)
       await channelPage.sendMessage('Test direct question')
