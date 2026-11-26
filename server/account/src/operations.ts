@@ -76,7 +76,6 @@ import {
   type InviteInfo
 } from './types'
 import {
-  reissueToken,
   addSocialIdBase,
   checkInvite,
   cleanEmail,
@@ -108,6 +107,7 @@ import {
   verifyOtpAttempt,
   normalizeValue,
   doReleaseSocialId,
+  reissueToken,
   selectWorkspace,
   sendEmail,
   sendEmailConfirmation,
