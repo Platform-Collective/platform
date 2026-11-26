@@ -3,7 +3,7 @@
 import { Doc, applyUpdate, encodeStateAsUpdate, encodeStateVector, UndoManager, XmlElement, XmlText } from 'yjs'
 import type { AccountUuid } from '@hcengineering/core'
 import type { Context } from '../context'
-import { AuthorRuns } from '../extensions/author-runs'
+import { AuthorRuns, MAX_AUTHOR_RUNS } from '../extensions/author-runs'
 import { MarkupTransformer } from '../transformers/markup'
 
 const author = (account: string, connectionId = account): Context =>
@@ -131,6 +131,41 @@ describe('author runs', () => {
     expect(deleted).toEqual(baseline)
     expect(updates).toHaveBeenCalledTimes(4)
     undo.destroy()
+    runs.destroy()
+    doc.destroy()
+  })
+
+  it('reports coalesced author switches once per save and keeps the final markup', () => {
+    const doc = new Doc({ gc: false })
+    const getMarkup = (current: Doc = doc): Record<string, string> => ({
+      content: current.getText('content').toString()
+    })
+    const overflow = jest.fn()
+    const runs = new AuthorRuns(doc, getMarkup, () => {}, overflow)
+    const edit = (context: Context): void => {
+      doc.transact(
+        () => {
+          doc.getText('content').insert(doc.getText('content').length, 'x')
+        },
+        { context }
+      )
+    }
+    for (let i = 0; i < MAX_AUTHOR_RUNS + 4; i++) edit(i % 2 === 0 ? A : B)
+    const segments = runs.drain({ content: '' }, getMarkup())
+    expect(segments).toHaveLength(MAX_AUTHOR_RUNS)
+    // Text of the coalesced switches is attributed to the last editor.
+    expect(segments[MAX_AUTHOR_RUNS - 1]).toMatchObject({
+      context: B,
+      prev: { content: 'x'.repeat(MAX_AUTHOR_RUNS - 1) },
+      curr: { content: 'x'.repeat(MAX_AUTHOR_RUNS + 4) }
+    })
+    expect(overflow).toHaveBeenCalledTimes(1)
+    expect(overflow).toHaveBeenCalledWith(4)
+
+    edit(A)
+    edit(B)
+    expect(runs.drain(segments[MAX_AUTHOR_RUNS - 1].curr, getMarkup())).toHaveLength(2)
+    expect(overflow).toHaveBeenCalledTimes(1)
     runs.destroy()
     doc.destroy()
   })

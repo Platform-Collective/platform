@@ -21,12 +21,14 @@ export class AuthorRuns {
   private timestamp = 0
   private captureFailed = false
   private captures = 0
+  private coalesced = 0
   private readonly candidates = new Map<Transaction, Snapshot>()
 
   constructor (
     private readonly document: Doc,
     private readonly getMarkup: (document: Doc) => Record<string, string>,
-    private readonly onCaptureError: (error: unknown) => void = () => {}
+    private readonly onCaptureError: (error: unknown) => void = () => {},
+    private readonly onOverflow: (coalesced: number) => void = () => {}
   ) {
     document.on('beforeTransaction', this.beforeTransaction)
     document.on('afterTransaction', this.afterTransaction)
@@ -64,6 +66,7 @@ export class AuthorRuns {
       if (this.captures >= MAX_AUTHOR_RUNS - 1 && boundary === undefined) {
         // Coalesce overflow into the final run, attributed to its last actual editor.
         this.current.context = context
+        this.coalesced++
         return
       }
       if (boundary === undefined) return
@@ -83,9 +86,10 @@ export class AuthorRuns {
   drain (prev: Record<string, string>, curr: Record<string, string>): AuthorSegment[] {
     const runs = [...this.closed]
     if (this.current !== undefined) runs.push({ ...this.current })
+    const coalesced = this.coalesced
     this.discard()
     try {
-      return runs.map((run) => {
+      const segments = runs.map((run) => {
         let end = curr
         if (run.curr !== undefined) {
           const boundary = createDocFromSnapshot(this.document, run.curr)
@@ -99,6 +103,8 @@ export class AuthorRuns {
         prev = end
         return segment
       })
+      if (coalesced > 0) this.onOverflow(coalesced)
+      return segments
     } catch (error) {
       if (!this.captureFailed) {
         this.captureFailed = true
@@ -112,6 +118,7 @@ export class AuthorRuns {
     this.closed.length = 0
     this.current = undefined
     this.captures = 0
+    this.coalesced = 0
   }
 
   destroy (): void {

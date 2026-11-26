@@ -9,6 +9,7 @@ import { Doc, applyUpdate, encodeStateAsUpdate } from 'yjs'
 import { MeasureMetricsContext, type AccountUuid } from '@hcengineering/core'
 import type { Context } from '../context'
 import type { CollabStorageAdapter, DocumentSaveBatch } from '../storage/adapter'
+import { MAX_AUTHOR_RUNS } from '../extensions/author-runs'
 import { StorageExtension } from '../extensions/storage'
 
 const ctx = new MeasureMetricsContext('test', {})
@@ -496,5 +497,28 @@ it('discards a frozen batch when final conversion fails before the next save', a
     prev: { content: 'old' },
     curr: { content: 'oldabc' }
   })
+  document.destroy()
+})
+
+it('warns once per save when author runs exceed the limit', async () => {
+  const save = jest.fn().mockImplementation(async (_ctx, _name, _document, _context, markup) => markup.curr())
+  const { document, edit, store } = await setup(save)
+  const warn = jest.spyOn(ctx, 'warn')
+  for (let i = 0; i < MAX_AUTHOR_RUNS + 4; i++) edit(i % 2 === 0 ? A : B, 'x')
+  await store(B)
+  expect(save.mock.calls[0][5].segments).toHaveLength(MAX_AUTHOR_RUNS)
+  expect(warn).toHaveBeenCalledTimes(1)
+  expect(warn).toHaveBeenCalledWith('author run limit exceeded, later edits are attributed to the last editor', {
+    documentName: 'doc',
+    limit: MAX_AUTHOR_RUNS,
+    coalesced: 4
+  })
+
+  edit(A, 'y')
+  edit(B, 'y')
+  await store(B)
+  expect(save.mock.calls[1][5].segments).toHaveLength(2)
+  expect(warn).toHaveBeenCalledTimes(1)
+  warn.mockRestore()
   document.destroy()
 })

@@ -30,7 +30,7 @@ import { Transformer } from '@hocuspocus/transformer'
 import { Doc as YDoc, encodeStateAsUpdate } from 'yjs'
 import { Context, withContext } from '../context'
 import { CollabStorageAdapter, type AuthorSegment, type DocumentSaveBatch } from '../storage/adapter'
-import { AuthorRuns } from './author-runs'
+import { AuthorRuns, MAX_AUTHOR_RUNS } from './author-runs'
 
 export interface StorageConfiguration {
   ctx: MeasureContext
@@ -125,6 +125,13 @@ export class StorageExtension implements Extension {
         (doc) => this.configuration.transformer.fromYdoc(doc),
         (error) => {
           ctx.warn('failed to capture author boundary', { documentName, error })
+        },
+        (coalesced) => {
+          ctx.warn('author run limit exceeded, later edits are attributed to the last editor', {
+            documentName,
+            limit: MAX_AUTHOR_RUNS,
+            coalesced
+          })
         }
       )
     )
