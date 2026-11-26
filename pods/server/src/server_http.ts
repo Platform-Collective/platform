@@ -471,6 +471,7 @@ export function startHttpServer (
     maxPayload: 250 * 1024 * 1024,
     clientTracking: false // We do not need to track clients inside clients.
   })
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   const handleConnection = async (
     ws: WebSocket,
     request: IncomingMessage,
@@ -515,6 +516,7 @@ export function startHttpServer (
           }, 1000)
         }
         if ('upgrade' in s) {
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
           void cs
             .send(ctx, { id: -1, result: { state: 'upgrading', stats: (s as any).upgradeInfo } }, false, false)
             .then(() => {
@@ -527,6 +529,7 @@ export function startHttpServer (
       })
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     ws.on('message', (msg: RawData) => {
       try {
         let buff: Buffer | undefined
@@ -553,6 +556,7 @@ export function startHttpServer (
         }
       }
     })
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     ws.on('close', (code: number, reason: Buffer) => {
       doSessionOp(
         ctx,
