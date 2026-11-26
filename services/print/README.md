@@ -76,3 +76,34 @@ the original download, reopening a cached preview, changing file versions,
 switching documents while loading, and retry after a converter failure. Test with
 the deployment's actual fonts and browser PDF settings; browsers configured to
 download PDFs instead of displaying them may not provide inline preview.
+
+## Print URL configuration
+
+`FRONT_URL` is always trusted at its exact scheme, host and port. Configure extra
+printing domains in `ALLOWED_HOSTNAMES`, separated by commas. Bare hosts and
+`*.example.com` allow default HTTP/HTTPS ports; use `host:port` or
+`[IPv6-address]:port` for other ports. A wildcard matches subdomains only.
+Malformed entries fail startup. These entries are operator-controlled trust
+exceptions, including for private network destinations on the configured port.
+
+HTTP(S) backend origins that differ from `FRONT_URL` must also be listed when
+they resolve to private addresses, including accounts, files and preview services.
+Relative URLs use the already trusted front origin. WebSocket requests remain
+outside this interception. Trusting `FRONT_URL` does not trust another port on that host.
+Use exact scheme/host/port origins to keep these exceptions narrow. This applies
+to split-horizon DNS and internal Kubernetes service names too. The development
+Compose file explicitly lists the backend origins from its front-end configuration;
+update that list when adding or moving a service. The Print service does not
+automatically trust origins discovered in page content or `config.json`.
+
+Navigation, redirects and frames must match that policy. Other HTTP(S) resources
+are checked with safe-fetch before Chromium loads them; DNS results are cached
+per render, and any private or reserved result blocks the host. Inline `data:`
+and `blob:` resources remain available.
+
+Chromium resolves DNS independently, so these checks do not pin its connection
+addresses and cannot eliminate DNS rebinding. Use an egress policy or a checking
+proxy to enforce destination restrictions at connection time. Puppeteer request
+interception does not cover WebSocket connections; this filtering is not a
+network sandbox for executable page content. Interception performance with warm
+browser caches still needs a browser measurement.

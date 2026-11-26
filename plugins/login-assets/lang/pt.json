@@ -6,6 +6,8 @@
     "IncorrectValue": "Valor incorreto {field}"
   },
   "string": {
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "ChangePassword": "Mudar senha",
     "CurrentPassword": "Senha atual",
     "NewPassword": "Nova senha",

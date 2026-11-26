@@ -19,6 +19,7 @@
     isActiveMode,
     isArchivingMode,
     isRestoringMode,
+    isRestoreFailedMode,
     isUpgradingMode
   } from '@hcengineering/core'
   import { LoginInfo } from '@hcengineering/login'
@@ -42,6 +43,7 @@
     getAccount,
     getAccountDisplayName,
     getHref,
+    fetchLoginCapabilities,
     getWorkspaces,
     goTo,
     isReadOnlyGuestAccount,
@@ -55,9 +57,11 @@
 
   let workspaces: WorkspaceInfoWithStatus[] = []
   let status = OK
+  let restoreFailed = false
   let accountPromise: Promise<LoginInfo | null>
   let account: LoginInfo | null | undefined = undefined
   let isReadOnlyGuest: boolean = true
+  let workspaceCreationAllowed = false
 
   let flagToUpdateWorkspaces = false
 
@@ -65,6 +69,8 @@
     accountPromise = getAccount()
     account = await accountPromise
     isReadOnlyGuest = await isReadOnlyGuestAccount(account)
+    const capabilities = await fetchLoginCapabilities(account?.token)
+    workspaceCreationAllowed = capabilities.workspaceCreationAllowed
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -85,15 +91,18 @@
   })
 
   async function select(workspaceUrl: string): Promise<void> {
+    restoreFailed = false
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
 
     const [loginStatus, result] = await selectWorkspace(workspaceUrl)
 
     const ws = workspaces.find((it) => it.uuid === result?.workspace)
-    if (ws != null && isArchivingMode(ws?.mode) && result?.workspace !== undefined) {
+    if (ws != null && (isArchivingMode(ws.mode) || isRestoreFailedMode(ws.mode)) && result?.workspace !== undefined) {
       showPopup(MessageBox, {
         label: login.string.SelectWorkspace,
-        message: login.string.WorkspaceArchivedDesc,
+        message: isRestoreFailedMode(ws.mode)
+          ? login.string.WorkspaceRestoreFailedDesc
+          : login.string.WorkspaceArchivedDesc,
         canSubmit: true,
         params: {},
         okLabel: login.string.RestoreArchivedWorkspace,
@@ -106,6 +115,7 @@
               workspaces = await getWorkspaces()
               info = workspaces.find((it) => it.uuid === ws.uuid)
             }
+            restoreFailed = isRestoreFailedMode(info?.mode)
           }
         }
       })
@@ -150,6 +160,9 @@
   <div class="title"><Label label={login.string.SelectWorkspace} /></div>
   <div class="status">
     <StatusControl {status} />
+    {#if restoreFailed}
+      <Label label={login.string.WorkspaceRestoreFailedDesc} />
+    {/if}
   </div>
   {#if workspaces.length > 10}
     <div class="ml-2 mr-2 mb-2 flex-grow">
@@ -189,7 +202,9 @@
                 {#if isArchivingMode(workspace.mode)}
                   - <Label label={presentation.string.Archived} />
                 {/if}
-                {#if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
+                {#if isRestoreFailedMode(workspace.mode)}
+                  - <Label label={login.string.WorkspaceRestoreFailed} />
+                {:else if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
                   ({workspace.processingProgress}%)
                 {/if}
               </span>
@@ -202,7 +217,7 @@
           </div>
         {/each}
 
-        {#if workspaces.length === 0 && account?.token != null}
+        {#if workspaces.length === 0 && account?.token != null && (isReadOnlyGuest || workspaceCreationAllowed)}
           <div class="form-row send">
             <Button
               label={isReadOnlyGuest ? login.string.SignUp : login.string.CreateWorkspace}
@@ -218,7 +233,7 @@
     </Scroller>
     <div class="grow-separator" />
     <div class="footer">
-      {#if workspaces.length > 0 && !isReadOnlyGuest}
+      {#if workspaces.length > 0 && !isReadOnlyGuest && workspaceCreationAllowed}
         <div>
           <span><Label label={login.string.WantAnotherWorkspace} /></span>
           <NavLink

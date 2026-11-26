@@ -14,7 +14,7 @@
 //
 
 import { Session, systemPreferences } from 'electron'
-import log from 'electron-log'
+import log from 'electron-log/main'
 
 export function addPermissionHandlers (session: Session): void {
   session.setPermissionRequestHandler((webContents, permission, result, details) => {

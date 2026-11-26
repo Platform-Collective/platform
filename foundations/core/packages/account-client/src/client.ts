@@ -149,7 +149,11 @@ export interface AccountClient {
   signUp: (email: string, password: string, first: string, last: string) => Promise<LoginInfo>
   login: (email: string, password: string) => Promise<LoginInfo>
   loginAsGuest: () => Promise<LoginInfo>
-  getLoginCapabilities: () => Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }>
+  getLoginCapabilities: () => Promise<{
+    signUpEnabled: boolean
+    guestLoginAvailable: boolean
+    workspaceCreationAllowed?: boolean
+  }>
   isReadOnlyGuest: () => Promise<boolean>
   getPerson: () => Promise<Person>
   getPersonInfo: (account: PersonUuid) => Promise<PersonInfo>
@@ -323,6 +327,10 @@ class AccountClientImpl implements AccountClient {
     return await withRetryUntilMaxAttempts(async () => {
       const response = await fetch(concatLink(this.url, '/providers'))
 
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`)
+      }
+
       return await response.json()
     })()
   }
@@ -341,6 +349,15 @@ class AccountClientImpl implements AccountClient {
       method: 'POST',
       body: JSON.stringify(request)
     })
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => undefined)
+      if (result?.error != null) {
+        throw new PlatformError(result.error)
+      }
+
+      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`)
+    }
 
     const result = await response.json()
     if (result.error != null) {
@@ -729,7 +746,11 @@ class AccountClientImpl implements AccountClient {
     return await this.rpc(request)
   }
 
-  async getLoginCapabilities (): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+  async getLoginCapabilities (): Promise<{
+    signUpEnabled: boolean
+    guestLoginAvailable: boolean
+    workspaceCreationAllowed?: boolean
+  }> {
     const request = {
       method: 'getLoginCapabilities' as const,
       params: {}

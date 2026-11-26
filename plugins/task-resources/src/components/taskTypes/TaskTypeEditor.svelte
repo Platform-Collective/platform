@@ -14,9 +14,19 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Ref, SortingOrder, Status } from '@hcengineering/core'
+  import core, {
+    AccountRole,
+    type Class,
+    type Doc,
+    getCurrentAccount,
+    type PersonId,
+    Ref,
+    SortingOrder,
+    Status
+  } from '@hcengineering/core'
+  import { getAllSocialStringsByPersonRef, getCurrentEmployee } from '@hcengineering/contact'
   import { Asset, getEmbeddedLabel, getResource } from '@hcengineering/platform'
-  import { AttributeEditor, MessageBox, createQuery, getClient } from '@hcengineering/presentation'
+  import { AttributeEditor, MessageBox, createQuery, getClient, isAdminUser } from '@hcengineering/presentation'
   import { ClassAttributes, settingsStore } from '@hcengineering/setting-resources'
   import task, { ProjectType, TaskType, calculateStatuses, findStatusAttr } from '@hcengineering/task'
   import {
@@ -32,13 +42,18 @@
     navigate,
     showPopup
   } from '@hcengineering/ui'
-  import { IconPicker, deleteObjects, statusStore } from '@hcengineering/view-resources'
+  import { IconPicker, statusStore } from '@hcengineering/view-resources'
   import { taskTypeStore } from '../..'
   import plugin from '../../plugin'
   import StatesProjectEditor from '../state/StatesProjectEditor.svelte'
   import TaskTypeKindEditor from '../taskTypes/TaskTypeKindEditor.svelte'
   import TaskTypeRefEditor from '../taskTypes/TaskTypeRefEditor.svelte'
   import TaskTypeIcon from './TaskTypeIcon.svelte'
+  import {
+    getChildTaskTypeDeletionUpdate,
+    getTaskTypeDeletionUpdate,
+    shouldHideTaskTypeTargetClass
+  } from './task-type-deletion'
 
   export let spaceType: ProjectType
   export let objectId: Ref<TaskType>
@@ -147,7 +162,39 @@
           return
         }
 
-        await deleteObjects(client, [taskType])
+        const taskTypeToDelete = await client.findOne(task.class.TaskType, { _id: taskType._id })
+        if (taskTypeToDelete === undefined) {
+          return
+        }
+
+        const currentAccount = getCurrentAccount()
+        const socialStrings = new Set(await getAllSocialStringsByPersonRef(client, getCurrentEmployee()))
+        if (
+          currentAccount.role !== AccountRole.Owner &&
+          !isAdminUser() &&
+          !socialStrings.has(taskTypeToDelete.createdBy as PersonId)
+        ) {
+          return
+        }
+
+        const targetClass = await client.findOne<Class<Doc> & { hidden?: boolean }>(core.class.Class, {
+          _id: taskTypeToDelete.targetClass
+        })
+        const taskTypesWithTargetClass = await client.findAll(task.class.TaskType, {
+          targetClass: taskTypeToDelete.targetClass
+        })
+        const dependentTaskTypes = await client.findAll(task.class.TaskType, { allowedAsChildOf: taskTypeToDelete._id })
+        const operations = client.apply(undefined, 'delete-task-type')
+
+        await operations.update(spaceType, getTaskTypeDeletionUpdate(taskTypeToDelete._id))
+        for (const dependentTaskType of dependentTaskTypes) {
+          await operations.update(dependentTaskType, getChildTaskTypeDeletionUpdate(taskTypeToDelete._id))
+        }
+        if (targetClass !== undefined && shouldHideTaskTypeTargetClass(targetClass, taskTypesWithTargetClass.length)) {
+          await operations.update(targetClass, { hidden: true })
+        }
+        await operations.removeDoc(taskTypeToDelete._class, taskTypeToDelete.space, taskTypeToDelete._id)
+        await operations.commit()
 
         const loc = getCurrentLocation()
         loc.path.length -= 2

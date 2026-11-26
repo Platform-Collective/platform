@@ -95,3 +95,55 @@ describe('makeFilterQuery', () => {
     expect((out as any).status.polluted).toBeUndefined()
   })
 })
+
+describe('makeFilterQuery with an emptied tick-list filter', () => {
+  const resultOf = (result: unknown): any => jest.fn(async () => async () => result)
+
+  it('leaves out a filter whose selection is empty instead of matching nothing', async () => {
+    const out = await makeFilterQuery(
+      { space: 'foo' as any },
+      [mockFilter('milestone', [])],
+      async () => mockMode,
+      resultOf({ $in: [] })
+    )
+    expect(out).toEqual({ space: 'foo' })
+  })
+
+  it('leaves out an emptied "is not" and an emptied "all" filter too', async () => {
+    const nin = await makeFilterQuery({}, [mockFilter('milestone', [])], async () => mockMode, resultOf({ $nin: [] }))
+    const all = await makeFilterQuery({}, [mockFilter('labels', [])], async () => mockMode, resultOf({ $all: [] }))
+    expect(nin).toEqual({})
+    expect(all).toEqual({})
+  })
+
+  it('keeps a filter that has no values by design, such as a date mode', async () => {
+    const out = await makeFilterQuery(
+      {},
+      [mockFilter('dueDate', [])],
+      async () => mockMode,
+      resultOf({ $exists: false })
+    )
+    expect(out).toEqual({ dueDate: { $exists: false } })
+  })
+
+  it('keeps an empty intersection of two filters on the same key', async () => {
+    const filters: Filter[] = [mockFilter('status', ['a'], 1), mockFilter('status', ['b'], 2)]
+    const out = await makeFilterQuery({}, filters, async () => mockMode, mockResolveResource as any)
+    expect(out).toEqual({ status: { $in: [] } })
+  })
+
+  it('keeps an empty result from a nested filter, such as a date condition that matches nothing', async () => {
+    // A nested filter copies the inner filter's value; a date mode has no values, so the list is empty by
+    // design. The inner filter matched no document, so the outer one must match nothing too.
+    const nested: Filter = { ...mockFilter('dueDate', [], 2), mode: 'mock:mode:Today' as any }
+    const filter: Filter = { ...mockFilter('assignee', []), nested }
+    const out = await makeFilterQuery({}, [filter], async () => mockMode, resultOf({ $in: [] }))
+    expect(out).toEqual({ assignee: { $in: [] } })
+  })
+
+  it('keeps an empty result from a mode without a value selector', async () => {
+    const noSelector = { ...mockMode, disableValueSelector: true } as unknown as FilterMode
+    const out = await makeFilterQuery({}, [mockFilter('_id', [])], async () => noSelector, resultOf({ $in: [] }))
+    expect(out).toEqual({ _id: { $in: [] } })
+  })
+})

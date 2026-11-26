@@ -159,6 +159,7 @@
     "GroupByStatus": "按状态",
     "GroupByDate": "按日期",
     "SpeakingWhileMuted": "您已静音 - 其他人听不到您",
-    "SpeakingWhileMutedAlert": "静音时说话提醒我"
+    "SpeakingWhileMutedAlert": "静音时说话提醒我",
+    "ScreenSharedBy": "{name} 正在共享屏幕"
   }
 }

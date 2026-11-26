@@ -18,6 +18,7 @@
     "Subject": "件名",
     "Send": "送信",
     "Resend": "再送信",
+    "IntegrationUnavailable": "Gmail 連携を利用できません。設定で Gmail を再接続し、このメッセージを再送信してください。",
     "NewMessage": "新しいメッセージ",
     "NewMessageTo": "新しいメッセージを次の宛先に送信",
     "Cancel": "キャンセル",

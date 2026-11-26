@@ -43,7 +43,8 @@ export async function sendPushToSubscription (
   const result: Ref<PushSubscription>[] = []
   for (const subscription of subscriptions) {
     try {
-      await webpush.sendNotification(subscription, JSON.stringify(data))
+      // Avoid replaying stale alerts when an offline device reconnects.
+      await webpush.sendNotification(subscription, JSON.stringify(data), { TTL: 300 })
     } catch (err: unknown) {
       if (err instanceof WebPushError) {
         if (isDisposableSubscriptionError(err)) {

@@ -58,6 +58,7 @@ import {
   ObjectValidator,
   OpenDocumentFunction,
   PreviewPresenter,
+  ReferenceFilterSpace,
   ReferenceObjectProvider,
   ReferenceVersionsProvider,
   SpaceHeader,
@@ -86,6 +87,7 @@ const view = plugin(viewId, {
   mixin: {
     ClassFilters: '' as Ref<Mixin<ClassFilters>>,
     AttributeFilter: '' as Ref<Mixin<AttributeFilter>>,
+    ReferenceFilterSpace: '' as Ref<Mixin<ReferenceFilterSpace>>,
     AttributeEditor: '' as Ref<Mixin<AttributeEditor>>,
     CollectionPresenter: '' as Ref<Mixin<CollectionPresenter>>,
     CollectionEditor: '' as Ref<Mixin<CollectionEditor>>,

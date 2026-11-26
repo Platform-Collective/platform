@@ -61,9 +61,6 @@
       description = hasId ? await getDocTitle(client, _id, _class, object) : undefined
     }
   }
-
-  $: isPerson =
-    hierarchy.isDerived(_class, chunter.class.DirectMessage) || hierarchy.isDerived(_class, contact.class.Person)
 </script>
 
 <Header
@@ -74,7 +71,7 @@
   label={title}
   intlLabel={chunter.string.Channel}
   {description}
-  titleKind={isPerson ? 'default' : 'breadcrumbs'}
+  titleKind={'breadcrumbs'}
   withFilters={false}
   {allowClose}
   {canOpen}

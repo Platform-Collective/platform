@@ -4,7 +4,8 @@ import {
   type Event,
   type ReccuringEvent,
   type ReccuringInstance,
-  generateEventId
+  generateEventId,
+  getRecurringInstanceLocation
 } from '@hcengineering/calendar'
 import {
   type Client,
@@ -161,7 +162,7 @@ export async function updateReccuringInstance (
                   originalStartTime: object.originalStartTime,
                   recurringEventId: object.recurringEventId,
                   reminders: object.reminders,
-                  location: object.location,
+                  ...getRecurringInstanceLocation(object),
                   eventId: object.eventId,
                   calendar: object.calendar,
                   access: AccessLevel.Owner,

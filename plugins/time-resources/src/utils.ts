@@ -65,10 +65,9 @@ export function calculateEventsDuration (events: WorkSlot[]): number {
 
 export async function findPrimaryCalendar (): Promise<Ref<Calendar>> {
   const acc = getCurrentAccount()
-  const primary = acc.primarySocialId
   const client = getClient()
   const calendars = await client.findAll(calendarPlugin.class.Calendar, {
-    user: primary,
+    user: { $in: acc.socialIds },
     hidden: false,
     access: { $in: [AccessLevel.Owner, AccessLevel.Writer] }
   })

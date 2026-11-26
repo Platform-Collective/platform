@@ -21,6 +21,8 @@
   import { Action, ViewContextType } from '@hcengineering/view'
   import { fly } from 'svelte/transition'
   import { getContextActionsSync, getSelection } from '../actions'
+  import { withCurrentSpace } from '../actionSpace'
+  import { isButtonActivationKey, isInputTag } from '../keyboard'
   import { ListSelectionProvider, SelectionStore, focusStore, previewDocument, selectionStore } from '../selection'
   import { getObjectPreview, restrictionStore } from '../utils'
 
@@ -135,7 +137,9 @@
   function handleKeys(evt: KeyboardEvent): void {
     // For none we ignore all actions.
     if (disableActions || ctx?.mode === 'none') return
-    const targetTagName = (evt.target as any)?.tagName?.toLowerCase()
+    const targetTagName = (evt.target as HTMLElement | null)?.tagName
+    // Enter/Space on a focused button activate the button itself
+    if (isButtonActivationKey(targetTagName, evt)) return
 
     let elm = evt.target as HTMLElement
     let isContentEditable = false
@@ -160,7 +164,7 @@
     }
 
     if (currentActions === undefined) {
-      if (targetTagName === 'input' || targetTagName === 'button' || targetTagName === 'textarea') {
+      if (isInputTag(targetTagName)) {
         // Retrieve actual list of actions for input context
         currentActions = getContextActionsSync(client, selectionDocs, { ...ctx, mode: 'input' })
       } else {
@@ -181,12 +185,13 @@
       lastKey = undefined
       delayedAction = undefined
       Analytics.handleEvent(a._id)
-      const actionProps: Record<string, any> = {
-        ...a.actionProps,
-        ...(a.actionPopup !== undefined ? { actionPopup: a.actionPopup } : {})
-      }
-      if (!Object.prototype.hasOwnProperty.call(actionProps, 'props')) actionProps.props = {}
-      actionProps.props.space = currentSpace
+      const actionProps: Record<string, any> = withCurrentSpace(
+        {
+          ...a.actionProps,
+          ...(a.actionPopup !== undefined ? { actionPopup: a.actionPopup } : {})
+        },
+        currentSpace
+      )
       await action(selectionDocs, evt, actionProps)
     }
 

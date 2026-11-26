@@ -620,13 +620,20 @@ async function updateCustomFieldsDisplayProps (client: MigrationClient): Promise
   }
 }
 
-async function makeConfigSortable (client: Client): Promise<void> {
+export async function makeConfigSortable (client: Client): Promise<void> {
   const txOp = new TxOperations(client, core.account.System)
   const masterTags = await client.findAll(card.class.MasterTag, {})
   const currentViewlets = await client.findAll(view.class.Viewlet, { attachTo: { $in: masterTags.map((p) => p._id) } })
   for (const currentViewlet of currentViewlets) {
+    if (currentViewlet.configOptions?.sortable === true) continue
+    if (currentViewlet._id == null) {
+      console.warn('[makeConfigSortable] Skipping viewlet without an id', { attachTo: currentViewlet.attachTo })
+      continue
+    }
     const configOptions = { ...currentViewlet.configOptions, sortable: true }
-    await txOp.update(currentViewlet, { configOptions })
+    await txOp.updateDoc(view.class.Viewlet, currentViewlet.space ?? core.space.Model, currentViewlet._id, {
+      configOptions
+    })
   }
 }
 
@@ -674,7 +681,7 @@ async function fillVersioning (client: MigrationClient): Promise<void> {
   }
 }
 
-async function addShowAllVersionsViewOption (client: MigrationUpgradeClient): Promise<void> {
+export async function addShowAllVersionsViewOption (client: MigrationUpgradeClient): Promise<void> {
   const txOp = new TxOperations(client, core.account.System)
   const masterTags = await client.findAll(card.class.MasterTag, {})
   const cardDescendants = client.getHierarchy().getDescendants(card.class.Card)
@@ -700,7 +707,11 @@ async function addShowAllVersionsViewOption (client: MigrationUpgradeClient): Pr
     const viewOptions = v.viewOptions ?? { groupBy: [], orderBy: [], other: [] }
     const other = viewOptions.other ?? []
     if (other.find((o: any) => o.key === 'showAllVersions') === undefined) {
-      await txOp.update(v, {
+      if (v._id == null) {
+        console.warn('[addShowAllVersionsViewOption] Skipping viewlet without an id', { attachTo: v.attachTo })
+        continue
+      }
+      await txOp.updateDoc(view.class.Viewlet, v.space ?? core.space.Model, v._id, {
         viewOptions: {
           ...viewOptions,
           other: [...other, showAllVersionsOption]

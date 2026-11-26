@@ -15,11 +15,13 @@
 
 <script lang="ts">
   import { SpaceTypeDescriptor, generateId } from '@hcengineering/core'
+  import { setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
   import { ProjectTypeDescriptor, createProjectType } from '@hcengineering/task'
   import { ToggleWithLabel } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import task from '../../plugin'
+  import { getDefaultTaskTypes } from './default-task-types'
 
   const client = getClient()
 
@@ -36,20 +38,24 @@
     if (projDescriptor === undefined) {
       return
     }
-    await createProjectType(
-      client,
-      {
-        name,
-        descriptor: projDescriptor._id,
-        description: '',
-        tasks: [],
-        roles: 0,
-        classic: projDescriptor.allowedClassic === true ? classic : false
-      },
-      [],
-      generateId()
-    )
-    dispatch('close')
+    try {
+      await createProjectType(
+        client,
+        {
+          name,
+          descriptor: projDescriptor._id,
+          description: '',
+          tasks: [],
+          roles: 0,
+          classic: projDescriptor.allowedClassic === true ? classic : false
+        },
+        getDefaultTaskTypes(client, projDescriptor),
+        generateId()
+      )
+      dispatch('close')
+    } catch (err) {
+      await setPlatformStatus(unknownError(err))
+    }
   }
 </script>
 

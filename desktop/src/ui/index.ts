@@ -126,14 +126,74 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     : undefined
 
-  void configurePlatform(onWorkbenchConnect).then((parameters) => {
-    const windowTitle = document.getElementById('application-title-bar-caption')
-    if (windowTitle != null) {
-      windowTitle.textContent = parameters.getBranding().getTitle()
-    }
+  const startup = document.getElementById('desktop-startup')
+  const startupStatus = document.getElementById('desktop-startup-status')
+  const startupProgress = document.getElementById('desktop-startup-progress')
+  const startupRetry = document.getElementById('desktop-startup-retry') as HTMLButtonElement | null
+  let configuring = false
+  let initialized = false
+  let reconnectPending = false
+  let retryTimer: ReturnType<typeof setTimeout> | undefined
 
-    createApp(document.body)
-  })
+  async function startApplication (): Promise<void> {
+    if (configuring || initialized) return
+    configuring = true
+    clearTimeout(retryTimer)
+    retryTimer = undefined
+    if (startupStatus != null) startupStatus.hidden = true
+    if (startupProgress != null) startupProgress.hidden = false
+    if (startupRetry != null) startupRetry.disabled = true
+    try {
+      const parameters = await configurePlatform(onWorkbenchConnect)
+      const windowTitle = document.getElementById('application-title-bar-caption')
+      if (windowTitle != null) {
+        windowTitle.textContent = parameters.getBranding().getTitle()
+      }
+
+      createApp(document.body)
+      initialized = true
+      startup?.remove()
+      startupRetry?.removeEventListener('click', retryApplication)
+      window.removeEventListener('online', retryApplication)
+    } catch (error) {
+      console.error('Failed to configure desktop', error)
+      if (startupStatus != null) startupStatus.hidden = false
+      if (startupProgress != null) startupProgress.hidden = true
+      if (startupRetry != null) {
+        startupRetry.hidden = false
+        startupRetry.disabled = false
+      }
+      // Keep retrying in the background, e.g. when the server is unreachable but no 'online' event comes.
+      retryTimer = setTimeout(retryApplication, 5000)
+    } finally {
+      configuring = false
+      if (reconnectPending && !initialized) {
+        reconnectPending = false
+        void startApplication()
+      }
+    }
+  }
+
+  function retryApplication (): void {
+    if (configuring) {
+      reconnectPending = true
+    } else {
+      void startApplication()
+    }
+  }
+
+  startupRetry?.addEventListener('click', retryApplication)
+  window.addEventListener('online', retryApplication)
+  void startApplication()
+
+  const language = localStorage.getItem('lang') ?? 'en'
+  void Promise.all([
+    translate(setting.string.Disconnected, {}, language),
+    translate(setting.string.Reconnect, {}, language)
+  ]).then(([status, retry]) => {
+    if (startupStatus != null) startupStatus.textContent = status
+    if (startupRetry != null) startupRetry.textContent = retry
+  }).catch((error) => { console.error('Failed to translate desktop startup', error) })
 
   function openScreen (screenId: any): void {
     closePopup()

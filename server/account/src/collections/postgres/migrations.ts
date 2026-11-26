@@ -86,7 +86,8 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV26Migration(ns, flavor),
     getV27Migration(ns, flavor),
     getV28Migration(ns, flavor),
-    getV29Migration(ns, flavor)
+    getV29Migration(ns, flavor),
+    getV30Migration(ns, flavor)
   ]
 }
 
@@ -287,12 +288,11 @@ function getV2Migration2 (ns: string, flavor: DBFlavor): [string, string] {
     ALTER TABLE ${ns}.otp
     DROP CONSTRAINT IF EXISTS otp_social_id_fk;
 
-    -- Drop the existing primary key on social_id
+    -- Replace the primary key on social_id with a new one on _id.
+    -- Both changes must be in a single statement: CockroachDB v25+ commits DDL
+    -- statements individually and rejects a table left without a primary key.
     ALTER TABLE ${ns}.social_id
-    DROP CONSTRAINT IF EXISTS social_id_pk;
-
-    -- Add the new primary key on _id
-    ALTER TABLE ${ns}.social_id
+    DROP CONSTRAINT IF EXISTS social_id_pk,
     ADD CONSTRAINT social_id_pk PRIMARY KEY (_id);
     `
   ]
@@ -882,6 +882,20 @@ function getV29Migration (ns: string, flavor: DBFlavor): [string, string] {
 
     CREATE INDEX IF NOT EXISTS api_tokens_expires_on_idx
     ON ${ns}.api_tokens (expires_on);
+    `
+  ]
+}
+
+// OTP attempts counter. Upstream PR hcengineering/platform#11143 adds the same column under
+// 'account_db_v28_add_otp_attempts' with different counting: reconcile both on the next upstream sync.
+// The statement is idempotent, so running both keys is harmless.
+function getV30Migration (ns: string, flavor: DBFlavor): [string, string] {
+  const types = dbTypes[flavor]
+  return [
+    'account_db_v30_add_otp_attempts',
+    `
+    ALTER TABLE ${ns}.otp
+    ADD COLUMN IF NOT EXISTS attempts ${types.int4} NOT NULL DEFAULT 0;
     `
   ]
 }

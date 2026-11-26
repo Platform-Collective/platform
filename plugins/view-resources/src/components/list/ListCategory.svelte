@@ -27,7 +27,7 @@
     Ref,
     Space
   } from '@hcengineering/core'
-  import { IntlString } from '@hcengineering/platform'
+  import { IntlString, setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import { DocWithRank, makeRank } from '@hcengineering/task'
   import ui, {
@@ -40,10 +40,18 @@
     Scroller
   } from '@hcengineering/ui'
   import { AttributeModel, BuildModelKey, ViewOptionModel, ViewOptions, Viewlet } from '@hcengineering/view'
-  import { createEventDispatcher } from 'svelte'
+  import { Analytics } from '@hcengineering/analytics'
+  import { createEventDispatcher, onDestroy } from 'svelte'
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
+  import {
+    getCategoryDropIndex,
+    isPointInside,
+    performCategoryDrop,
+    removeDragPreview,
+    rollbackCategoryDrop
+  } from './category-drag'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -77,6 +85,7 @@
   export let newObjectProps: (doc: Doc | undefined) => Record<string, any> | undefined
   export let viewOptionsConfig: ViewOptionModel[] | undefined = undefined
   export let dragItem: {
+    completing?: Promise<void>
     doc?: Doc
     revert?: () => void
   }
@@ -142,6 +151,13 @@
           { ...finalResultQuery, ...docKeys },
           (res) => {
             items = res
+            if (
+              dragHiddenId !== undefined &&
+              dragSourceId === undefined &&
+              !res.some((it) => it._id === dragHiddenId)
+            ) {
+              dragHiddenId = undefined
+            }
             loading = false
             const focusDoc = items.find((it) => it._id === $focusStore.focus?._id)
             if (focusDoc) {
@@ -224,6 +240,9 @@
   const client = getClient()
 
   let dragItemIndex: number | undefined
+  let dragHiddenId: Ref<Doc> | undefined
+  let dragSourceId: Ref<Doc> | undefined
+  let dragPreviewId: Ref<Doc> | undefined
 
   function dragswap(ev: MouseEvent, i: number): boolean {
     if (dragItemIndex === undefined || !byRank) return false
@@ -243,58 +262,44 @@
 
   let div: HTMLDivElement
 
-  function isBorder(ev: MouseEvent, direction: 'top' | 'bottom'): boolean {
-    const target = ev.target as HTMLDivElement
-    return Math.abs(ev.clientY - target.getBoundingClientRect()[direction]) < 5
-  }
-
   function dragEnterCat(ev: MouseEvent): void {
     ev.preventDefault()
     if (dragItemIndex === undefined && dragItem.doc !== undefined) {
-      const index = items.findIndex((p) => p._id === dragItem.doc?._id)
-      if (index !== -1) {
-        dragItemIndex = index
+      const existingIndex = items.findIndex((p) => p._id === dragItem.doc?._id)
+      if (existingIndex !== -1) {
+        dragItemIndex = existingIndex
+        dragHiddenId = undefined
+        listenForWindowDragEnd()
         return
       }
       const props = _newObjectProps(dragItem.doc)
-      if (props !== undefined) {
-        if (isBorder(ev, 'top')) {
-          items.unshift(dragItem.doc)
-          dragItemIndex = 0
-          items = items
-          dispatch('row-focus', dragItem)
-        } else if (isBorder(ev, 'bottom')) {
-          items.push(dragItem.doc)
-          dragItemIndex = items.length - 1
-          items = items
-          dispatch('row-focus', dragItem)
-        }
+      if (props !== undefined && lastLevel && !collapsed) {
+        const index = getCategoryDropIndex(ev, items.length, collapsed)
+        items.splice(index, 0, dragItem.doc)
+        dragItemIndex = index
+        dragPreviewId = dragItem.doc._id
+        items = items
+        listenForWindowDragEnd()
+        dispatch('row-focus', dragItem)
       }
     }
   }
 
   function dragLeaveCat(ev: MouseEvent): void {
+    if (isPointInside(div.getBoundingClientRect(), ev.clientX, ev.clientY)) return
+    if (ev.relatedTarget instanceof Node && (ev.currentTarget as HTMLElement).contains(ev.relatedTarget)) return
     ev.stopPropagation()
     if (dragItemIndex !== undefined) {
-      items.splice(dragItemIndex, 1)
-      items = items
+      const doc = items[dragItemIndex]
+      if (doc !== undefined && doc._id === dragSourceId) {
+        dragHiddenId = doc._id
+      } else {
+        items = removeDragPreview(items, dragPreviewId)
+        dragPreviewId = undefined
+      }
       dragItemIndex = undefined
     }
-  }
-
-  function dragItemLeave(ev: MouseEvent, i: number): void {
-    if (dragItemIndex !== undefined) {
-      const isLastItem = i === limited.length - 1
-      const isFirstItemWithoutHeader = i === 0 && disableHeader
-      if (isFirstItemWithoutHeader && isBorder(ev, 'top')) {
-        return
-      }
-      if (isLastItem && isBorder(ev, 'bottom')) {
-        return
-      }
-      ev.stopPropagation()
-      ev.preventDefault()
-    }
+    if (dragHiddenId === undefined && dragPreviewId === undefined) stopWindowDragEnd()
   }
 
   function dragover(ev: MouseEvent, i: number): void {
@@ -314,7 +319,7 @@
     ev.stopPropagation()
     ev.preventDefault()
     const update: DocumentUpdate<Doc> = {}
-    if (dragItemIndex !== undefined && viewOptions.orderBy?.[0] === 'rank') {
+    if (dragItemIndex !== undefined && lastLevel && viewOptions.orderBy?.[0] === 'rank') {
       const prev = limited[dragItemIndex - 1] as DocWithRank
       const next = limited[dragItemIndex + 1] as DocWithRank
       try {
@@ -324,33 +329,77 @@
         }
       } catch {}
     }
-    void drop(update)
+    const previewId = dragPreviewId
+    const revert = dragItem.revert
+    dragItem.completing = drop(update)
+    void dragItem.completing.catch((error) => {
+      items = rollbackCategoryDrop(items, previewId, revert)
+      if (dragPreviewId === previewId) dragPreviewId = undefined
+      dragItemIndex = undefined
+      Analytics.handleError(error)
+      void setPlatformStatus(unknownError(error))
+    })
   }
 
   async function drop(update: DocumentUpdate<Doc> = {}): Promise<void> {
-    if (dragItem.doc !== undefined) {
-      const props = _newObjectProps(dragItem.doc)
-      if (props !== undefined) {
-        for (const key in props) {
-          const value = props[key]
-          if ((dragItem.doc as any)[key] !== value) {
-            ;(update as any)[key] = value
+    await performCategoryDrop(
+      dragItem,
+      async () => {
+        if (dragItem.doc !== undefined) {
+          const props = _newObjectProps(dragItem.doc)
+          if (props !== undefined) {
+            for (const key in props) {
+              const value = props[key]
+              if ((dragItem.doc as any)[key] !== value) {
+                ;(update as any)[key] = value
+              }
+            }
+            if (Object.keys(update).length > 0) {
+              await client.update(dragItem.doc, update)
+            }
+          } else {
+            dragItem.revert?.()
           }
         }
-        if (Object.keys(update).length > 0) {
-          await client.update(dragItem.doc, update)
-        }
-      } else {
-        dragItem.revert?.()
+      },
+      () => {
+        dragItemIndex = undefined
       }
-    }
-    dragItem.doc = undefined
-    dragItem.revert = undefined
-    dragItemIndex = undefined
+    )
   }
 
   const dragEndListener: any = (ev: DragEvent, initIndex: number) => {
     ev.preventDefault()
+    dragSourceId = undefined
+    if (ev.dataTransfer?.dropEffect === 'none') {
+      dragHiddenId = undefined
+    } else if (dragHiddenId !== undefined && dragItem.completing !== undefined) {
+      const hiddenId = dragHiddenId
+      void dragItem.completing
+        .then(
+          async () => {
+            const remaining = await client.findAll(
+              _class,
+              { ...finalResultQuery, ...docKeys, _id: hiddenId },
+              { limit: 1 }
+            )
+            if (dragHiddenId !== hiddenId) return
+            if (remaining.length === 0) items = items.filter((it) => it._id !== hiddenId)
+            dragHiddenId = undefined
+          },
+          () => {
+            dragHiddenId = undefined
+          }
+        )
+        .catch((error) => {
+          dragHiddenId = undefined
+          Analytics.handleError(error)
+        })
+    } else {
+      // Cross-list drops store completion on the target list's dragItem, so this source cannot await it.
+      // The source row is reconciled by its live query.
+      dragHiddenId = undefined
+    }
     const rect = listDiv.getBoundingClientRect()
     const inRect = ev.clientY > rect.top && ev.clientY < rect.top + rect.height
     if (!inRect) {
@@ -364,6 +413,32 @@
     }
   }
 
+  let listeningForWindowDragEnd = false
+
+  function windowDragEnd(ev: DragEvent): void {
+    stopWindowDragEnd()
+    if (dragItemIndex === undefined && dragPreviewId === undefined && dragHiddenId === undefined) return
+    if (ev.dataTransfer?.dropEffect === 'none' && dragPreviewId !== undefined) {
+      items = removeDragPreview(items, dragPreviewId)
+    }
+    dragPreviewId = undefined
+    dragItemIndex = undefined
+  }
+
+  function listenForWindowDragEnd(): void {
+    if (listeningForWindowDragEnd) return
+    window.addEventListener('dragend', windowDragEnd)
+    listeningForWindowDragEnd = true
+  }
+
+  function stopWindowDragEnd(): void {
+    if (!listeningForWindowDragEnd) return
+    window.removeEventListener('dragend', windowDragEnd)
+    listeningForWindowDragEnd = false
+  }
+
+  onDestroy(stopWindowDragEnd)
+
   function dragStartHandler(e: CustomEvent<any>): void {
     const { target, index } = e.detail
     dragItemIndex = index
@@ -376,9 +451,12 @@
       ev.dataTransfer.dropEffect = 'move'
     }
     ev.target?.addEventListener('dragend', (e) => dragEndListener(e, i))
+    dragSourceId = docObject._id
+    dragHiddenId = undefined
     dragItem = {
       doc: docObject,
       revert: () => {
+        dragHiddenId = undefined
         const d = items.find((it) => it._id === docObject._id)
         if (d === undefined) {
           items.splice(i, 0, docObject)
@@ -387,6 +465,7 @@
       }
     }
     dragItemIndex = i
+    listenForWindowDragEnd()
     dispatch('dragstart', {
       target: ev.target,
       index: i
@@ -449,7 +528,7 @@
   class:category-one={oneCat}
   class:category-last={lastCat}
   class:disableHeader
-  on:drop|preventDefault={drop}
+  on:drop={dropItemHandle}
   on:dragover={dragOverCat}
   on:dragenter={dragEnterCat}
   on:dragleave={dragLeaveCat}
@@ -494,6 +573,9 @@
   {/if}
   <Scroller horizontal shrink noFade={false} showOverflowArrows>
     <ExpandCollapse isExpanded={!collapsed || dragItemIndex !== undefined}>
+      {#if lastLevel && itemProj.length === 0 && items.length === 0}
+        <div class="empty-drop-area" />
+      {/if}
       {#if !lastLevel}
         <slot
           name="category"
@@ -533,6 +615,7 @@
                 selected={isSelected(docObject, $focusStore)}
                 {readonly}
                 checked={selectedObjectIdsSet.has(docObject._id)}
+                dragHidden={docObject._id === dragHiddenId}
                 last={i === limited.length - 1 && HLimited >= itemProj.length}
                 lastCat={i === limited.length - 1 && (oneCat || lastCat) && HLimited >= itemProj.length}
                 on:dragstart={(e) => {
@@ -543,9 +626,6 @@
                     e.stopPropagation()
                     e.preventDefault()
                   }
-                }}
-                on:dragleave={(e) => {
-                  dragItemLeave(e, i)
                 }}
                 on:dragover={(e) => {
                   dragover(e, i)
@@ -597,3 +677,9 @@
     </ExpandCollapse>
   </Scroller>
 </div>
+
+<style lang="scss">
+  .empty-drop-area {
+    min-height: 2.75rem;
+  }
+</style>

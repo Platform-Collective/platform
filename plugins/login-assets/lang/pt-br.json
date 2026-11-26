@@ -73,6 +73,8 @@
     "PasswordMinUpperChars": "{count, plural, =1 {A senha deve conter pelo menos # letra maiúscula} other {A senha deve conter pelo menos # letras maiúsculas}}",
     "PasswordMinLowerChars": "{count, plural, =1 {A senha deve conter pelo menos # letra minúscula} other {A senha deve conter pelo menos # letras minúsculas}}",
     "WorkspaceArchivedDesc": "O espaço de trabalho está arquivado por estar inativo.",
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "RestoreArchivedWorkspace": "Restaurar",
     "Hello": "Olá {name},",
     "ProcessingInvite": "Processando convite, aguarde...",

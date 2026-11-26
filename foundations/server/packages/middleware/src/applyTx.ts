@@ -41,8 +41,8 @@ export class ApplyTxMiddleware extends BaseMiddleware implements Middleware {
     for (const tx of txes) {
       if (this.context.hierarchy.isDerived(tx._class, core.class.TxApplyIf)) {
         if (part.length > 0) {
-          part = []
           result.push(await this.provideTx(ctx, part))
+          part = []
         }
         const applyIf = tx as TxApplyIf
         // Wait for scope promise if found

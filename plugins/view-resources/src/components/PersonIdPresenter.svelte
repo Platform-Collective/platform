@@ -13,12 +13,13 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { PersonId, Ref } from '@hcengineering/core'
+  import core, { type PersonId } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
-  import contact, { getPersonRefByPersonIdCb, Person } from '@hcengineering/contact'
-  import { IconSize } from '@hcengineering/ui'
+  import contact, { getPersonByPersonIdCb, type Person } from '@hcengineering/contact'
+  import { type IconSize, Label } from '@hcengineering/ui'
 
   import ObjectPresenter from './ObjectPresenter.svelte'
+  import { getPersonIdPresenterState } from './person-id-presenter'
 
   export let value: PersonId | undefined
   export let shouldShowName = true
@@ -29,26 +30,39 @@
   export let withPadding: boolean = true
 
   const client = getClient()
-  let person: Ref<Person> | undefined
-  $: if (value !== undefined) {
-    getPersonRefByPersonIdCb(client, value, (p) => {
-      person = p ?? undefined
-    })
-  } else {
+  let person: Readonly<Person> | null | undefined
+  $: loadPerson(value)
+  $: state = getPersonIdPresenterState(value, person, core.account.System)
+
+  function loadPerson(personId: PersonId | undefined): void {
     person = undefined
+    if (personId == null || personId === '' || personId === core.account.System) return
+
+    // Resolves synchronously from the contact cache, so cached authors render without a loading state.
+    getPersonByPersonIdCb(client, personId, (resolvedPerson) => {
+      if (value === personId) person = resolvedPerson
+    })
   }
 </script>
 
-{#if person}
+{#if state !== 'empty'}
   <div class={withPadding ? 'pl-3' : ''}>
-    <ObjectPresenter
-      objectId={person}
-      _class={contact.class.Person}
-      {shouldShowName}
-      {shouldShowAvatar}
-      {noUnderline}
-      shrink={shrink ? 1 : 0}
-      props={{ avatarSize }}
-    />
+    {#if state === 'system'}
+      <Label label={core.string.System} />
+    {:else if state === 'loading'}
+      <!-- Keep the cell empty while the author is resolved, as before. -->
+    {:else if state === 'resolved' && person != null}
+      <ObjectPresenter
+        objectId={person._id}
+        _class={contact.class.Person}
+        {shouldShowName}
+        {shouldShowAvatar}
+        {noUnderline}
+        shrink={shrink ? 1 : 0}
+        props={{ avatarSize }}
+      />
+    {:else}
+      <span class="overflow-label">{value}</span>
+    {/if}
   </div>
 {/if}
