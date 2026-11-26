@@ -14,8 +14,14 @@
 <script lang="ts">
   import { Label, ListView, Loading, Scroller } from '@hcengineering/ui'
   import { Doc, Ref } from '@hcengineering/core'
-  import { createEventDispatcher } from 'svelte'
-  import notification, { ActivityNotificationViewlet, DocNotifyContext } from '@hcengineering/notification'
+  import { createEventDispatcher, onDestroy, tick } from 'svelte'
+  import { Analytics } from '@hcengineering/analytics'
+  import notification, {
+    ActivityNotificationViewlet,
+    DocNotifyContext,
+    InboxNotification
+  } from '@hcengineering/notification'
+  import { Notification } from '@hcengineering/communication-types'
   import { getClient } from '@hcengineering/presentation'
   import { InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
   import view from '@hcengineering/view'
@@ -24,11 +30,24 @@
   import { NavigationItem } from '../type'
   import { NavigationClient } from '../client'
   import InboxCard from './InboxCard.svelte'
+  import {
+    getRemovalSelection,
+    isNavigationItemRemovalPending,
+    NavigationRemovalQueue,
+    shouldReselectNavigationItem
+  } from './inbox-navigation'
 
   export let doc: Doc | undefined = undefined
   export let legacyContext: DocNotifyContext | undefined = undefined
 
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{
+    select: {
+      navItem: NavigationItem
+      doc: Doc
+      notification?: InboxNotification | Notification
+    }
+    clear: void
+  }>()
   const client = getClient()
 
   const navClient: NavigationClient = new NavigationClient(InboxNotificationsClientImpl.getClient())
@@ -37,7 +56,12 @@
 
   let navItems: NavigationItem[] = []
 
-  $: navItems = $navigationItemsStore
+  // The removal queue can start its next request before Svelte flushes reactive assignments.
+  onDestroy(
+    navigationItemsStore.subscribe((items) => {
+      navItems = items
+    })
+  )
 
   let divScroll: HTMLElement | undefined | null = undefined
   let contentDiv: HTMLElement | undefined | null = undefined
@@ -67,6 +91,56 @@
 
   const docById = new Map<Ref<Doc>, Doc>()
 
+  let removingItem: NavigationItem | undefined = undefined
+  let queuedRemovals: NavigationItem[] = []
+  let selectedByRemoval: NavigationItem | undefined = undefined
+
+  async function removeNavigationItem(navItem: NavigationItem, fromKeyboard: boolean): Promise<void> {
+    const originalItems = navItems
+    const shouldReselect = shouldReselectNavigationItem(navItem, fromKeyboard, selectedByRemoval, doc, legacyContext)
+
+    try {
+      await navClient.remove(navItem)
+
+      // Live queries may report the removal before or after the request completes.
+      const removal = getRemovalSelection(originalItems, navItems, navItem, listSelection, shouldReselect)
+      navItems = removal.items
+      listSelection = removal.selection
+      if (!shouldReselect) return
+      const nextItem = removal.nextItem
+
+      await tick()
+      if (nextItem == null) {
+        selectedByRemoval = undefined
+        dispatch('clear')
+        return
+      }
+
+      list.select(listSelection)
+      const nextDoc = docById.get(nextItem._id) ?? (await client.findOne(nextItem._class, { _id: nextItem._id }))
+      if (nextDoc != null) {
+        selectedByRemoval = nextItem
+        dispatch('select', { navItem: nextItem, doc: nextDoc })
+      } else {
+        selectedByRemoval = undefined
+        dispatch('clear')
+      }
+      contentDiv?.focus()
+    } catch (err) {
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+    }
+  }
+
+  const removalQueue = new NavigationRemovalQueue(
+    removeNavigationItem,
+    (removing, queued) => {
+      removingItem = removing
+      queuedRemovals = queued
+      if (removing == null && queued.length === 0) selectedByRemoval = undefined
+    },
+    () => navItems
+  )
+
   async function onKeydown(key: KeyboardEvent): Promise<void> {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
@@ -83,7 +157,7 @@
       key.stopPropagation()
       const navItem = navItems[listSelection]
       if (navItem != null) {
-        await navClient.remove(navItem)
+        await removalQueue.enqueue(navItem, true)
       }
     }
     if (key.code === 'Enter') {
@@ -142,16 +216,18 @@
           {@const navItem = navItems[itemIndex]}
           {#if navItem}
             <InboxCard
-              {navClient}
               {navItem}
               {viewlets}
+              isRemoving={isNavigationItemRemovalPending(navItem, removingItem, queuedRemovals)}
               selected={navItem._id === legacyContext?.objectId || navItem._id === doc?._id}
+              on:remove={() => removalQueue.enqueue(navItem, false)}
               on:doc={(e) => {
                 const d = e.detail
                 if (d == null) return
-                docById.set(d._id, e.detail)
+                docById.set(d._id, d)
               }}
               on:select={(e) => {
+                selectedByRemoval = undefined
                 dispatch('select', { navItem, doc: e.detail.doc, notification: e.detail.notification })
                 listSelection = itemIndex
               }}
