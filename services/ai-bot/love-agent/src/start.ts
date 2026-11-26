@@ -13,11 +13,10 @@
 // limitations under the License.
 //
 
-import config from './config.js'
 import { runAgent } from './agent.js'
 
 export const start = async (): Promise<void> => {
-  console.log('Starting love worker', config)
+  console.log('Starting love worker')
 
   runAgent()
   const onClose = (): void => {}

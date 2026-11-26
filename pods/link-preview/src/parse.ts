@@ -356,7 +356,7 @@ async function fetchOEmbedData (
 
     // Validate discovered/provider oEmbed URL to prevent SSRF.
     validateUrl(oembedUrl)
-    ctx.info('fetching oEmbed data', { oembedUrl })
+    ctx.info('fetching oEmbed data')
 
     const { response } = await fetchWithValidatedRedirects(
       oembedUrl,
@@ -366,15 +366,14 @@ async function fetchOEmbedData (
 
     if (!response.ok) {
       ctx.warn('oEmbed fetch failed', {
-        status: response.status,
-        statusText: response.statusText
+        status: response.status
       })
       return null
     }
 
     const contentType = response.headers.get('content-type')
     if (contentType === null || !contentType.includes('json')) {
-      ctx.warn('oEmbed response is not JSON', { contentType: contentType ?? 'null' })
+      ctx.warn('oEmbed response is not JSON')
       return null
     }
 
@@ -386,7 +385,7 @@ async function fetchOEmbedData (
       return null
     }
 
-    ctx.info('successfully fetched oEmbed data', { type: data.type })
+    ctx.info('successfully fetched oEmbed data')
     return data
   } catch (error) {
     // Security-related URL validation errors must still fail fast.
@@ -395,9 +394,7 @@ async function fetchOEmbedData (
     }
 
     // Other oEmbed failures should fall back to OG parsing.
-    ctx.warn('failed to fetch oEmbed data', {
-      error: error instanceof Error ? error.message : String(error)
-    })
+    ctx.warn('failed to fetch oEmbed data')
     return null
   }
 }
@@ -565,7 +562,7 @@ async function loadImageSize (ctx: MeasureContext, url: string, config: Config):
     )
 
     if (!response.ok) {
-      ctx.warn('failed to fetch image', { status: response.status, url })
+      ctx.warn('failed to fetch image', { status: response.status })
       return undefined
     }
 
@@ -574,7 +571,7 @@ async function loadImageSize (ctx: MeasureContext, url: string, config: Config):
     if (isNonEmptyString(contentLengthHeader)) {
       const contentLength = parseInt(contentLengthHeader, 10)
       if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
-        ctx.warn('image too large', { contentLength, maxBytes, url })
+        ctx.warn('image too large', { contentLength, maxBytes })
         return undefined
       }
     }
@@ -582,7 +579,7 @@ async function loadImageSize (ctx: MeasureContext, url: string, config: Config):
     // Verify it's actually an image
     const contentType = response.headers.get('content-type')
     if (contentType === null || !contentType.startsWith('image/')) {
-      ctx.warn('URL is not an image', { contentType: contentType ?? 'null', url })
+      ctx.warn('URL is not an image')
       return undefined
     }
 
@@ -590,7 +587,7 @@ async function loadImageSize (ctx: MeasureContext, url: string, config: Config):
 
     // Double-check size after download (in case Content-Length was missing/wrong)
     if (arrayBuffer.byteLength > maxBytes) {
-      ctx.warn('downloaded image too large', { size: arrayBuffer.byteLength, maxBytes, url })
+      ctx.warn('downloaded image too large', { size: arrayBuffer.byteLength, maxBytes })
       return undefined
     }
 
@@ -604,10 +601,7 @@ async function loadImageSize (ctx: MeasureContext, url: string, config: Config):
     return undefined
   } catch (error) {
     // Don't propagate image size errors - they're non-critical
-    ctx.warn('failed to get image size', {
-      error: error instanceof Error ? error.message : String(error),
-      url
-    })
+    ctx.warn('failed to get image size')
     return undefined
   }
 }
@@ -780,12 +774,12 @@ export async function parseLinkPreviewDetails (
   if (oembedData !== null) {
     const ogSiteName = $('meta[property="og:site_name"]').attr('content')
     const hostname = isNonEmptyString(ogSiteName) ? ogSiteName : parsedUrl.hostname
-    ctx.info('using oEmbed data', { url: finalUrl })
+    ctx.info('using oEmbed data')
     return convertOEmbedToPreview(oembedData, finalUrl, hostname, host)
   }
 
   // Fall back to Open Graph / meta tag parsing
-  ctx.info('using Open Graph data', { url: finalUrl })
+  ctx.info('using Open Graph data')
   const preview = parseOpenGraphData($, config, parsedUrl, finalUrl)
 
   // Get image dimensions if we have an image but no dimensions
