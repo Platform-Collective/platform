@@ -17,7 +17,16 @@
   import { getClient } from '@hcengineering/presentation'
   import { Button, IconAdd, IconFilter, eventToHTMLElement, resolvedLocationStore, showPopup } from '@hcengineering/ui'
   import { Filter, ViewOptions } from '@hcengineering/view'
-  import { filterStore, getFilterKey, selectedFilterStore, updateFilter } from '../../filter'
+  import {
+    filterStore,
+    getFilterKey,
+    navigationFilterStore,
+    selectedFilterStore,
+    setFilters,
+    takeNavigationFilters,
+    updateFilter
+  } from '../../filter'
+  import { createFilterPersistence, isSavedFilterLocation } from '../../filter-persistence'
   import view from '../../plugin'
   import FilterTypePopup from './FilterTypePopup.svelte'
   import { onDestroy } from 'svelte'
@@ -30,28 +39,30 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  resolvedLocationStore.subscribe(() => {
-    if ($selectedFilterStore === undefined) {
-      load(_class)
-    }
-  })
+  const persistence = createFilterPersistence(localStorage, setFilters)
 
-  function load(_class: Ref<Class<Doc>> | undefined): void {
-    const key = getFilterKey(_class)
-    const items = localStorage.getItem(key)
-    if (items !== null) {
-      filterStore.set(JSON.parse(items))
+  $: if (_class !== undefined) {
+    const override = takeNavigationFilters($resolvedLocationStore, _class, $navigationFilterStore)
+    if (override !== undefined) {
+      selectedFilterStore.set(undefined)
     }
+    persistence.load(
+      getFilterKey(_class, $resolvedLocationStore),
+      isSavedFilterLocation($selectedFilterStore, $resolvedLocationStore),
+      override,
+      JSON.stringify($resolvedLocationStore.path)
+    )
   }
 
-  function save(_class: Ref<Class<Doc>> | undefined, p: Filter[]): void {
-    const key = getFilterKey(_class)
-    localStorage.setItem(key, JSON.stringify(p))
-  }
-
-  filterStore.subscribe((p) => {
-    save(_class, p)
-  })
+  onDestroy(
+    filterStore.subscribe((filters) => {
+      persistence.save(
+        getFilterKey(_class),
+        filters,
+        isSavedFilterLocation($selectedFilterStore, $resolvedLocationStore)
+      )
+    })
+  )
 
   function nextFilterIndex(): number {
     const current = $filterStore.map((f) => f.index)
@@ -61,10 +72,6 @@
   function onChange(e: Filter | undefined): void {
     if (e !== undefined) updateFilter(e)
   }
-
-  onDestroy(() => {
-    _class = undefined
-  })
 
   function add(e: MouseEvent): void {
     const target = eventToHTMLElement(e)

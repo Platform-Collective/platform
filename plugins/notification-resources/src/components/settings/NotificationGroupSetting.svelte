@@ -20,7 +20,11 @@
     NotificationGroup,
     NotificationTypeSetting,
     NotificationProviderDefaults,
-    NotificationProviderSetting
+    NotificationProviderSetting,
+    WorkspaceNotificationTypeSetting,
+    findWorkspaceNotificationTypeSetting,
+    getWorkspaceNotificationTypeSettingId,
+    resolveNotificationTypeEnabled
   } from '@hcengineering/notification'
   import { getResource, IntlString } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
@@ -31,6 +35,9 @@
 
   export let group: Ref<NotificationGroup>
   export let settings: Map<Ref<NotificationType>, NotificationTypeSetting[]>
+  export let workspaceSettings: Map<Ref<NotificationType>, WorkspaceNotificationTypeSetting[]> = new Map()
+  // When true, the matrix edits workspace-wide defaults instead of the current user's settings
+  export let workspaceMode: boolean = false
 
   const client = getClient()
 
@@ -48,18 +55,18 @@
 
   function getStatus(
     settings: Map<Ref<NotificationType>, NotificationTypeSetting[]>,
+    workspaceSettings: Map<Ref<NotificationType>, WorkspaceNotificationTypeSetting[]>,
+    workspaceMode: boolean,
     type: Ref<NotificationType>,
     provider: Ref<NotificationProvider>
   ): boolean {
-    const setting = getTypeSetting(settings, type, provider)
-    if (setting !== undefined) return setting.enabled
     const prov = providersMap.get(provider)
     if (prov === undefined) return false
-    const providerEnabled = providerDefaults.some((it) => it.provider === provider && it.enabledTypes.includes(type))
-    if (providerEnabled) return true
     const typeValue = typesMap.get(type)
     if (typeValue === undefined) return false
-    return typeValue.defaultEnabled
+    const userSetting = workspaceMode ? undefined : getTypeSetting(settings, type, provider)
+    const workspaceSetting = getWorkspaceSetting(workspaceSettings, type, provider)
+    return resolveNotificationTypeEnabled(typeValue, provider, userSetting, workspaceSetting, providerDefaults)
   }
 
   async function onToggle(
@@ -69,6 +76,29 @@
   ): Promise<void> {
     const provider = providersMap.get(providerId)
     if (provider === undefined) return
+    if (workspaceMode) {
+      await updateWorkspaceSetting(typeId, providerId, value)
+    } else {
+      await updateUserSetting(typeId, providerId, value)
+    }
+    if (value && provider?.depends !== undefined) {
+      const current = getStatus(settings, workspaceSettings, workspaceMode, typeId, provider.depends)
+      if (!current) {
+        await onToggle(typeId, provider.depends, true)
+      }
+    } else if (!value) {
+      const dependents = providers.filter(({ depends }) => depends === providerId)
+      for (const dependent of dependents) {
+        await onToggle(typeId, dependent._id, false)
+      }
+    }
+  }
+
+  async function updateUserSetting(
+    typeId: Ref<NotificationType>,
+    providerId: Ref<NotificationProvider>,
+    value: boolean
+  ): Promise<void> {
     const currentSetting = getTypeSetting(settings, typeId, providerId)
     if (currentSetting === undefined) {
       await client.createDoc(notification.class.NotificationTypeSetting, core.space.Workspace, {
@@ -81,16 +111,32 @@
         enabled: value
       })
     }
-    if (value && provider?.depends !== undefined) {
-      const current = getStatus(settings, typeId, provider.depends)
-      if (!current) {
-        await onToggle(typeId, provider.depends, true)
-      }
-    } else if (!value) {
-      const dependents = providers.filter(({ depends }) => depends === providerId)
-      for (const dependent of dependents) {
-        await onToggle(typeId, dependent._id, false)
-      }
+  }
+
+  async function updateWorkspaceSetting(
+    typeId: Ref<NotificationType>,
+    providerId: Ref<NotificationProvider>,
+    value: boolean
+  ): Promise<void> {
+    const current = getWorkspaceSetting(workspaceSettings, typeId, providerId)
+    if (current !== undefined) {
+      await client.update(current, { enabled: value })
+      return
+    }
+    // One document per provider and type: a deterministic id makes a concurrent second create fail
+    // instead of adding a duplicate, in which case the document created meanwhile is updated.
+    const id = getWorkspaceNotificationTypeSettingId(providerId, typeId)
+    try {
+      await client.createDoc(
+        notification.class.WorkspaceNotificationTypeSetting,
+        core.space.Workspace,
+        { attachedTo: providerId, type: typeId, enabled: value },
+        id
+      )
+    } catch (err: any) {
+      const existing = await client.findOne(notification.class.WorkspaceNotificationTypeSetting, { _id: id })
+      if (existing === undefined) throw err
+      await client.update(existing, { enabled: value })
     }
   }
 
@@ -102,6 +148,14 @@
     const typeMap = map.get(type)
     if (typeMap === undefined) return
     return typeMap.find((p) => p.attachedTo === provider)
+  }
+
+  function getWorkspaceSetting(
+    map: Map<Ref<NotificationType>, WorkspaceNotificationTypeSetting[]>,
+    type: Ref<NotificationType>,
+    provider: Ref<NotificationProvider>
+  ): WorkspaceNotificationTypeSetting | undefined {
+    return findWorkspaceNotificationTypeSetting(map.get(type) ?? [], provider, type)
   }
 
   const isNotificationType = (type: NotificationType): type is NotificationType => {
@@ -133,15 +187,19 @@
   async function getFilteredProviders(
     providers: NotificationProvider[],
     types: NotificationType[],
-    providersSettings: NotificationProviderSetting[]
+    providersSettings: NotificationProviderSetting[],
+    workspaceMode: boolean
   ): Promise<NotificationProvider[]> {
     const result: NotificationProvider[] = []
 
     for (const provider of providers) {
-      const providerSetting = providersSettings.find((p) => p.attachedTo === provider._id)
+      // Personal provider settings do not restrict the workspace defaults matrix
+      if (!workspaceMode) {
+        const providerSetting = providersSettings.find((p) => p.attachedTo === provider._id)
 
-      if (providerSetting !== undefined && !providerSetting.enabled) continue
-      if (providerSetting === undefined && !provider.defaultEnabled) continue
+        if (providerSetting !== undefined && !providerSetting.enabled) continue
+        if (providerSetting === undefined && !provider.defaultEnabled) continue
+      }
 
       if (provider.isAvailableFn !== undefined) {
         const isAvailableFn = await getResource(provider.isAvailableFn)
@@ -165,7 +223,7 @@
 
   let filteredProviders: NotificationProvider[] = []
 
-  $: void getFilteredProviders(providers, types, $providersSettings).then((result) => {
+  $: void getFilteredProviders(providers, types, $providersSettings, workspaceMode).then((result) => {
     filteredProviders = result
   })
 
@@ -183,7 +241,7 @@
       </div>
       {#each filteredProviders as provider (provider._id)}
         {#if !isIgnored(type._id, provider)}
-          {@const status = getStatus(settings, type._id, provider._id)}
+          {@const status = getStatus(settings, workspaceSettings, workspaceMode, type._id, provider._id)}
           <div class="toggle">
             <ModernToggle
               size="small"

@@ -50,6 +50,7 @@
     "@hcengineering/model-presentation": "workspace:^0.7.0",
     "@hcengineering/notification": "workspace:^0.7.0",
     "@hcengineering/platform": "workspace:^0.7.20",
+    "@hcengineering/text-editor": "workspace:^0.7.0",
     "@hcengineering/ui": "workspace:^0.7.0",
     "@hcengineering/view": "workspace:^0.7.0",
     "@hcengineering/workbench": "workspace:^0.7.0"

@@ -65,6 +65,8 @@
     "Messages": "消息",
     "NoResults": "没有记录",
     "CopyLink": "复制链接",
+    "Quote": "引用",
+    "QuoteWrote": "{author} 写道：",
     "FilterBacklinks": "反向链接",
     "DM": "直连消息",
     "DMNotification": "发送了一条消息",

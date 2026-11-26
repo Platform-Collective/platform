@@ -16,7 +16,7 @@
 import { config as dotenvConfig } from 'dotenv'
 import { globalShortcut, Event, BrowserWindow, CookiesSetDetails, Notification, app, desktopCapturer, dialog, ipcMain, nativeImage, session, shell, systemPreferences, nativeTheme } from 'electron'
 import contextMenu from 'electron-context-menu'
-import log from 'electron-log'
+import log from 'electron-log/main'
 import Store from 'electron-store'
 import { ProgressInfo, UpdateInfo } from 'electron-updater'
 import WinBadge from 'electron-windows-badge'
@@ -39,6 +39,11 @@ import { TrayController } from './tray'
 import { getFileInPublicBundledFolder } from './path'
 import { OsIntegration } from './osIntegration'
 import { IpcMessage } from '../ui/ipcMessages'
+
+// Injects the electron-log preload so renderer `electron-log` calls reach the main log file.
+// Must run before any session (e.g. the `persist:huly` partition) is created: sessions created
+// later get the preload via 'session-created'. Renderer console is not mirrored (spyRendererConsole is off).
+log.initialize()
 
 let isQuiting = false
 
@@ -456,7 +461,9 @@ function runTheApp (): void {
     autoUpdater.setFeedURL({
       provider: 'generic',
       url: updatesUrl,
-      channel: updatesChannel
+      channel: updatesChannel,
+      // The dist storage ignores multi-range requests, which breaks differential download.
+      useMultipleRangeRequest: false
     })
     void autoUpdater.checkForUpdatesAndNotify()
   })

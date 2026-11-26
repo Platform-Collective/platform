@@ -15,7 +15,7 @@
 
 import { Analytics } from '@hcengineering/analytics'
 import { getClient } from '@hcengineering/account-client'
-import { MeasureContext, Tx, metricsAggregate } from '@hcengineering/core'
+import { MeasureContext, Tx, metricsAggregate, safeHttpLogFormat } from '@hcengineering/core'
 import { PlatformQueue, QueueTopic, getCPUInfo, getMemoryInfo } from '@hcengineering/server-core'
 import { decodeToken, TokenError } from '@hcengineering/server-token'
 
@@ -174,7 +174,7 @@ export async function createServer (
       handleRequest(ctx, name, datalake, tempDir, fn, req, res, next)
     }
 
-  app.use(morgan('short', { stream: new LogStream() }))
+  app.use(morgan(safeHttpLogFormat, { stream: new LogStream() }))
 
   if (config.Readonly) {
     app.use(withReadonly)

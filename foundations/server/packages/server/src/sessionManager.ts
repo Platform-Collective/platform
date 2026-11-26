@@ -641,7 +641,8 @@ export class TSessionManager implements SessionManager {
       ctx.warn('open workspace', {
         account: token.account,
         workspace: workspaceUuid,
-        ...token.extra
+        source: token.extra?.service ?? 'user',
+        mode: token.extra?.mode
       })
 
       workspace = this.createWorkspace(ctx.parent ?? ctx, ctx, token, workspaceInfo.url, workspaceInfo.dataId, branding)
@@ -845,7 +846,12 @@ export class TSessionManager implements SessionManager {
     ws: ConnectionSocket
   ): Promise<void> {
     if (LOGGING_ENABLED) {
-      ctx.info('reloading workspace', { url: workspace.wsId.url, token: JSON.stringify(token) })
+      ctx.info('reloading workspace', {
+        url: workspace.wsId.url,
+        account: token.account,
+        workspace: token.workspace,
+        source: token.extra?.service ?? 'user'
+      })
     }
 
     // Mark as upgrade, to prevent any new clients to connect during close
@@ -1511,7 +1517,12 @@ export class TSessionManager implements SessionManager {
       } catch (err: any) {
         Analytics.handleError(err)
         if (LOGGING_ENABLED) {
-          this.ctx.error('error handle request', { error: err, request })
+          this.ctx.error('error handle request', {
+            error: err,
+            requestId: request.id,
+            method: request.method,
+            paramsCount: Array.isArray(request.params) ? request.params.length : undefined
+          })
         }
         await ws.send(
           requestCtx,

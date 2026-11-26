@@ -16,6 +16,7 @@
 import activity from '@hcengineering/activity'
 import board from '@hcengineering/board'
 import calendarPlugin, { type Visibility } from '@hcengineering/calendar'
+import chunter from '@hcengineering/chunter'
 import contactPlugin, { type Employee } from '@hcengineering/contact'
 import {
   AccountRole,
@@ -307,6 +308,25 @@ export function createModel (builder: Builder): void {
       override: [time.action.CreateToDoGlobal]
     },
     time.action.CreateToDo
+  )
+
+  createAction(
+    builder,
+    {
+      action: view.actionImpl.ShowPopup,
+      actionProps: {
+        component: time.component.PlanMessagePopup,
+        element: 'top',
+        fillProps: { _object: 'object' }
+      },
+      label: time.string.AddToPlanner,
+      icon: time.icon.Calendar,
+      input: 'focus',
+      category: time.category.Time,
+      target: chunter.class.ChatMessage,
+      context: { mode: ['context'], group: 'associate' }
+    },
+    time.action.PlanMessage
   )
 
   createAction(

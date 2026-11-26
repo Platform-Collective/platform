@@ -65,6 +65,8 @@
     "Messages": "メッセージ",
     "NoResults": "結果はありません",
     "CopyLink": "リンクをコピー",
+    "Quote": "引用",
+    "QuoteWrote": "{author} が書きました:",
     "FilterBacklinks": "被リンク",
     "DM": "ダイレクトメッセージ",
     "DMNotification": "からメッセージが届きました",

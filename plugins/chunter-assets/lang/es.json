@@ -65,6 +65,8 @@
     "Messages": "Mensajes",
     "NoResults": "No hay resultados",
     "CopyLink": "Copiar enlace",
+    "Quote": "Citar",
+    "QuoteWrote": "{author} escribió:",
     "FilterBacklinks": "Enlaces retroactivos",
     "DM": "MD",
     "DMNotification": "Te envió un mensaje",
