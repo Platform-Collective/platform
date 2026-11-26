@@ -4,7 +4,7 @@ import core from './component'
 import type { Hierarchy } from './hierarchy'
 import { getObjectValue } from './objvalue'
 import { createPredicates, includesValue, isPredicate, isSameLink, isSameValue, type ValueMatcher } from './predicate'
-import type { SortQuerySelector, SortingOrder, SortingQuery, SortingRules } from './storage'
+import type { Lookup, SortQuerySelector, SortingOrder, SortingQuery, SortingRules } from './storage'
 
 export { getLinkIdentity, isSameLink, isSameValue, type ValueMatcher } from './predicate'
 
@@ -61,11 +61,32 @@ export function isLinkListAttribute (hierarchy: Hierarchy, _class: Ref<Class<Doc
 }
 
 /**
- * For a `$lookup.<field>[.$lookup.<field>...].<key>` query key, the looked-up document's class and the
- * attribute key on it, read from the `$lookup` the document carries. Undefined for other keys, or when the
- * document has no single looked-up document there.
+ * For a `$lookup.<field>[.$lookup.<field>...].<key>` query key, the class the lookup declares for the looked-up
+ * document and the attribute key on it. Undefined for other keys and for keys the lookup does not declare.
+ * @public
  */
-function getLookupTarget (doc: Doc, key: string): { _class: Ref<Class<Doc>>, key: string } | undefined {
+export function getLookupClass (
+  lookup: Lookup<Doc> | undefined,
+  key: string
+): { _class: Ref<Class<Doc>>, key: string } | undefined {
+  const parts = key.split('.')
+  let current: any = lookup
+  let _class: Ref<Class<Doc>> | undefined
+  let i = 0
+  while (parts[i] === '$lookup' && i + 2 < parts.length) {
+    const value = current?.[parts[i + 1]]
+    _class = Array.isArray(value) ? value[0] : value
+    current = Array.isArray(value) ? value[1] : undefined
+    i += 2
+  }
+  if (i === 0 || typeof _class !== 'string') return undefined
+  return { _class, key: parts.slice(i).join('.') }
+}
+
+/**
+ * For a `$lookup` key, the class of the looked-up document the document carries, and the key on it.
+ */
+function getLookupDocClass (doc: Doc, key: string): { _class: Ref<Class<Doc>>, key: string } | undefined {
   const parts = key.split('.')
   let target: any = doc
   let i = 0
@@ -78,14 +99,39 @@ function getLookupTarget (doc: Doc, key: string): { _class: Ref<Class<Doc>>, key
 }
 
 /**
- * The value matcher for an attribute: link identity for link lists, literal matching otherwise.
- * A `$lookup` key is resolved on the class of the looked-up document, so `doc` must be given for it.
+ * Checks if a key reached through a lookup is a link list: the looked-up class, or a class derived from it,
+ * declares it as one. The adapters and the in-memory matcher use this same rule, so a lookup that names a base
+ * class still finds a link list its subclass declares.
  * @public
  */
-export function getValueMatcher (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, key: string, doc?: Doc): ValueMatcher {
+export function isLookupLinkListAttribute (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, key: string): boolean {
+  let classes: Array<Ref<Class<Doc>>>
+  try {
+    classes = [_class, ...hierarchy.getDescendants(_class)]
+  } catch {
+    return false
+  }
+  return classes.some((it) => isLinkListAttribute(hierarchy, it, key))
+}
+
+/**
+ * The value matcher for an attribute: link identity for link lists, literal matching otherwise.
+ * A `$lookup` key is resolved on the class the lookup declares (see isLookupLinkListAttribute). Without the
+ * lookup, the class of the looked-up document `doc` carries stands in for it.
+ * @public
+ */
+export function getValueMatcher (
+  hierarchy: Hierarchy,
+  _class: Ref<Class<Doc>>,
+  key: string,
+  doc?: Doc,
+  lookup?: Lookup<Doc>
+): ValueMatcher {
   if (key.startsWith('$lookup.')) {
-    const target = doc !== undefined ? getLookupTarget(doc, key) : undefined
-    return target !== undefined && isLinkListAttribute(hierarchy, target._class, target.key) ? isSameLink : isSameValue
+    const target = getLookupClass(lookup, key) ?? (doc !== undefined ? getLookupDocClass(doc, key) : undefined)
+    return target !== undefined && isLookupLinkListAttribute(hierarchy, target._class, target.key)
+      ? isSameLink
+      : isSameValue
   }
   return isLinkListAttribute(hierarchy, _class, key) ? isSameLink : isSameValue
 }
@@ -213,7 +259,8 @@ export function matchQuery<T extends Doc> (
   query: DocumentQuery<T>,
   clazz: Ref<Class<T>>,
   hierarchy: Hierarchy,
-  skipLookup = false
+  skipLookup = false,
+  lookup?: Lookup<T>
 ): Doc[] {
   const baseClass = hierarchy.getBaseClass(clazz)
   let result = docs.filter((r) => hierarchy.isDerived(r._class, baseClass))
@@ -228,9 +275,10 @@ export function matchQuery<T extends Doc> (
     const tkey = checkMixinKey(key, clazz, hierarchy)
     if (key.startsWith('$lookup.')) {
       // The attribute belongs to each document's looked-up document.
-      result = result.filter(
-        (doc) => findProperty([doc], tkey, value, getValueMatcher(hierarchy, clazz, key, doc)).length > 0
-      )
+      result = result.filter((doc) => {
+        const matcher = getValueMatcher(hierarchy, clazz, key, doc, lookup)
+        return findProperty([doc], tkey, value, matcher).length > 0
+      })
     } else {
       result = findProperty(result, tkey, value, getValueMatcher(hierarchy, clazz, key))
     }

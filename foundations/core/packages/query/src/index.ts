@@ -237,7 +237,8 @@ export class LiveQuery implements WithTx, Client {
       if (key === '$search') continue
       if (skipLookup && key.startsWith('$lookup')) continue
       const value = (query as any)[key]
-      const result = findProperty([doc], key, value, getValueMatcher(this.getHierarchy(), q._class, key, doc))
+      const matcher = getValueMatcher(this.getHierarchy(), q._class, key, doc, q.options?.lookup)
+      const result = findProperty([doc], key, value, matcher)
       if (result.length === 0) {
         return false
       }
@@ -1067,7 +1068,8 @@ export class LiveQuery implements WithTx, Client {
           matched = true
           continue
         }
-        const res = findProperty([doc], tkey, value, getValueMatcher(this.client.getHierarchy(), q._class, key, doc))
+        const matcher = getValueMatcher(this.client.getHierarchy(), q._class, key, doc, q.options?.lookup)
+        const res = findProperty([doc], tkey, value, matcher)
         if (res.length === 0) {
           return false
         } else {
@@ -1086,7 +1088,7 @@ export class LiveQuery implements WithTx, Client {
           return false
         }
       }
-      const res = matchQuery([realDoc], q.query, q._class, this.client.getHierarchy())
+      const res = matchQuery([realDoc], q.query, q._class, this.client.getHierarchy(), false, q.options?.lookup)
       if (res.length === 1) {
         if (q.result instanceof Promise) {
           q.result = await q.result

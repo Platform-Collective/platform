@@ -39,6 +39,7 @@ import core, {
   groupByArray,
   type Hierarchy,
   isLinkListAttribute,
+  isLookupLinkListAttribute,
   isOperator,
   type Iterator,
   type Lookup,
@@ -1251,7 +1252,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
 
   /**
    * Checks if a `$lookup.<path>.<key>` query key is a link list of the looked-up class, the class the join
-   * for `<path>` leads to. The attribute has to be resolved there, not on the queried class.
+   * for `<path>` leads to, or of a class derived from it, as in core. Not on the queried class.
    */
   private isLookupLinkList (key: string, joins: JoinProps[]): boolean {
     if (!key.startsWith('$lookup')) return false
@@ -1260,7 +1261,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     const path = arr.join('.')
     const join = joins.find((p) => p.path === path)
     if (join === undefined || join.isReverse || join.toClass === undefined) return false
-    return isDataField(join.table, tKey) && isLinkListAttribute(this.hierarchy, join.toClass, tKey)
+    return isDataField(join.table, tKey) && isLookupLinkListAttribute(this.hierarchy, join.toClass, tKey)
   }
 
   private getValueType<T extends Doc> (_class: Ref<Class<T>>, key: string): ValueType {
@@ -1437,17 +1438,29 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
     const contains = (items: any[]): string =>
       `${tkey} @> ${vars.add(JSON.stringify(items.map((it) => getLinkIdentity(it) ?? it)), '::text::jsonb')}`
+    // Containment would accept any object holding these fields, so an item has to be equal to a literal list
+    // or object. JSONB equality ignores key order, like deep equality in core.
+    const holdsEqual = (item: any): string => {
+      const items = `jsonb_array_elements(CASE WHEN jsonb_typeof(${tkey}) = 'array' THEN ${tkey} ELSE '[]'::jsonb END)`
+      return `EXISTS (SELECT 1 FROM ${items} AS item WHERE item = ${vars.add(JSON.stringify(item), '::text::jsonb')})`
+    }
+    const isLiteral = (item: any): boolean =>
+      item !== null && typeof item === 'object' && getLinkIdentity(item) === undefined
+    const holds = (item: any): string => (isLiteral(item) ? holdsEqual(item) : contains([item]))
+    const holdsAll = (items: any[]): string => {
+      const contained = items.filter((it) => !isLiteral(it))
+      const parts = items.filter(isLiteral).map(holdsEqual)
+      return [...(contained.length > 0 ? [contains(contained)] : []), ...parts].join(' AND ')
+    }
     if (!Object.keys(value).some((it) => it.startsWith('$'))) {
       if (getLinkIdentity(value) !== undefined) {
         // A single link: the list holds it.
         return contains([value])
       }
-      // Containment would accept any object holding these fields, so an item has to be equal to the value.
-      const items = `jsonb_array_elements(CASE WHEN jsonb_typeof(${tkey}) = 'array' THEN ${tkey} ELSE '[]'::jsonb END)`
-      return `EXISTS (SELECT 1 FROM ${items} AS item WHERE item = ${vars.add(JSON.stringify(value), '::text::jsonb')})`
+      return holdsEqual(value)
     }
     const membership = (items: any[]): string => {
-      const parts = items.filter((it) => it != null).map((it) => contains([it]))
+      const parts = items.filter((it) => it != null).map(holds)
       if (items.some((it) => it == null)) {
         parts.push(`${tkey} IS NULL`, `jsonb_typeof(${tkey}) = 'null'`, `${tkey} @> '[null]'::jsonb`)
       }
@@ -1469,7 +1482,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
           res.push(`NOT COALESCE(${membership(val)}, FALSE)`)
           break
         case '$all':
-          res.push(val.length === 0 ? `jsonb_typeof(${tkey}) = 'array'` : contains(val))
+          res.push(val.length === 0 ? `jsonb_typeof(${tkey}) = 'array'` : holdsAll(val))
           break
       }
     }

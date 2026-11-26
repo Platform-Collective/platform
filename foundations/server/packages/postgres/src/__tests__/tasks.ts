@@ -14,6 +14,13 @@ import core, {
 import { type IntlString, plugin, type Plugin } from '@hcengineering/platform'
 import { createAttribute, createClass, createDoc } from './minmodel'
 
+/**
+ * A task subclass that alone declares a link list, for lookups that name the base class.
+ */
+export interface LinkedTask extends Task {
+  related?: TaskLink[]
+}
+
 export interface TaskComment extends AttachedDoc {
   message: string
   date: Date
@@ -83,6 +90,7 @@ export const taskPlugin = plugin(taskIds, {
   class: {
     Task: '' as Ref<Class<Task>>,
     TaskEstimate: '' as Ref<Class<TaskEstimate>>,
+    LinkedTask: '' as Ref<Class<LinkedTask>>,
     TaskComment: '' as Ref<Class<TaskComment>>,
     TStat: '' as Ref<Class<TStat>>,
     TStatCat: '' as Ref<Class<TStatCat>>
@@ -130,6 +138,20 @@ export function createTaskModel (txes: Tx[]): void {
       kind: ClassifierKind.CLASS,
       label: 'Estimate' as IntlString,
       domain: 'test-task' as Domain
+    }),
+    createClass(taskPlugin.class.LinkedTask, {
+      kind: ClassifierKind.CLASS,
+      label: 'LinkedTask' as IntlString,
+      extends: taskPlugin.class.Task
+    }),
+    createAttribute({
+      attributeOf: taskPlugin.class.LinkedTask,
+      name: 'related',
+      type: {
+        _class: core.class.ArrOf,
+        label: 'related' as IntlString,
+        of: { _class: core.class.RefTo, label: 'link' as IntlString, to: core.class.TypeRelatedDocument }
+      } as any
     }),
     createClass(taskPlugin.class.TaskComment, {
       kind: ClassifierKind.CLASS,

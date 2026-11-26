@@ -415,6 +415,18 @@ describe('mongo operations', () => {
     // Literal values stay literal.
     expect(translate({ links: [] })).toEqual({ links: [] })
     expect(translate({ links: {} })).toEqual({ links: {} })
+    // MongoDB compares embedded documents in key order, so literal lists and objects are matched in every key
+    // order, as core and PostgreSQL ignore it.
+    const lists = translate({ links: [linkB] }).links.$in
+    expect(lists.map((it: any) => Object.keys(it[0]))).toEqual([
+      ['_id', '_class'],
+      ['_class', '_id']
+    ])
+    const objects = translate({ links: { $in: [{ kind: 'note', title: 'x' }] } }).links.$in
+    expect(objects.map((it: any) => Object.keys(it))).toEqual([
+      ['kind', 'title'],
+      ['title', 'kind']
+    ])
     // Links are matched by _id and _class only.
     expect(translate({ links: { $in: [{ ...linkA, title: 'extra' }] } })).toEqual({
       links: { $elemMatch: { $or: [linkA] } }

@@ -544,6 +544,8 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         await create('t6', [{ ...linkA, title: 'extra' }])
         await create('t7', null)
         await create('t8', [null, linkC])
+        // An object that is not a link.
+        await create('t9', [{ kind: 'note', title: 'x' }])
 
         // A link is identified by _id and _class only, in the query too.
         expect(await findNames(linkA)).toEqual(['t1', 't2', 't6'])
@@ -554,17 +556,17 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         expect(await findNames({ $in: [{ ...linkA, _class: 'class:Other' }] })).toEqual([])
 
         // $nin is the complement of $in: documents without the field or with a null field are kept.
-        expect(await findNames({ $nin: [linkA] })).toEqual(['t3', 't4', 't5', 't7', 't8'])
-        expect(await findNames({ $nin: [linkA, linkC] })).toEqual(['t4', 't5', 't7'])
+        expect(await findNames({ $nin: [linkA] })).toEqual(['t3', 't4', 't5', 't7', 't8', 't9'])
+        expect(await findNames({ $nin: [linkA, linkC] })).toEqual(['t4', 't5', 't7', 't9'])
 
         // null matches a missing field, a null field and a null item.
         expect(await findNames({ $in: [linkA, null] })).toEqual(['t1', 't2', 't5', 't6', 't7', 't8'])
         expect(await findNames({ $in: [linkB, null] })).toEqual(['t1', 't3', 't5', 't7', 't8'])
-        expect(await findNames({ $nin: [linkA, null] })).toEqual(['t3', 't4'])
+        expect(await findNames({ $nin: [linkA, null] })).toEqual(['t3', 't4', 't9'])
 
         // Empty operands: $in matches nothing, $all every list.
         expect(await findNames({ $in: [] })).toEqual([])
-        expect(await findNames({ $all: [] })).toEqual(['t1', 't2', 't3', 't4', 't6', 't8'])
+        expect(await findNames({ $all: [] })).toEqual(['t1', 't2', 't3', 't4', 't6', 't8', 't9'])
 
         // $all needs a list: a null operand matches a null item, not a missing or null field.
         expect(await findNames({ $all: [null] })).toEqual(['t8'])
@@ -573,6 +575,27 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         // Literal values stay literal: an empty list matches only the empty list.
         expect(await findNames([])).toEqual(['t4'])
         expect(await findNames({})).toEqual([])
+
+        // Key order does not matter in literal lists and objects; t3 stores linkB with its keys reversed.
+        expect(await findNames([linkB, linkC])).toEqual(['t3'])
+        expect(await findNames([{ _class: linkB._class, _id: linkB._id }, linkC])).toEqual(['t3'])
+        expect(await findNames([linkC, linkB])).toEqual([])
+        // An object that is not a link matches an equal item, whatever the order of its keys.
+        expect(await findNames({ kind: 'note', title: 'x' })).toEqual(['t9'])
+        expect(await findNames({ title: 'x', kind: 'note' })).toEqual(['t9'])
+        expect(await findNames({ kind: 'note' })).toEqual([])
+        expect(await findNames({ $in: [{ title: 'x', kind: 'note' }] })).toEqual(['t9'])
+        expect(await findNames({ $all: [{ title: 'x', kind: 'note' }] })).toEqual(['t9'])
+        expect(await findNames({ $nin: [{ title: 'x', kind: 'note' }] })).toEqual([
+          't1',
+          't2',
+          't3',
+          't4',
+          't5',
+          't6',
+          't7',
+          't8'
+        ])
       })
 
       it('should match links of a looked-up document', async () => {
@@ -616,6 +639,57 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         expect(await findMessages({ $all: [linkA, linkB] })).toEqual(['on-parent'])
         expect(await findMessages({ $all: [linkB] })).toEqual(['on-other', 'on-parent'])
         expect(await findMessages({ $nin: [linkA] })).toEqual(['on-other'])
+      })
+
+      it('should match links that only a subclass of the looked-up class declares', async () => {
+        const { operations, client, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const createComment = async (message: string, attachedTo: Ref<Doc>): Promise<void> => {
+          await operations.addCollection(
+            taskPlugin.class.TaskComment,
+            space,
+            attachedTo,
+            taskPlugin.class.Task,
+            'tasks',
+            {
+              message,
+              date: new Date()
+            }
+          )
+        }
+        // Only LinkedTask declares "related"; the lookup names its base class Task.
+        const linked = await operations.createDoc(taskPlugin.class.LinkedTask, space, {
+          name: 'linked',
+          description: '',
+          rate: 0,
+          related: [{ ...linkA, title: 'extra' }]
+        })
+        const plain = await operations.createDoc(taskPlugin.class.Task, space, {
+          name: 'plain',
+          description: '',
+          rate: 0
+        })
+        await createComment('on-linked', linked)
+        await createComment('on-plain', plain)
+
+        async function findMessages (linksQuery: any): Promise<string[]> {
+          const query: DocumentQuery<Doc> = { '$lookup.attachedTo.related': linksQuery }
+          const lookup = { attachedTo: taskPlugin.class.Task } as any
+          const found: any[] = await client.findAll(taskPlugin.class.TaskComment, query, { lookup })
+          const messages = found.map((it) => it.message).sort((a, b) => a.localeCompare(b))
+
+          // The live query passes the lookup, so it resolves the attribute the same way.
+          const all = await client.findAll<Doc>(taskPlugin.class.TaskComment, {}, { lookup })
+          const hierarchy = client.getHierarchy()
+          const matched: any[] = matchQuery(all, query, taskPlugin.class.TaskComment, hierarchy, false, lookup)
+          expect(matched.map((it) => it.message).sort((a, b) => a.localeCompare(b))).toEqual(messages)
+          return messages
+        }
+
+        expect(await findMessages({ $in: [linkA] })).toEqual(['on-linked'])
+        expect(await findMessages({ $all: [linkA] })).toEqual(['on-linked'])
+        expect(await findMessages(linkA)).toEqual(['on-linked'])
+        expect(await findMessages({ $nin: [linkA] })).toEqual(['on-plain'])
       })
     })
 
