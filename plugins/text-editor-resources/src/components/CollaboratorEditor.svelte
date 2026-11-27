@@ -24,6 +24,7 @@
 
   import { EditorKitOptions } from '../kits/editor-kit'
   import CollaborativeTextEditor from './CollaborativeTextEditor.svelte'
+  import { InlineCommandItem } from './extension/inlineCommandItems'
   import { FileAttachFunction } from './extension/types'
 
   export let object: Doc
@@ -46,6 +47,7 @@
   export let attachFile: FileAttachFunction | undefined = undefined
   export let kitOptions: Partial<EditorKitOptions> = {}
   export let requestSideSpace: ((width: number) => void) | undefined = undefined
+  export let extraInlineCommands: InlineCommandItem[] = []
 
   let collaborativeEditor: CollaborativeTextEditor
 
@@ -103,6 +105,7 @@
     {spellcheck}
     {kitOptions}
     {requestSideSpace}
+    {extraInlineCommands}
     on:editor
     on:update
     on:blur

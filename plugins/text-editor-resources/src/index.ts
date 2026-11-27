@@ -72,6 +72,8 @@ export * from './utils'
 export * from './components/editor-context'
 
 export * from './command/deleteAttachment'
+export { mergeInlineCommandItems, type InlineCommandItem } from './components/extension/inlineCommandItems'
+export { captureEditorPosition } from './components/extension/relativePosition'
 export { EmojiExtension } from './components/extension/emoji'
 export { FocusExtension, type FocusOptions, type FocusStorage } from './components/extension/hooks/focus'
 export {

@@ -35,6 +35,9 @@
     "NoBacklinks": "Brak linków zwrotnych",
     "NoHistory": "Brak historii",
     "Untitled": "Bez nazwy",
+    "Subpage": "Podstrona",
+    "SubpageCreationUnconfirmed": "Nie udało się potwierdzić utworzenia podstrony.",
+    "SubpageLinkFailed": "Podstrona \"{title}\" została utworzona, ale nie udało się wstawić jej łącza. Znajdziesz ją w nawigatorze.",
 
     "Description": "Opis",
 

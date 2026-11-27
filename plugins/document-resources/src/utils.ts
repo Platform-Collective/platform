@@ -13,24 +13,36 @@
 // limitations under the License.
 //
 
+import { Analytics } from '@hcengineering/analytics'
 import {
   type Client,
   type Data,
   type QuerySelector,
   type Ref,
   SortingOrder,
-  type TxOperations
+  type TxOperations,
+  generateId
 } from '@hcengineering/core'
 import { type Document, type Teamspace, documentId, getFirstRank } from '@hcengineering/document'
 import { getMetadata, translate } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { makeRank } from '@hcengineering/rank'
-import { type Location, type ResolvedLocation, getCurrentResolvedLocation, getPanelURI } from '@hcengineering/ui'
-import { accessDeniedStore } from '@hcengineering/view-resources'
+import { captureEditorPosition } from '@hcengineering/text-editor-resources'
+import {
+  type Location,
+  NotificationSeverity,
+  type ResolvedLocation,
+  addNotification,
+  getCurrentResolvedLocation,
+  getPanelURI
+} from '@hcengineering/ui'
+import { SimpleNotification, accessDeniedStore, openDoc } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
+import { type Editor } from '@tiptap/core'
 import slugify from 'slugify'
 
 import document from './plugin'
+import { makeReferenceContent } from './subpage'
 
 export async function moveDocument (doc: Document, space: Ref<Teamspace>, parent: Ref<Document>): Promise<void> {
   const client = getClient()
@@ -90,6 +102,53 @@ export async function createEmptyDocument (
   }
 
   await client.createDoc(document.class.Document, space, object, id)
+}
+
+async function notifySubpageFailure (doc: Document | undefined): Promise<void> {
+  const [heading, message] = await Promise.all([
+    translate(document.string.Subpage, {}),
+    doc === undefined
+      ? translate(document.string.SubpageCreationUnconfirmed, {})
+      : translate(document.string.SubpageLinkFailed, { title: doc.title })
+  ])
+  addNotification(heading, message, SimpleNotification, undefined, NotificationSeverity.Warning)
+}
+
+/**
+ * Create a child document of `parent`, insert a link to it at `pos` and open it
+ * after the link was inserted, the same way creating a child document from the navigator does.
+ */
+export async function createSubpage (editor: Editor, pos: number, parent: Document): Promise<void> {
+  const client = getClient()
+  const id: Ref<Document> = generateId()
+  const resolvePosition = captureEditorPosition(editor, Math.min(pos, editor.state.doc.content.size))
+  const title = await translate(document.string.Untitled, {})
+
+  let doc: Document | undefined
+  let inserted = false
+  try {
+    await createEmptyDocument(client, id, parent.space, parent._id, { title })
+    doc = await client.findOne(document.class.Document, { _id: id })
+    if (doc !== undefined && !editor.isDestroyed) {
+      const at = resolvePosition()
+      if (at !== null && !editor.isDestroyed) {
+        const inline = editor.state.doc.resolve(at).parent.inlineContent
+        inserted = editor
+          .chain()
+          .focus(at)
+          .insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline))
+          .run()
+      }
+    }
+  } catch (err) {
+    Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+  }
+
+  if (!inserted || doc === undefined) {
+    await notifySubpageFailure(doc)
+    return
+  }
+  await openDoc(client.getHierarchy(), doc)
 }
 
 export async function resolveLocation (loc: Location): Promise<ResolvedLocation | undefined> {

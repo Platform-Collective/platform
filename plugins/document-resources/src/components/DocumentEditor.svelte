@@ -16,14 +16,20 @@
 -->
 <script lang="ts">
   import contact from '@hcengineering/contact'
-  import document, { Document } from '@hcengineering/document'
+  import { permissionsStore } from '@hcengineering/contact-resources'
+  import { getCurrentAccount } from '@hcengineering/core'
+  import { Document } from '@hcengineering/document'
   import { getResource } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
-  import { CollaboratorEditor, ImageUploadOptions } from '@hcengineering/text-editor-resources'
+  import { CollaboratorEditor, ImageUploadOptions, InlineCommandItem } from '@hcengineering/text-editor-resources'
   import { AnySvelteComponent } from '@hcengineering/ui'
-  import { getCollaborationUser } from '@hcengineering/view-resources'
+  import { canCreateObject, getCollaborationUser } from '@hcengineering/view-resources'
   import { FocusPosition } from '@tiptap/core'
   import { createEventDispatcher } from 'svelte'
+
+  import document from '../plugin'
+  import { canCreateSubpage, SubpageCommandId } from '../subpage'
+  import { createSubpage } from '../utils'
 
   export let object: Document
   export let readonly = false
@@ -49,6 +55,30 @@
     collabEditor.focus(position)
   }
 
+  // Read-only and locked documents are handled by the editor itself: it does not accept commands then.
+  $: extraInlineCommands =
+    !readonly &&
+    canCreateSubpage(getCurrentAccount(), canCreateObject(document.class.Document, object.space, $permissionsStore))
+      ? [
+          {
+            id: SubpageCommandId,
+            label: document.string.Subpage,
+            icon: document.icon.Document,
+            action: async (editor, pos) => {
+              if (
+                readonly ||
+                !canCreateSubpage(
+                  getCurrentAccount(),
+                  canCreateObject(document.class.Document, object.space, $permissionsStore)
+                )
+              )
+                return
+              await createSubpage(editor, pos, object)
+            }
+          } satisfies InlineCommandItem
+        ]
+      : []
+
   $: attribute = {
     key: 'content',
     attr: client.getHierarchy().getAttribute(document.class.Document, 'content')
@@ -67,6 +97,7 @@
   {overflow}
   {editorAttributes}
   {requestSideSpace}
+  {extraInlineCommands}
   on:update
   on:loaded
   kitOptions={{

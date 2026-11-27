@@ -35,6 +35,9 @@
     "NoBacklinks": "No backlinks",
     "NoHistory": "No previous history",
     "Untitled": "Untitled",
+    "Subpage": "Subpage",
+    "SubpageCreationUnconfirmed": "Subpage creation could not be confirmed.",
+    "SubpageLinkFailed": "Subpage \"{title}\" was created, but its link could not be inserted. Find it in the navigator.",
 
     "Description": "Description",
 
