@@ -56,6 +56,7 @@ import core, {
   checkMixinKey,
   clone,
   findProperty,
+  getValueMatcher,
   generateId,
   getObjectValue,
   matchQuery,
@@ -236,7 +237,8 @@ export class LiveQuery implements WithTx, Client {
       if (key === '$search') continue
       if (skipLookup && key.startsWith('$lookup')) continue
       const value = (query as any)[key]
-      const result = findProperty([doc], key, value)
+      const matcher = getValueMatcher(this.getHierarchy(), q._class, key, doc, q.options?.lookup)
+      const result = findProperty([doc], key, value, matcher)
       if (result.length === 0) {
         return false
       }
@@ -842,7 +844,9 @@ export class LiveQuery implements WithTx, Client {
       const udoc = q.result.findDoc(tx.objectId)
       await this.updatedDocCallback(q, q.result, udoc)
     } else if (this.matchQuerySync(q, tx) && (await this.matchQuery(q, tx, docCache))) {
-      await this.sort(q, tx)
+      // The document was appended to the result, so it must be sorted into place even when the
+      // transaction does not change a sort key.
+      await this.sort(q, tx, true)
       const udoc = q.result.findDoc(tx.objectId)
       await this.updatedDocCallback(q, q.result, udoc)
     } else if (
@@ -1050,11 +1054,22 @@ export class LiveQuery implements WithTx, Client {
 
       TxProcessor.updateDoc2Doc(doc, virtualTx)
 
+      // $push / $pull / $update change only some items of a list, so the partial doc does not hold the
+      // whole list. Such keys are checked against the full document below.
+      const partialArrayKeys = new Set<string>(
+        [ops.$push, ops.$pull, ops.$update].flatMap((op) => (op != null ? Object.keys(op) : []))
+      )
+
       for (const key in q.query) {
         const value = (q.query as any)[key]
         const tkey = checkMixinKey(key, q._class, this.client.getHierarchy())
         if (getObjectValue(tkey, doc) === undefined) continue
-        const res = findProperty([doc], tkey, value)
+        if (partialArrayKeys.has(tkey)) {
+          matched = true
+          continue
+        }
+        const matcher = getValueMatcher(this.client.getHierarchy(), q._class, key, doc, q.options?.lookup)
+        const res = findProperty([doc], tkey, value, matcher)
         if (res.length === 0) {
           return false
         } else {
@@ -1073,7 +1088,7 @@ export class LiveQuery implements WithTx, Client {
           return false
         }
       }
-      const res = matchQuery([realDoc], q.query, q._class, this.client.getHierarchy())
+      const res = matchQuery([realDoc], q.query, q._class, this.client.getHierarchy(), false, q.options?.lookup)
       if (res.length === 1) {
         if (q.result instanceof Promise) {
           q.result = await q.result
@@ -1762,10 +1777,10 @@ export class LiveQuery implements WithTx, Client {
     await this.__updateLookup(q, updatedDoc, ops)
   }
 
-  private async sort (q: Query, tx: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>): Promise<void> {
+  private async sort (q: Query, tx: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>, force = false): Promise<void> {
     const sort = q.options?.sort
     if (sort === undefined) return
-    let needSort = sort.modifiedBy !== undefined || sort.modifiedOn !== undefined
+    let needSort = force || sort.modifiedBy !== undefined || sort.modifiedOn !== undefined
     if (!needSort) needSort = this.checkNeedSort(sort, tx)
 
     if (needSort) {

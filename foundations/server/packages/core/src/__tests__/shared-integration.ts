@@ -33,7 +33,17 @@
  * ```
  */
 
-import core, { type Client, type Ref, SortingOrder, type Space, type TxOperations } from '@hcengineering/core'
+import core, {
+  type Class,
+  type Client,
+  type Doc,
+  type DocumentQuery,
+  matchQuery,
+  type Ref,
+  SortingOrder,
+  type Space,
+  type TxOperations
+} from '@hcengineering/core'
 
 /**
  * Test context provided to the shared test suite
@@ -449,6 +459,237 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         )
         expect(r.length).toEqual(1)
         expect(r[0].$associations?.[`${association._id}_b`][0]?._id).toEqual(secondTask)
+      })
+    })
+
+    describe('Lists of links', () => {
+      // A list of { _id, _class } objects, like an issue's "blocked by" or "related to".
+      // Filters over such a list send its objects inside $in / $all.
+      const linkA = { _id: 'link-a' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+      const linkB = { _id: 'link-b' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+      const linkC = { _id: 'link-c' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+      const unknownLink = { _id: 'link-unknown' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+
+      async function findNames (linksQuery: any): Promise<string[]> {
+        const { client, taskPlugin } = getContext()
+        const query: DocumentQuery<Doc> = { links: linksQuery }
+        const found: any[] = await client.findAll(taskPlugin.class.Task, query)
+        const names = found.map((it) => it.name).sort((a, b) => a.localeCompare(b))
+
+        // The client's live queries decide with matchQuery whether a changed document enters or leaves
+        // a result, so it has to agree with the database.
+        const all = await client.findAll<Doc>(taskPlugin.class.Task, {})
+        const matched: any[] = matchQuery(all, query, taskPlugin.class.Task, client.getHierarchy())
+        expect(matched.map((it) => it.name).sort((a, b) => a.localeCompare(b))).toEqual(names)
+        return names
+      }
+
+      it('should match $in and $all over a list of link objects, also after links change', async () => {
+        const { operations, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const create = async (name: string, links?: any[]): Promise<Ref<Doc>> =>
+          await operations.createDoc(taskPlugin.class.Task, space, {
+            name,
+            description: '',
+            rate: 0,
+            ...(links !== undefined ? { links } : {})
+          })
+
+        const t1 = await create('t1', [linkA, linkB])
+        const t2 = await create('t2', [linkA])
+        // Same link as linkB, with its keys in another order.
+        await create('t3', [{ _class: linkB._class, _id: linkB._id }, linkC])
+        await create('t4', [])
+        await create('t5')
+
+        expect(await findNames({ $in: [linkA, linkB] })).toEqual(['t1', 't2', 't3'])
+        expect(await findNames({ $in: [linkC] })).toEqual(['t3'])
+        expect(await findNames({ $in: [unknownLink] })).toEqual([])
+        expect(await findNames({ $all: [linkA, linkB] })).toEqual(['t1'])
+        expect(await findNames({ $all: [linkA] })).toEqual(['t1', 't2'])
+        expect(await findNames({ $all: [linkB] })).toEqual(['t1', 't3'])
+        expect(await findNames({ $all: [linkA, unknownLink] })).toEqual([])
+
+        // Links change after the filter is applied, the way the tracker adds and removes them.
+        await operations.updateDoc(taskPlugin.class.Task, space, t2, {
+          $push: { links: { _id: linkB._id, _class: linkB._class } }
+        })
+        expect(await findNames({ $all: [linkA, linkB] })).toEqual(['t1', 't2'])
+
+        await operations.updateDoc(taskPlugin.class.Task, space, t1, { $pull: { links: { _id: linkA._id } } })
+        expect(await findNames({ $all: [linkA, linkB] })).toEqual(['t2'])
+        expect(await findNames({ $in: [linkA] })).toEqual(['t2'])
+        expect(await findNames({ $in: [linkA, linkB] })).toEqual(['t1', 't2', 't3'])
+      })
+
+      it('should match links by _id and _class, with $nin, null and empty operands', async () => {
+        const { operations, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const create = async (name: string, links?: any[] | null): Promise<void> => {
+          await operations.createDoc(taskPlugin.class.Task, space, {
+            name,
+            description: '',
+            rate: 0,
+            ...(links !== undefined ? { links } : {})
+          })
+        }
+
+        await create('t1', [linkA, linkB])
+        await create('t2', [linkA])
+        // Same link as linkB, with its keys in another order.
+        await create('t3', [{ _class: linkB._class, _id: linkB._id }, linkC])
+        await create('t4', [])
+        await create('t5')
+        // Same link as linkA, stored with an extra field.
+        await create('t6', [{ ...linkA, title: 'extra' }])
+        await create('t7', null)
+        await create('t8', [null, linkC])
+        // An object that is not a link.
+        await create('t9', [{ kind: 'note', title: 'x' }])
+
+        // A link is identified by _id and _class only, in the query too.
+        expect(await findNames(linkA)).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $in: [linkA] })).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $in: [{ ...linkA, title: 'other' }] })).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $all: [linkA] })).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $all: [linkB, linkC] })).toEqual(['t3'])
+        expect(await findNames({ $in: [{ ...linkA, _class: 'class:Other' }] })).toEqual([])
+
+        // $nin is the complement of $in: documents without the field or with a null field are kept.
+        expect(await findNames({ $nin: [linkA] })).toEqual(['t3', 't4', 't5', 't7', 't8', 't9'])
+        expect(await findNames({ $nin: [linkA, linkC] })).toEqual(['t4', 't5', 't7', 't9'])
+
+        // null matches a missing field, a null field and a null item.
+        expect(await findNames({ $in: [linkA, null] })).toEqual(['t1', 't2', 't5', 't6', 't7', 't8'])
+        expect(await findNames({ $in: [linkB, null] })).toEqual(['t1', 't3', 't5', 't7', 't8'])
+        expect(await findNames({ $nin: [linkA, null] })).toEqual(['t3', 't4', 't9'])
+
+        // Empty operands: $in matches nothing, $all every list.
+        expect(await findNames({ $in: [] })).toEqual([])
+        expect(await findNames({ $all: [] })).toEqual(['t1', 't2', 't3', 't4', 't6', 't8', 't9'])
+
+        // $all needs a list: a null operand matches a null item, not a missing or null field.
+        expect(await findNames({ $all: [null] })).toEqual(['t8'])
+        expect(await findNames({ $all: [null, linkC] })).toEqual(['t8'])
+
+        // Literal values stay literal: an empty list matches only the empty list.
+        expect(await findNames([])).toEqual(['t4'])
+        expect(await findNames({})).toEqual([])
+
+        // Key order does not matter in literal lists and objects; t3 stores linkB with its keys reversed.
+        expect(await findNames([linkB, linkC])).toEqual(['t3'])
+        expect(await findNames([{ _class: linkB._class, _id: linkB._id }, linkC])).toEqual(['t3'])
+        expect(await findNames([linkC, linkB])).toEqual([])
+        // An object that is not a link matches an equal item, whatever the order of its keys.
+        expect(await findNames({ kind: 'note', title: 'x' })).toEqual(['t9'])
+        expect(await findNames({ title: 'x', kind: 'note' })).toEqual(['t9'])
+        expect(await findNames({ kind: 'note' })).toEqual([])
+        expect(await findNames({ $in: [{ title: 'x', kind: 'note' }] })).toEqual(['t9'])
+        expect(await findNames({ $all: [{ title: 'x', kind: 'note' }] })).toEqual(['t9'])
+        expect(await findNames({ $nin: [{ title: 'x', kind: 'note' }] })).toEqual([
+          't1',
+          't2',
+          't3',
+          't4',
+          't5',
+          't6',
+          't7',
+          't8'
+        ])
+      })
+
+      it('should match links of a looked-up document', async () => {
+        const { operations, client, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const createTask = async (name: string, links: any[]): Promise<Ref<Doc>> =>
+          await operations.createDoc(taskPlugin.class.Task, space, { name, description: '', rate: 0, links })
+        const createComment = async (message: string, attachedTo: Ref<Doc>): Promise<void> => {
+          await operations.addCollection(
+            taskPlugin.class.TaskComment,
+            space,
+            attachedTo,
+            taskPlugin.class.Task,
+            'tasks',
+            {
+              message,
+              date: new Date()
+            }
+          )
+        }
+
+        // The parent's link to linkA is stored with an extra field.
+        await createComment('on-parent', await createTask('parent', [{ ...linkA, title: 'extra' }, linkB]))
+        await createComment('on-other', await createTask('other', [linkB]))
+
+        async function findMessages (linksQuery: any): Promise<string[]> {
+          const query: DocumentQuery<Doc> = { '$lookup.attachedTo.links': linksQuery }
+          const options = { lookup: { attachedTo: taskPlugin.class.Task } as any }
+          const found: any[] = await client.findAll(taskPlugin.class.TaskComment, query, options)
+          const messages = found.map((it) => it.message).sort((a, b) => a.localeCompare(b))
+
+          // The live query matches the comments with the parent they carry in $lookup.
+          const all = await client.findAll<Doc>(taskPlugin.class.TaskComment, {}, options)
+          const matched: any[] = matchQuery(all, query, taskPlugin.class.TaskComment, client.getHierarchy())
+          expect(matched.map((it) => it.message).sort((a, b) => a.localeCompare(b))).toEqual(messages)
+          return messages
+        }
+
+        expect(await findMessages({ $in: [linkA] })).toEqual(['on-parent'])
+        expect(await findMessages({ $in: [linkA, linkB] })).toEqual(['on-other', 'on-parent'])
+        expect(await findMessages({ $all: [linkA, linkB] })).toEqual(['on-parent'])
+        expect(await findMessages({ $all: [linkB] })).toEqual(['on-other', 'on-parent'])
+        expect(await findMessages({ $nin: [linkA] })).toEqual(['on-other'])
+      })
+
+      it('should match links that only a subclass of the looked-up class declares', async () => {
+        const { operations, client, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const createComment = async (message: string, attachedTo: Ref<Doc>): Promise<void> => {
+          await operations.addCollection(
+            taskPlugin.class.TaskComment,
+            space,
+            attachedTo,
+            taskPlugin.class.Task,
+            'tasks',
+            {
+              message,
+              date: new Date()
+            }
+          )
+        }
+        // Only LinkedTask declares "related"; the lookup names its base class Task.
+        const linked = await operations.createDoc(taskPlugin.class.LinkedTask, space, {
+          name: 'linked',
+          description: '',
+          rate: 0,
+          related: [{ ...linkA, title: 'extra' }]
+        })
+        const plain = await operations.createDoc(taskPlugin.class.Task, space, {
+          name: 'plain',
+          description: '',
+          rate: 0
+        })
+        await createComment('on-linked', linked)
+        await createComment('on-plain', plain)
+
+        async function findMessages (linksQuery: any): Promise<string[]> {
+          const query: DocumentQuery<Doc> = { '$lookup.attachedTo.related': linksQuery }
+          const lookup = { attachedTo: taskPlugin.class.Task } as any
+          const found: any[] = await client.findAll(taskPlugin.class.TaskComment, query, { lookup })
+          const messages = found.map((it) => it.message).sort((a, b) => a.localeCompare(b))
+
+          // The live query passes the lookup, so it resolves the attribute the same way.
+          const all = await client.findAll<Doc>(taskPlugin.class.TaskComment, {}, { lookup })
+          const hierarchy = client.getHierarchy()
+          const matched: any[] = matchQuery(all, query, taskPlugin.class.TaskComment, hierarchy, false, lookup)
+          expect(matched.map((it) => it.message).sort((a, b) => a.localeCompare(b))).toEqual(messages)
+          return messages
+        }
+
+        expect(await findMessages({ $in: [linkA] })).toEqual(['on-linked'])
+        expect(await findMessages({ $all: [linkA] })).toEqual(['on-linked'])
+        expect(await findMessages(linkA)).toEqual(['on-linked'])
+        expect(await findMessages({ $nin: [linkA] })).toEqual(['on-plain'])
       })
     })
 

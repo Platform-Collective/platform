@@ -1,4 +1,4 @@
-import {
+import core, {
   type AttachedDoc,
   type Class,
   ClassifierKind,
@@ -11,7 +11,14 @@ import {
   type Tx
 } from '@hcengineering/core'
 import { type IntlString, plugin, type Plugin } from '@hcengineering/platform'
-import { createClass } from './minmodel'
+import { createAttribute, createClass } from './minmodel'
+
+/**
+ * A task subclass that alone declares a link list, for lookups that name the base class.
+ */
+export interface LinkedTask extends Task {
+  related?: TaskLink[]
+}
 
 export interface TaskComment extends AttachedDoc {
   message: string
@@ -38,6 +45,15 @@ export interface Task extends Doc {
   status?: TaskStatus
   reproduce?: TaskReproduce
   eta?: TaskEstimate | null
+  links?: TaskLink[]
+}
+
+/**
+ * A link to another document, stored like an issue's "blocked by" or "related to" entries.
+ */
+export interface TaskLink {
+  _id: Ref<Doc>
+  _class: Ref<Class<Doc>>
 }
 
 /**
@@ -62,6 +78,7 @@ export const taskPlugin = plugin(taskIds, {
   class: {
     Task: '' as Ref<Class<Task>>,
     TaskEstimate: '' as Ref<Class<TaskEstimate>>,
+    LinkedTask: '' as Ref<Class<LinkedTask>>,
     TaskComment: '' as Ref<Class<TaskComment>>
   }
 })
@@ -102,10 +119,34 @@ export function createTaskModel (txes: Tx[]): void {
       label: 'Estimate' as IntlString,
       domain: 'test-task' as Domain
     }),
+    createClass(taskPlugin.class.LinkedTask, {
+      kind: ClassifierKind.CLASS,
+      label: 'LinkedTask' as IntlString,
+      extends: taskPlugin.class.Task
+    }),
+    createAttribute({
+      attributeOf: taskPlugin.class.LinkedTask,
+      name: 'related',
+      type: {
+        _class: core.class.ArrOf,
+        label: 'related' as IntlString,
+        of: { _class: core.class.RefTo, label: 'link' as IntlString, to: core.class.TypeRelatedDocument }
+      } as any
+    }),
     createClass(taskPlugin.class.TaskComment, {
       kind: ClassifierKind.CLASS,
       label: 'Comment' as IntlString,
       domain: 'test-task' as Domain
+    }),
+    createAttribute({
+      attributeOf: taskPlugin.class.Task,
+      name: 'links',
+      type: {
+        _class: core.class.ArrOf,
+        label: 'links' as IntlString,
+        // Declared like tracker's "blocked by": ArrOf(TypeRef(core.class.TypeRelatedDocument))
+        of: { _class: core.class.RefTo, label: 'link' as IntlString, to: core.class.TypeRelatedDocument }
+      } as any
     })
   )
 }

@@ -24,6 +24,10 @@ import core, {
   cutObjectArray,
   escapeLikeForRegexp,
   groupByArray,
+  getLinkIdentity,
+  isLinkListAttribute,
+  isLookupLinkListAttribute,
+  getLookupClass,
   isOperator,
   matchQuery,
   platformNow,
@@ -310,6 +314,20 @@ abstract class MongoAdapterBase implements DbAdapter {
         const keys = Object.keys(value)
         if (keys[0] === '$like') {
           translated[tkey.key] = translateLikeQuery(value.$like as string)
+          continue
+        }
+        if (this.isLinkListKey(clazz, key, options)) {
+          const { field, and } = translateLinkListQuery(tkey.key, value)
+          if (field !== undefined) {
+            translated[tkey.key] = field
+          }
+          if (and.length > 0) {
+            translated.$and = [...(translated.$and ?? []), ...and]
+          }
+          continue
+        }
+        if (Array.isArray(value.$all) && value.$all.length === 0) {
+          translated[tkey.key] = translateEmptyAll(value)
           continue
         }
       }
@@ -795,6 +813,18 @@ abstract class MongoAdapterBase implements DbAdapter {
       this.stripHash(v)
     }
     return obj
+  }
+
+  /**
+   * Checks if a query key is a link list. Through a `$lookup`, the attribute is resolved on the looked-up class
+   * the find options declare and the classes derived from it, as in core.
+   */
+  private isLinkListKey<T extends Doc> (clazz: Ref<Class<T>>, key: string, options?: ServerFindOptions<T>): boolean {
+    if (!key.startsWith('$lookup.')) {
+      return isLinkListAttribute(this.hierarchy, clazz, key)
+    }
+    const target = getLookupClass(options?.lookup, key)
+    return target !== undefined && isLookupLinkListAttribute(this.hierarchy, target._class, target.key)
   }
 
   private translateKey<T extends Doc> (
@@ -1827,6 +1857,147 @@ function fillCustomSort<T extends Doc> (
     options.sort = {}
   }
   sort[`sort_${key}`] = rules.order === SortingOrder.Ascending ? 1 : -1
+}
+
+/**
+ * `$all: []` matches every document whose field is a list, as in the in-memory matcher and PostgreSQL.
+ * MongoDB itself would match none.
+ */
+function translateEmptyAll (value: Record<string, any>): Record<string, any> {
+  const { $all, ...rest } = value
+  return { ...rest, $type: 'array' }
+}
+
+function splitLinks (values: any[]): { links: Array<Record<string, any>>, others: any[] } {
+  const links: Array<Record<string, any>> = []
+  const others: any[] = []
+  for (const it of values) {
+    const identity = getLinkIdentity(it)
+    if (identity !== undefined) {
+      links.push(identity)
+    } else {
+      others.push(it)
+    }
+  }
+  return { links, others }
+}
+
+const MAX_KEY_ORDERS = 256
+
+function isPlainObject (value: any): value is Record<string, any> {
+  return value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype
+}
+
+function permutations (keys: string[]): string[][] {
+  if (keys.length <= 1) return [keys]
+  return keys.flatMap((key, i) =>
+    permutations([...keys.slice(0, i), ...keys.slice(i + 1)]).map((rest) => [key, ...rest])
+  )
+}
+
+/**
+ * Every key order of the objects in a literal value, at any depth. MongoDB compares embedded documents field
+ * by field in stored order, while core (deep equality) and PostgreSQL (JSONB equality) ignore key order, so a
+ * literal is matched with `$in` over all of its key orders.
+ */
+function keyOrders (value: any): any[] {
+  let variants: any[]
+  if (Array.isArray(value)) {
+    variants = [[]]
+    for (const item of value) {
+      const items = keyOrders(item)
+      variants = variants.flatMap((list) => items.map((it) => [...list, it]))
+      checkKeyOrders(variants)
+    }
+  } else if (isPlainObject(value)) {
+    variants = []
+    for (const keys of permutations(Object.keys(value))) {
+      let objects: any[] = [{}]
+      for (const key of keys) {
+        const values = keyOrders(value[key])
+        objects = objects.flatMap((obj) => values.map((it) => ({ ...obj, [key]: it })))
+        checkKeyOrders([...variants, ...objects])
+      }
+      variants.push(...objects)
+    }
+  } else {
+    variants = [value]
+  }
+  return variants
+}
+
+function checkKeyOrders (variants: any[]): void {
+  if (variants.length > MAX_KEY_ORDERS) {
+    throw new Error(`A literal value in a link-list filter has more than ${MAX_KEY_ORDERS} key orders`)
+  }
+}
+
+/** A literal value matched in any key order: the value itself when it has only one. */
+function anyKeyOrder (value: any): any {
+  const variants = keyOrders(value)
+  return variants.length === 1 ? variants[0] : { $in: variants }
+}
+
+/**
+ * Items of a link list ({ _id, _class }, such as an issue's "blocked by") are matched by `_id` and `_class`
+ * with $elemMatch, so field order and extra stored fields do not matter. MongoDB alone would match an object
+ * only when it is exactly equal to a list item. Other operand values (null, plain values) keep their
+ * MongoDB meaning: `$in: [null]` matches a missing field, a null field and a null item. Literal lists and
+ * objects that are not links match equal values, whatever the order of their keys, as in core and PostgreSQL.
+ *
+ * Returns the condition for the field itself and conditions that must be added to the query with `$and`.
+ */
+function translateLinkListQuery (
+  key: string,
+  value: Record<string, any>
+): { field: Record<string, any> | undefined, and: Array<Record<string, any>> } {
+  if (!Object.keys(value).some((it) => it.startsWith('$'))) {
+    // A single link: the list holds it. Other values, such as a literal list or object, stay literal.
+    const identity = getLinkIdentity(value)
+    return { field: identity !== undefined ? { $elemMatch: identity } : anyKeyOrder(value), and: [] }
+  }
+  const { $in, $nin, $all, ...rest } = value
+  const field: Record<string, any> = { ...rest }
+  const and: Array<Record<string, any>> = []
+  if (Array.isArray($in)) {
+    const { links, others } = splitLinks($in)
+    if (links.length === 0) {
+      field.$in = others.flatMap(keyOrders)
+    } else if (others.length === 0) {
+      field.$elemMatch = { $or: links }
+    } else {
+      and.push({ $or: [{ [key]: { $elemMatch: { $or: links } } }, { [key]: { $in: others.flatMap(keyOrders) } }] })
+    }
+  } else if ($in !== undefined) {
+    field.$in = $in
+  }
+  if (Array.isArray($nin)) {
+    const { links, others } = splitLinks($nin)
+    if (links.length > 0) {
+      // $not also matches documents without the field, like $nin.
+      field.$not = { $elemMatch: { $or: links } }
+    }
+    if (others.length > 0 || links.length === 0) {
+      field.$nin = others.flatMap(keyOrders)
+    }
+  } else if ($nin !== undefined) {
+    field.$nin = $nin
+  }
+  if (Array.isArray($all)) {
+    const { links } = splitLinks($all)
+    // As in the in-memory matcher and SQL, $all needs a list: `$all: [null]` alone would also match a missing
+    // or null field. An empty $all matches every list.
+    field.$type = 'array'
+    if (links.length > 0 || $all.some((it) => keyOrders(it).length > 1)) {
+      field.$all = $all.map((it) => ({ $elemMatch: getLinkIdentity(it) ?? { $in: keyOrders(it) } }))
+    } else if ($all.length > 0) {
+      field.$all = $all
+    }
+  } else if ($all !== undefined) {
+    field.$all = $all
+  }
+  // The field is absent only when its whole condition moved into `and`.
+  return { field: Object.keys(field).length === 0 && and.length > 0 ? undefined : field, and }
 }
 
 function translateLikeQuery (pattern: string): { $regex: string, $options: string } {
