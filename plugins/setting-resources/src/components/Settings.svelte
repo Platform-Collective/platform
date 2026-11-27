@@ -18,7 +18,7 @@
   import { getMetadata } from '@hcengineering/platform'
   import { getClient, createQuery, isDisabled } from '@hcengineering/presentation'
   import settingPlg from '../plugin'
-  import setting, { SettingsCategory, SettingsEvents } from '@hcengineering/setting'
+  import setting, { SettingsCategory, SettingsEvents, settingId } from '@hcengineering/setting'
   import {
     Component,
     Label,
@@ -47,6 +47,7 @@
   import workbench from '@hcengineering/workbench'
   import { ComponentType, onDestroy, onMount } from 'svelte'
   import { clearSettingsStore, settingsStore, type SettingsStore } from '../store'
+  import { getDefaultCategorySelection } from '../defaultCategory'
   import { Analytics } from '@hcengineering/analytics'
   import { isSettingsCategoryVisible } from '../settings-category'
 
@@ -62,6 +63,9 @@
   const account = getCurrentAccount()
   let asideComponent: ComponentType | AnyComponent | null = null
   let asideProps: object | null = null
+  // Fall back to the first category for an empty selection until a category has been shown or picked,
+  // so that deselecting a category by clicking it again keeps the content area empty
+  let allowEmptyFallback = true
 
   const settingsQuery = createQuery()
   settingsQuery.query(
@@ -99,7 +103,23 @@
   function findCategory(name: string): SettingsCategory | undefined {
     return categories.find((x) => x.name === name)
   }
+  function selectDefaultCategory(
+    categories: SettingsCategory[],
+    floatNavigator: boolean,
+    currentCategory: string | undefined
+  ): void {
+    const loc = getCurrentResolvedLocation()
+    if (loc.path[2] !== settingId || loc.path[3] !== currentCategory) return
+    const selection = getDefaultCategorySelection(categories, currentCategory, floatNavigator, allowEmptyFallback)
+    allowEmptyFallback = selection.allowEmptyFallback
+    if (selection.name === undefined) return
+    loc.path[3] = selection.name
+    loc.path.length = 4
+    navigate(loc, true)
+  }
+  $: selectDefaultCategory(categories, $deviceInfo.navigator.float, categoryId)
   function selectCategory(id: string): void {
+    allowEmptyFallback = false
     clearSettingsStore()
     const loc = getCurrentResolvedLocation()
     if (loc.path[3] === id) {
