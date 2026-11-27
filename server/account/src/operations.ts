@@ -104,6 +104,7 @@ import {
   getWorkspaceInvite,
   getWorkspaceRole,
   getWorkspaceRoles,
+  isLastWorkspaceOwner,
   GUEST_ACCOUNT,
   isEmail,
   verifyOtpAttempt,
@@ -1813,10 +1814,7 @@ export async function leaveWorkspace (
   }
 
   if (account === targetAccount && initiatorRole === AccountRole.Owner) {
-    const members = await db.getWorkspaceMembers(workspace)
-    const owners = members.filter((m) => m.role === AccountRole.Owner)
-
-    if (owners.length === 1) {
+    if (await isLastWorkspaceOwner(db, workspace)) {
       ctx.warn('Owner cannot remove themselves as the last owner of the workspace', {
         account,
         workspace

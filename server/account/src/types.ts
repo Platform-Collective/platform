@@ -335,6 +335,8 @@ export type DBFlavor = 'postgres' | 'cockroach' | 'unknown'
 
 /* ========= D A T A B A S E  C O L L E C T I O N S ========= */
 export interface AccountDB {
+  readonly transactionActive?: boolean
+  transaction?: <T>(operation: (db: AccountDB) => Promise<T>) => Promise<T>
   person: DbCollection<Person>
   account: DbCollection<Account>
   socialId: DbCollection<SocialId>
@@ -373,6 +375,17 @@ export interface AccountDB {
     hasUnread: boolean
   ) => Promise<void>
   unassignWorkspace: (accountId: AccountUuid, workspaceId: WorkspaceUuid) => Promise<void>
+  /**
+   * Changes or removes an OWNER only when another OWNER remains. SQL
+   * implementations make the check and mutation one serialized operation.
+   * Mongo's members are separate documents, so its implementation is only a
+   * best-effort check unless deployments enable Mongo transactions.
+   */
+  updateOrUnassignWorkspaceOwnerIfNotLast: (
+    accountId: AccountUuid,
+    workspaceId: WorkspaceUuid,
+    role: AccountRole | null
+  ) => Promise<boolean>
   getWorkspaceRole: (accountId: AccountUuid, workspaceId: WorkspaceUuid) => Promise<AccountRole | null>
   getWorkspaceRoles: (accountId: AccountUuid) => Promise<Map<WorkspaceUuid, AccountRole>>
   getWorkspaceMembers: (workspaceId: WorkspaceUuid) => Promise<WorkspaceMemberInfo[]>
