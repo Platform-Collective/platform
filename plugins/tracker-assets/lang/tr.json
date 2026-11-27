@@ -562,7 +562,11 @@
     "GanttVisibleRange": "Aralık",
     "GanttNotScheduled": "Planlanmadı",
     "GanttMissingStartDates": "{count} görevin başlangıç tarihi yok.",
-    "GanttSetDatesHint": "Zaman çizelgesinde görmek için bir göreve başlangıç ve bitiş tarihleri ekleyin."
+    "GanttSetDatesHint": "Zaman çizelgesinde görmek için bir göreve başlangıç ve bitiş tarihleri ekleyin.",
+    "CreateIssueFromMessage": "Sorun oluştur",
+    "SourceMessage": "Kaynak mesaj",
+    "CopyingAttachments": "Ekler kopyalanıyor… {current}/{total}",
+    "MessageAttachmentsTooLarge": "{limit} MB’den büyük ekler dahil edilmedi."
   },
   "status": {}
 }

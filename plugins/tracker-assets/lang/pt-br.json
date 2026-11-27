@@ -325,7 +325,11 @@
     "GanttVisibleRange": "Período",
     "GanttNotScheduled": "Não agendado",
     "GanttMissingStartDates": "{count} tarefas não têm data de início.",
-    "GanttSetDatesHint": "Defina as datas de início e conclusão de uma tarefa para exibi-la na linha do tempo."
+    "GanttSetDatesHint": "Defina as datas de início e conclusão de uma tarefa para exibi-la na linha do tempo.",
+    "CreateIssueFromMessage": "Criar problema",
+    "SourceMessage": "Mensagem original",
+    "CopyingAttachments": "Copiando anexos… {current}/{total}",
+    "MessageAttachmentsTooLarge": "Anexos com mais de {limit} MB não foram incluídos."
   },
   "status": {}
 }
