@@ -28,6 +28,7 @@ services:
     restart: unless-stopped
   mongodb:
     image: 'mongo:7-jammy'
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     command: mongod --port 27018
     healthcheck:
       test: echo "try { db.currentOp().ok } catch (err) { }" | mongosh --port 27018 --quiet
@@ -44,6 +45,7 @@ services:
     restart: unless-stopped
   cockroach:
     image: cockroachdb/cockroach:v24.1.2
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     ports:
       - '26258:26257'
       - '18089:8080'
@@ -51,6 +53,7 @@ services:
     restart: unless-stopped
   postgres:
     image: postgres:18.1
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     command: ["postgres", "-p", "5433"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -p 5433"]
@@ -66,6 +69,7 @@ services:
     restart: unless-stopped
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     command:
       - redpanda
       - start
@@ -91,6 +95,7 @@ services:
       retries: 10
   redpanda_console:
     image: docker.redpanda.com/redpandadata/console:v2.8.3
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:
@@ -111,6 +116,7 @@ services:
       - redpanda
   minio:
     image: 'pgsty/silo'
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     command: server /data --address ":9000" --console-address ":9001"
     expose:
       - 9000
@@ -124,6 +130,7 @@ services:
       retries: 10
   elastic:
     image: 'elasticsearch:7.14.2'
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     expose:
       - 9200
     ports:

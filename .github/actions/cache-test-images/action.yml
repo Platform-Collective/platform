@@ -1,0 +1,28 @@
+name: Cache test service images
+description: Cache external test images and retry registry downloads before server setup.
+inputs:
+  directory:
+    description: Directory containing docker-compose.yaml
+    required: true
+  services:
+    description: Space-separated external service names (no application images)
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v6
+      id: images
+      with:
+        path: ${{ runner.temp }}/test-images.tar
+        key: ${{ runner.os }}-${{ runner.arch }}-test-images-v1-${{ inputs.directory }}-${{ inputs.services }}-${{ hashFiles('tests/docker-compose*.yaml', 'ws-tests/docker-compose*.yaml') }}
+    - name: Load cached images
+      if: steps.images.outputs.cache-hit == 'true'
+      shell: bash
+      run: docker load --input "$RUNNER_TEMP/test-images.tar"
+    - name: Pull missing service images
+      shell: bash
+      env:
+        IMAGE_DIRECTORY: ${{ inputs.directory }}
+        SERVICES: ${{ inputs.services }}
+        CACHE_HIT: ${{ steps.images.outputs.cache-hit }}
+      run: bash common/scripts/ci-pull-images.sh "$IMAGE_DIRECTORY" "$SERVICES" "$CACHE_HIT"

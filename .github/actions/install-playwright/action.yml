@@ -1,0 +1,21 @@
+name: Install Playwright browsers
+description: Cache browser binaries and retry dependency downloads without skipping installation checks.
+inputs:
+  package:
+    description: Package directory containing the Playwright ci script
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
+    - name: Configure apt download retries
+      shell: bash
+      run: |
+        echo 'Acquire::Retries "3"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-playwright-retries
+    - name: Install browsers and system dependencies
+      shell: bash
+      working-directory: ${{ inputs.package }}
+      run: bash ../../common/scripts/ci-retry.sh timeout 5m node ../../common/scripts/install-run-rushx.js ci
