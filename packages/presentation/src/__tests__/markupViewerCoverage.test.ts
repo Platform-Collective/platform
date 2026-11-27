@@ -32,7 +32,7 @@ function source (relative: string): string {
 // one of these does not fail: it prints the type name as text (NodeContent) or renders nothing at
 // all (LiteNodeContent), so the message looks broken or empty to the reader while the content is
 // perfectly intact in the database.
-const COMPOSABLE_NODES = ['emoji', 'gif']
+const COMPOSABLE_NODES = ['emoji', 'gif', 'callout']
 
 describe('markup viewers cover every composable node type', () => {
   it.each(COMPOSABLE_NODES)('NodeContent.svelte handles %s', (nodeType) => {

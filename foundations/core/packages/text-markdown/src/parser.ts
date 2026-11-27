@@ -54,7 +54,6 @@ interface ParsingSpecialRule {
   getAttrs?: (tok: Token, state: MarkdownParseState) => Attrs | undefined
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ParsingIgnoreRule {
   // empty
 }
@@ -321,6 +320,16 @@ function newSimpleMarkHandler (spec: ParsingMarkRule, specMark: MarkupMarkType):
   }
 }
 
+function isHtmlWhitespaceParagraph (node: MarkupNode): boolean {
+  const content = nodeContent(node)
+  return (
+    node.type === MarkupNodeType.paragraph &&
+    content.length === 1 &&
+    content[0].type === MarkupNodeType.text &&
+    content[0].text?.trim() === ''
+  )
+}
+
 function tokenHandlers (
   tokensBlock: Record<string, ParsingBlockRule>,
   tokensNode: Record<string, ParsingNodeRule>,
@@ -355,7 +364,8 @@ function tokenHandlers (
         state.closeNode()
         return
       }
-      const markup = htmlParser(tok.content)
+      const inCallout = state.stack.some((node) => node.type === MarkupNodeType.callout)
+      const markup = htmlParser(inCallout ? `<p>${tok.content}</p>` : tok.content)
       if (markup.content !== undefined) {
         // unwrap content from wrapping paragraph
         const shouldUnwrap =
@@ -380,7 +390,8 @@ function tokenHandlers (
   handlers.html_block = (state: MarkdownParseState, tok: Token) => {
     try {
       const model = htmlParser(tok.content)
-      const content = nodeContent(model)
+      const inCallout = state.top()?.type === MarkupNodeType.callout
+      const content = nodeContent(model).filter((node) => !inCallout || !isHtmlWhitespaceParagraph(node))
       for (const c of content) {
         state.push(c)
       }
@@ -454,6 +465,7 @@ function todoItemMetaAttrsGet (tok: Token): Record<string, string> {
 // ::- A configuration of a Markdown parser. Such a parser uses
 const tokensBlock: Record<string, ParsingBlockRule> = {
   blockquote: { block: MarkupNodeType.blockquote },
+  callout: { block: MarkupNodeType.callout, getAttrs: () => ({ kind: 'info', emoji: null }) },
   paragraph: { block: MarkupNodeType.paragraph },
   list_item: { block: MarkupNodeType.list_item },
   task_item: { block: MarkupNodeType.taskItem, getAttrs: (tok) => ({ 'data-type': 'taskItem' }) },
@@ -651,6 +663,66 @@ export const isParagraphToken = (token?: Token): boolean => token?.type === 'par
 
 export const isListItemToken = (token?: Token): boolean => token?.type === 'list_item_open'
 
+const calloutMarker = '[!NOTE]'
+
+function convertCallout (tokens: Token[], open: number, close: number): boolean {
+  if (
+    tokens[open].type !== 'blockquote_open' ||
+    tokens[open + 1]?.type !== 'paragraph_open' ||
+    tokens[open + 2]?.type !== 'inline' ||
+    tokens[open + 3]?.type !== 'paragraph_close'
+  ) {
+    return false
+  }
+
+  const inline = tokens[open + 2]
+  if (inline.content !== calloutMarker && !inline.content.startsWith(calloutMarker + '\n')) {
+    return false
+  }
+
+  tokens[open].type = 'callout_open'
+  tokens[close].type = 'callout_close'
+  inline.content = inline.content.slice(calloutMarker.length).replace(/^\n/, '')
+
+  const children = inline.children ?? []
+  if (children[0]?.type === 'text') {
+    children[0].content = children[0].content.slice(calloutMarker.length)
+    if (children[0].content.length === 0) children.shift()
+  }
+  if (children[0]?.type === 'softbreak') children.shift()
+  return true
+}
+
+function convertCallouts (tokens: Token[]): void {
+  const openBlockquotes: number[] = []
+  const markerParagraphs = new Set<number>()
+
+  for (let index = 0; index < tokens.length; index++) {
+    if (tokens[index].type === 'blockquote_open') {
+      openBlockquotes.push(index)
+    } else if (tokens[index].type === 'blockquote_close') {
+      const open = openBlockquotes.pop()
+      if (open === undefined) continue
+
+      const marker = tokens[open + 2]?.content ?? ''
+      const markerOnly = marker === calloutMarker || marker === calloutMarker + '\n'
+      if (convertCallout(tokens, open, index) && markerOnly && index > open + 4) {
+        markerParagraphs.add(open + 1)
+        markerParagraphs.add(open + 2)
+        markerParagraphs.add(open + 3)
+      }
+    }
+  }
+
+  let write = 0
+  for (let read = 0; read < tokens.length; read++) {
+    if (!markerParagraphs.has(read)) {
+      tokens[write++] = tokens[read]
+    }
+  }
+  tokens.length = write
+}
+
 export interface TaskListEnv {
   tasklists: number
 }
@@ -682,6 +754,7 @@ export class MarkdownParser {
     this.tokenizer = MarkdownIt('default', {
       html: true
     })
+    this.tokenizer.core.ruler.after('inline', 'callout', this.calloutRule)
     this.tokenizer.core.ruler.after('inline', 'task_list', this.listRule)
     this.tokenizer.core.ruler.after('inline', 'html_comment', this.htmlCommentRule)
 
@@ -700,6 +773,11 @@ export class MarkdownParser {
       doc = state.closeNode()
     } while (state.stack.length > 0)
     return doc
+  }
+
+  calloutRule: RuleCore = (state: StateCore): boolean => {
+    convertCallouts(state.tokens)
+    return true
   }
 
   htmlCommentRule: RuleCore = (state: StateCore): boolean => {

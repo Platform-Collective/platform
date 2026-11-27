@@ -1,0 +1,435 @@
+// SPDX-License-Identifier: EPL-2.0
+
+import { MarkupNodeType, MarkupMarkType, type MarkupNode } from '@hcengineering/text-core'
+import { markdownToMarkup, markupToMarkdown } from '..'
+
+const paragraph = (text?: string): MarkupNode => ({
+  type: MarkupNodeType.paragraph,
+  content: text === undefined ? [] : [{ type: MarkupNodeType.text, text }]
+})
+
+describe('callout Markdown conversion', () => {
+  it('round-trips GitHub-style notes without losing block content', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: null },
+          content: [
+            {
+              type: MarkupNodeType.paragraph,
+              content: [{ type: MarkupNodeType.text, text: 'Formatted', marks: [{ type: MarkupMarkType.bold }] }]
+            },
+            paragraph('Second paragraph'),
+            {
+              type: MarkupNodeType.bullet_list,
+              content: [{ type: MarkupNodeType.list_item, content: [paragraph('Item')] }]
+            },
+            {
+              type: MarkupNodeType.code_block,
+              attrs: { language: 'ts' },
+              content: [{ type: MarkupNodeType.text, text: 'first\n\nsecond' }]
+            },
+            { type: MarkupNodeType.callout, attrs: { kind: 'info', emoji: null }, content: [paragraph('Nested')] }
+          ]
+        }
+      ]
+    }
+    const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('> [!NOTE]\n>\n> **Formatted**')
+    expect(markdown).not.toContain('<div data-type="callout"')
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+    expect(markupToMarkdown(markdownToMarkup(markdown))).toBe(markdown)
+  })
+
+  it('preserves every quote prefix when a nested callout starts with a heading', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [
+            {
+              type: MarkupNodeType.callout,
+              content: [
+                {
+                  type: MarkupNodeType.heading,
+                  attrs: { level: 1, marker: '#' },
+                  content: [{ type: MarkupNodeType.text, text: 'Inner heading' }]
+                },
+                paragraph('Inner body')
+              ]
+            },
+            paragraph('Outer body')
+          ]
+        },
+        paragraph('After')
+      ]
+    }
+    const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('> > [!NOTE]\n> >\n> > # Inner heading')
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+  })
+
+  it('does not add an empty marker paragraph before a list', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [
+            {
+              type: MarkupNodeType.bullet_list,
+              content: [{ type: MarkupNodeType.list_item, content: [paragraph('Item')] }]
+            }
+          ]
+        }
+      ]
+    }
+    const restored = markdownToMarkup(markupToMarkdown(doc))
+    expect(restored).toMatchObject(doc)
+    expect(restored.content?.[0].content?.map((node) => node.type)).toEqual([MarkupNodeType.bullet_list])
+  })
+
+  it.each([
+    ['---', MarkupNodeType.horizontal_rule],
+    ['Heading\n---', MarkupNodeType.heading],
+    ['3. Item', MarkupNodeType.ordered_list]
+  ])('preserves a callout starting with %j', (firstBlock, blockType) => {
+    const block =
+      blockType === MarkupNodeType.horizontal_rule
+        ? { type: MarkupNodeType.horizontal_rule }
+        : markdownToMarkup(firstBlock).content?.[0]
+    expect(block?.type).toBe(blockType)
+    if (block === undefined) throw new Error('Expected the first Markdown block')
+
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [{ type: MarkupNodeType.callout, content: [block, paragraph('Inside')] }, paragraph('After')]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    expect(restored).toMatchObject(doc)
+    expect(restored.content?.[0].content?.map((node) => node.type)).toEqual([blockType, MarkupNodeType.paragraph])
+    expect(markdown).toContain('> [!NOTE]\n>\n')
+  })
+
+  it.each([
+    ['https://example.org/ab', 'https://example.org/ab'],
+    ['https://example.org/a_b', 'https://example.org/a_b'],
+    ['https://example.org/a_b*(c)', 'https://example.org/a_b*(c)'],
+    ['https://example.org/?a=1&amp;b=2', 'https://example.org/?a=1&amp;b=2'],
+    ['https://example.org/a%5Fb', 'https://example.org/a%5Fb'],
+    ['https://xn--bcher-kva.example/a_b', 'https://xn--bcher-kva.example/a_b'],
+    ['See [a_b] &amp;', 'https://example.org/a_(b)?a=1&amp;b=2']
+  ])('round-trips the callout link label %s and destination %s', (text, href) => {
+    const link: MarkupNode = {
+      type: MarkupNodeType.text,
+      text,
+      marks: [{ type: MarkupMarkType.link, attrs: { href } }]
+    }
+    const outsideUrl = 'https://example.org/outside'
+    const outsideLink: MarkupNode = {
+      ...link,
+      text: outsideUrl,
+      marks: [{ type: MarkupMarkType.link, attrs: { href: outsideUrl } }]
+    }
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [{ type: MarkupNodeType.paragraph, content: [link] }, paragraph('Inside')]
+        },
+        { type: MarkupNodeType.paragraph, content: [outsideLink] }
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    expect(markdown.split('\n').at(-1)).toBe(`<${outsideUrl}>`)
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+  })
+
+  it('preserves callout table content and restores the escape mode afterward', () => {
+    const literal = '<b>literal</b> &amp; '
+    const bold: MarkupNode = {
+      type: MarkupNodeType.text,
+      text: 'bold',
+      marks: [{ type: MarkupMarkType.bold }]
+    }
+    const table: MarkupNode = {
+      type: MarkupNodeType.table,
+      content: [
+        {
+          type: MarkupNodeType.table_row,
+          content: [
+            {
+              type: MarkupNodeType.table_cell,
+              content: [
+                {
+                  type: MarkupNodeType.paragraph,
+                  content: [{ type: MarkupNodeType.text, text: literal }, bold]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [{ type: MarkupNodeType.callout, content: [table, paragraph('Inside')] }, paragraph('Outside'), table]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    expect(restored.content?.map((node) => node.type)).toEqual([
+      MarkupNodeType.callout,
+      MarkupNodeType.paragraph,
+      MarkupNodeType.table
+    ])
+    const callout = restored.content?.[0]
+    expect(callout?.attrs).toEqual({ kind: 'info', emoji: null })
+    expect(callout?.content?.map((node) => node.type)).toEqual([MarkupNodeType.table, MarkupNodeType.paragraph])
+    expect(callout?.content?.[1]).toMatchObject(paragraph('Inside'))
+    expect(restored.content?.[1]).toMatchObject(paragraph('Outside'))
+
+    const restoredTable = callout?.content?.[0]
+    expect(restoredTable).toMatchObject({
+      content: [{ type: MarkupNodeType.table_row, content: [{ type: MarkupNodeType.table_cell }] }]
+    })
+    const cell = restoredTable?.content?.[0].content?.[0]
+    expect(cell?.content?.map((node) => node.type)).toEqual([MarkupNodeType.paragraph])
+    const text = cell?.content?.[0].content ?? []
+    const literalNodes = text.slice(0, -1)
+    expect(literalNodes.map((node) => node.text).join('')).toBe(literal)
+    expect(literalNodes.every((node) => node.type === MarkupNodeType.text)).toBe(true)
+    expect(literalNodes.flatMap((node) => node.marks ?? [])).toEqual([])
+    expect(text.at(-1)).toEqual(bold)
+
+    expect(markdown).toContain('> [!NOTE]\n>\n> <table>')
+    expect(markdown.split('\n').at(-1)).toBe(
+      '<table><tbody><tr><td><p><b>literal</b> &amp; <strong>bold</strong></p></td></tr></tbody></table>'
+    )
+  })
+
+  it.each([
+    '---',
+    '   ---',
+    '***',
+    '___',
+    '# Heading',
+    '> Quote',
+    '- Item',
+    '+ Item',
+    '* Item',
+    '1. Item',
+    '1) Item',
+    '```ts\nconst value = 1\n```',
+    '~~~\ncode\n~~~',
+    '<b>literal</b> &amp; | pipe',
+    'Heading\n===',
+    'Heading\n---',
+    '[!NOTE]'
+  ])('round-trips a literal paragraph containing Markdown syntax: %j', (text) => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: null },
+          content: [paragraph(text), paragraph('Inside')]
+        },
+        paragraph('After')
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    expect(restored).toMatchObject(doc)
+    expect(restored.content?.[0].content?.[0].type).toBe(MarkupNodeType.paragraph)
+    expect(restored.content?.[0].content?.[0].content?.map((node) => node.text)).toEqual([text])
+    expect(markupToMarkdown(restored)).toBe(markdown)
+  })
+
+  it('keeps real code block contents raw', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [
+            {
+              type: MarkupNodeType.code_block,
+              attrs: { language: 'md' },
+              content: [{ type: MarkupNodeType.text, text: '---\n```\n**literal**' }]
+            },
+            paragraph('After')
+          ]
+        }
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('> ---\n> ```\n> **literal**')
+    expect(markdownToMarkup(markdown)).toMatchObject(doc)
+  })
+
+  it('escapes literal text in HTML-styled marks without escaping inline code', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [
+            {
+              type: MarkupNodeType.paragraph,
+              content: [
+                {
+                  type: MarkupNodeType.text,
+                  text: '<b>literal</b> &amp;',
+                  marks: [{ type: MarkupMarkType.textStyle, attrs: { color: 'red' } }]
+                },
+                { type: MarkupNodeType.text, text: '`code` &amp;', marks: [{ type: MarkupMarkType.code }] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    const content = restored.content?.[0].content?.[0].content ?? []
+    const styled = content.filter((node) => node.marks?.some((mark) => mark.type === MarkupMarkType.textStyle))
+    expect(content.map((node) => node.text ?? '').join('')).toBe('<b>literal</b> &amp;`code` &amp;')
+    expect(styled.map((node) => node.text ?? '').join('')).toBe('<b>literal</b> &amp;')
+    expect(
+      styled.every((node) =>
+        node.marks?.some((mark) => mark.type === MarkupMarkType.textStyle && mark.attrs?.color === 'red')
+      )
+    ).toBe(true)
+    expect(content.at(-1)?.text).toBe('`code` &amp;')
+    expect(content.at(-1)?.marks?.some((mark) => mark.type === MarkupMarkType.code)).toBe(true)
+  })
+
+  it('round-trips empty paragraphs between callout content', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: null },
+          content: [paragraph('Before'), paragraph(), paragraph(), paragraph('After')]
+        },
+        paragraph('Outside')
+      ]
+    }
+
+    const markdown = markupToMarkdown(doc)
+    const restored = markdownToMarkup(markdown)
+    const content = restored.content?.[0].content ?? []
+    expect(restored.content?.map((node) => node.type)).toEqual([MarkupNodeType.callout, MarkupNodeType.paragraph])
+    expect(content.map((node) => node.type)).toEqual(Array(4).fill(MarkupNodeType.paragraph))
+    expect(content[0].content?.[0].text).toBe('Before')
+    expect(content[1].content ?? []).toHaveLength(0)
+    expect(content[2].content ?? []).toHaveLength(0)
+    expect(content[3].content?.[0].text).toBe('After')
+    expect(restored.content?.[1].content?.[0].text).toBe('Outside')
+    expect(markupToMarkdown(restored)).toBe(markdown)
+  })
+
+  it('accepts a GitHub-style note separately from following Markdown and ordinary blockquotes', () => {
+    const doc = markdownToMarkup('> [!NOTE]\n> Note\n>\n> Second\n\nAfter\n\n> Quote')
+    expect(doc.content?.map((node) => node.type)).toEqual(['callout', 'paragraph', 'blockquote'])
+    expect(doc.content?.[0].attrs).toEqual({ kind: 'info', emoji: null })
+    expect(doc.content?.[0].content?.map((node) => node.content?.[0]?.text)).toEqual(['Note', 'Second'])
+    expect(markdownToMarkup('> Quote').content?.[0].type).toBe(MarkupNodeType.blockquote)
+  })
+
+  it('continues to accept tagged HTML callouts', () => {
+    const doc = markdownToMarkup('<div data-type="callout"><p>Note</p></div>\n\nAfter')
+    expect(doc.content?.map((node) => node.type)).toEqual(['callout', 'paragraph'])
+  })
+
+  it('uses tagged HTML when a custom emoji needs to be preserved', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: '💡' },
+          content: [{ ...paragraph('Note'), attrs: { textAlign: null } }]
+        }
+      ]
+    }
+    const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('<div data-type="callout"')
+    expect(markdownToMarkup(markdown)).toEqual(doc)
+  })
+
+  it('preserves literal HTML-looking text and real formatting with a custom emoji', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          attrs: { kind: 'info', emoji: '💡' },
+          content: [
+            {
+              ...paragraph('Use <b>literal</b> & '),
+              attrs: { textAlign: null },
+              content: [
+                { type: MarkupNodeType.text, text: 'Use <b>literal</b> & ' },
+                { type: MarkupNodeType.text, text: 'bold', marks: [{ type: MarkupMarkType.bold }] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    const markdown = markupToMarkdown(doc)
+    expect(markdown).toContain('Use &lt;b&gt;literal&lt;/b&gt; &amp; <strong>bold</strong>')
+    const restored = markdownToMarkup(markdown)
+    expect(restored.content?.[0].attrs).toEqual({ kind: 'info', emoji: '💡' })
+    const content = restored.content?.[0].content?.[0].content ?? []
+    expect(content.map((node) => node.text ?? '').join('')).toBe('Use <b>literal</b> & bold')
+    expect(
+      content
+        .filter((node) => node.marks?.some((mark) => mark.type === MarkupMarkType.bold) !== true)
+        .map((node) => node.text ?? '')
+        .join('')
+    ).toBe('Use <b>literal</b> & ')
+  })
+
+  it('matches sequential and nested callouts without rescanning the token array', () => {
+    const markdown = Array.from({ length: 32 }, (_, index) => `> [!NOTE]\n> Note ${index}`).join('\n\n')
+    const findIndex = jest.spyOn(Array.prototype, 'findIndex')
+    try {
+      const doc = markdownToMarkup(`${markdown}\n\n> Outer\n> > [!NOTE]\n> > Nested`)
+      expect(doc.content).toHaveLength(33)
+      expect(doc.content?.[32].content?.[1].type).toBe(MarkupNodeType.callout)
+      expect(findIndex).not.toHaveBeenCalled()
+    } finally {
+      findIndex.mockRestore()
+    }
+  })
+
+  it('defaults missing attributes and preserves an empty callout', () => {
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.callout,
+          content: [paragraph()]
+        }
+      ]
+    }
+    expect(markdownToMarkup(markupToMarkdown(doc)).content?.[0]).toEqual({
+      ...doc.content?.[0],
+      attrs: { kind: 'info', emoji: null }
+    })
+  })
+})

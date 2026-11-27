@@ -19,6 +19,30 @@
     color: inherit;
   }
 
+  div[data-type='callout'] {
+    position: relative;
+    margin: 0.5rem 0;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    border-left: 3px solid var(--theme-callout-border-color);
+    border-radius: 0.25rem;
+    background-color: var(--theme-callout-background);
+
+    &::before {
+      content: attr(data-emoji);
+      position: absolute;
+      left: 0.75rem;
+      top: 0.75rem;
+    }
+
+    > :first-child {
+      margin-top: 0;
+    }
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+  }
+
   .suggestion {
     padding-left: 0.25rem;
     color: var(--theme-link-color);

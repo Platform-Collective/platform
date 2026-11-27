@@ -14,7 +14,10 @@
 //
 
 import {
+  getCalloutEmoji,
+  getCalloutKind,
   getOrderedListStart,
+  parseCalloutEmoji,
   type AttrValue,
   type MarkupMark,
   type MarkupNode,
@@ -80,8 +83,8 @@ class HtmlParseState {
       return
     }
 
-    // Auto-wrap text in paragraph if we're at the doc level
-    if (top.type === MarkupNodeType.doc) {
+    // Both documents and callouts require block children.
+    if (top.type === MarkupNodeType.doc || top.type === MarkupNodeType.callout) {
       this.openNode(MarkupNodeType.paragraph)
       const node: MarkupNode =
         this.marks.length > 0
@@ -295,6 +298,14 @@ const nodeRules: Record<string, HtmlNodeRule> = {
         level: 6,
         textAlign: attributes.textAlign ?? null
       }
+    }
+  },
+  div: {
+    node: MarkupNodeType.callout,
+    getAttrs: (attributes) => {
+      const kind = getCalloutKind(attributes['data-kind'])
+      const emoji = parseCalloutEmoji(attributes['data-emoji'])
+      return { kind, emoji: emoji === getCalloutEmoji(kind) ? null : emoji }
     }
   },
   blockquote: {
@@ -524,6 +535,7 @@ export class HtmlParser {
 
     let rawPos: number | undefined
     let rawDepth: number | undefined
+    let rawTag: string | undefined
 
     const parser = new Parser(
       {
@@ -540,12 +552,15 @@ export class HtmlParser {
             }
           }
 
-          const handler = state.handlers[tag]
+          // Only tagged callout divs are nodes; preserve other divs as raw HTML as before.
+          const isPlainDiv = tag === 'div' && attributes['data-type'] !== 'callout'
+          const handler = isPlainDiv ? undefined : state.handlers[tag]
           if (handler !== undefined) {
             handler.handleOpenTag(state, tag, attributes)
           } else {
             rawPos = parser.startIndex
-            rawDepth = 0
+            rawDepth = isPlainDiv ? 1 : 0
+            rawTag = tag
           }
         },
 
@@ -555,6 +570,16 @@ export class HtmlParser {
           }
 
           if (text.length === 0) {
+            return
+          }
+
+          const top = state.top()
+          if (
+            text.trim().length === 0 &&
+            (top?.type === MarkupNodeType.callout ||
+              (top?.type === MarkupNodeType.doc &&
+                top.content?.[top.content.length - 1]?.type === MarkupNodeType.callout))
+          ) {
             return
           }
 
@@ -577,11 +602,12 @@ export class HtmlParser {
 
             if (rawDepth === 0) {
               const start = rawPos ?? 0
-              const end = parser.endIndex
+              const end = parser.endIndex + (rawTag === 'div' ? 1 : 0)
               const text = html.substring(start, end)
               state.addText(text)
               rawPos = undefined
               rawDepth = undefined
+              rawTag = undefined
             }
             return
           }

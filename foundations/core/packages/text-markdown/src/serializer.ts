@@ -13,7 +13,14 @@
 // limitations under the License.
 //
 
-import { getOrderedListStart, MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
+import {
+  getOrderedListStart,
+  MarkupMark,
+  MarkupMarkType,
+  MarkupNode,
+  MarkupNodeType,
+  parseCalloutEmoji
+} from '@hcengineering/text-core'
 import { markupToHtml } from '@hcengineering/text-html'
 
 import { isInSet, markEq } from './marks'
@@ -39,7 +46,8 @@ interface IState {
   quote: (str: string) => string
   repeat: (str: string, n: number) => string
   markString: (mark: MarkupMark, open: boolean, parent: MarkupNode, index: number) => string
-  renderHtml: (node: MarkupNode) => string
+  renderHtml: (node: MarkupNode, escapeText?: boolean) => string
+  escapeText: boolean
   refUrl: string
   imageUrl: string
   inAutolink?: boolean
@@ -219,7 +227,11 @@ export const storeNodes: Record<string, NodeProcessor> = {
     state.renderContent(node)
   },
   paragraph: (state, node) => {
-    state.renderInline(node)
+    if (state.escapeText && nodeContent(node).length === 0) {
+      state.write('<p></p>')
+    } else {
+      state.renderInline(node)
+    }
     state.closeBlock(node)
   },
   subLink: (state, node) => {
@@ -333,12 +345,39 @@ export const storeNodes: Record<string, NodeProcessor> = {
       }
     }
   },
-  text: (state, node) => {
+  text: (state, node, parent) => {
     // Check if test has reference mark, in this case we need to remove [[]]
-    state.text(node.text ?? '')
+    const isCode =
+      parent.type === MarkupNodeType.code_block ||
+      parent.type === MarkupNodeType.mermaid ||
+      node.marks?.some((mark) => mark.type === MarkupMarkType.code) === true
+    state.text(node.text ?? '', state.escapeText && !isCode)
   },
   emoji: (state, node) => {
-    state.text(node.attrs?.emoji as string)
+    state.text(node.attrs?.emoji as string, state.escapeText)
+  },
+  callout: (state, node) => {
+    if (parseCalloutEmoji(nodeAttrs(node).emoji) !== null) {
+      // GitHub admonitions have no custom emoji attribute, so retain the lossless HTML form for those.
+      state.write(state.renderHtml(node, true).replace(/\n/g, '&#10;'))
+      state.closeBlock(node)
+      return
+    }
+    const content = nodeContent(node)
+    const hasOnlyEmptyParagraph =
+      content.length === 1 && content[0].type === MarkupNodeType.paragraph && nodeContent(content[0]).length === 0
+    const escapeText = state.escapeText
+    state.escapeText = true
+    try {
+      state.wrapBlock('> ', '> [!NOTE]', node, () => {
+        // Separate the marker paragraph from blocks that cannot interrupt a paragraph.
+        state.closeBlock(node)
+        state.flushClose(2)
+        if (!hasOnlyEmptyParagraph) state.renderContent(node)
+      })
+    } finally {
+      state.escapeText = escapeText
+    }
   },
   table: (state, node) => {
     state.write(state.renderHtml(node))
@@ -417,7 +456,8 @@ export const storeMarks: Record<string, MarkProcessor> = {
       if (state.renderAHref === true) {
         return `<a href="${encodeURI(mark.attrs?.href)}">`
       } else {
-        state.inAutolink = isPlainURL(mark, parent, index)
+        // In callouts, keep the escaped label separate from the destination.
+        state.inAutolink = !state.escapeText && isPlainURL(mark, parent, index)
         return state.inAutolink ? '<' : '['
       }
     },
@@ -430,7 +470,8 @@ export const storeMarks: Record<string, MarkProcessor> = {
 
         const href = (mark.attrs?.href as string) ?? ''
         // eslint-disable-next-line
-        const url = href.replace(/[\(\)"\\<>]/g, '\\$&')
+        let url = href.replace(/[\(\)"\\<>]/g, '\\$&')
+        if (state.escapeText) url = url.replace(/&/g, '\\&')
         const hasSpaces = url.includes(' ')
 
         return inAutolink === true
@@ -515,7 +556,7 @@ export const storeMarks: Record<string, MarkProcessor> = {
   }
 }
 
-export type HtmlWriter = (markup: MarkupNode) => string
+export type HtmlWriter = (markup: MarkupNode, escapeText?: boolean) => string
 
 export interface StateOptions {
   tightLists: boolean
@@ -532,6 +573,7 @@ export class MarkdownState implements IState {
   closedNode?: MarkupNode
   inTightList: boolean
   options: StateOptions
+  escapeText: boolean
   refUrl: string
   imageUrl: string
   htmlWriter: HtmlWriter
@@ -546,9 +588,10 @@ export class MarkdownState implements IState {
     this.delim = this.out = ''
     this.closed = false
     this.inTightList = false
+    this.escapeText = false
     this.refUrl = options.refUrl
     this.imageUrl = options.imageUrl
-    this.htmlWriter = options.htmlWriter ?? markupToHtml
+    this.htmlWriter = options.htmlWriter ?? ((node, escapeText = false) => markupToHtml(node, { escapeText }))
 
     this.options = options
   }
@@ -574,8 +617,8 @@ export class MarkdownState implements IState {
     }
   }
 
-  renderHtml (node: MarkupNode): string {
-    return this.htmlWriter(node)
+  renderHtml (node: MarkupNode, escapeText = this.escapeText): string {
+    return this.htmlWriter(node, escapeText)
   }
 
   wrapBlock (delim: string, firstDelim: string | null, node: MarkupNode, f: () => void): void {
@@ -767,12 +810,16 @@ export class MarkdownState implements IState {
   }
 
   private renderMarkText (inner: MarkupMark, state: InlineState, index: number): void {
-    this.text(
-      this.markString(inner, true, state.parent, index) +
-        (state.node?.text as string) +
-        this.markString(inner, false, state.parent, index + 1),
-      false
-    )
+    this.text(this.markString(inner, true, state.parent, index), false)
+    if (state.node !== undefined) {
+      const htmlMark = inner.type === MarkupMarkType.textStyle || inner.type === MarkupMarkType.textColor
+      if (this.escapeText && htmlMark) {
+        this.text(this.htmlEsc(this.htmlEsc(state.node.text ?? '')), false)
+      } else {
+        this.render(state.node, state.parent, index)
+      }
+    }
+    this.text(this.markString(inner, false, state.parent, index + 1), false)
   }
 
   private updateActiveMarks (state: InlineState, len: number, index: number): void {
@@ -929,8 +976,13 @@ export class MarkdownState implements IState {
       return ''
     }
     str = str.replace(/[`*\\~\[\]]/g, '\\$&') // eslint-disable-line
+    if (this.escapeText) str = str.replace(/[_<>&|]/g, '\\$&')
     if (startOfLine) {
       str = str.replace(/^[:#\-*+]/, '\\$&').replace(/^(\d+)\./, '$1\\.')
+      if (this.escapeText) {
+        str = str.replace(/^([ \t]*)([:#\-*+=>])/, '$1\\$2').replace(/^([ \t]*)(\d+)([.)])/, '$1$2\\$3')
+        str = str.replace(/^[ \t]+/, (spaces) => spaces.replace(/ /g, '&#32;').replace(/\t/g, '&#9;'))
+      }
     }
     str = str.replace(/\r?\n/g, '\\\n')
     return str

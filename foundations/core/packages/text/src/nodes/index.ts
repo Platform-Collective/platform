@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+export * from './callout'
 export * from './image'
 export * from './reference'
 export * from './emoji'

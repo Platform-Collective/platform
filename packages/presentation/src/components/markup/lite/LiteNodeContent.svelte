@@ -14,7 +14,15 @@
 -->
 <script lang="ts">
   import { Blob, Class, Doc, Ref } from '@hcengineering/core'
-  import { AttrValue, MarkupNode, MarkupNodeType, MarkupMarkType } from '@hcengineering/text'
+  import {
+    AttrValue,
+    getCalloutEmoji,
+    getCalloutKind,
+    MarkupNode,
+    MarkupNodeType,
+    MarkupMarkType,
+    parseCalloutEmoji
+  } from '@hcengineering/text'
 
   import LiteNodes from './LiteNodes.svelte'
   import ObjectNode from '../ObjectNode.svelte'
@@ -93,6 +101,11 @@
     </p>
   {:else if node.type === MarkupNodeType.blockquote}
     <LiteNodes {nodes} {parseEmojisFunction} {colorInherit} />
+  {:else if node.type === MarkupNodeType.callout}
+    <div class="callout" data-kind={getCalloutKind(attrs.kind)}>
+      {parseCalloutEmoji(attrs.emoji) ?? getCalloutEmoji(attrs.kind)}
+      <LiteNodes {nodes} {parseEmojisFunction} {colorInherit} />
+    </div>
   {:else if node.type === MarkupNodeType.horizontal_rule}
     <!--  nothing-->
   {:else if node.type === MarkupNodeType.code_block}
@@ -159,6 +172,11 @@
 {/if}
 
 <style lang="scss">
+  .callout {
+    border-left: 3px solid var(--theme-callout-border-color);
+    background: var(--theme-callout-background);
+    padding: 0 0.25rem;
+  }
   .colorInherit {
     color: inherit;
   }
