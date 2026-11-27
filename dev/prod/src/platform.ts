@@ -215,6 +215,7 @@ import { initThemeStore, setDefaultLanguage } from '@hcengineering/theme'
 import { preferenceId } from '@hcengineering/preference'
 import { uiId } from '@hcengineering/ui/src/plugin'
 import { configureAnalytics } from './analytics'
+import { configureExtraWebPlugins } from './extra'
 import { Analytics } from '@hcengineering/analytics'
 
 export interface Config {
@@ -724,6 +725,7 @@ export async function configurePlatform() {
   )
   addLocation(inboxId, async () => await import(/* webpackChunkName: "inbox" */ '@hcengineering/inbox-resources'))
   addLocation(ratingId, async () => await import(/* webpackChunkName: "rating" */ '@hcengineering/rating-resources'))
+  configureExtraWebPlugins()
 
   setMetadata(client.metadata.FilterModel, 'ui')
   setMetadata(client.metadata.ExtraFilter, disabledFeatures)
