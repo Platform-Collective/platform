@@ -63,6 +63,7 @@ import {
   type DependencyShiftedNotification,
   type DependencyShiftRequest,
   type Issue,
+  type IssueIdentifierAlias,
   type IssueChildInfo,
   type IssueParentInfo,
   type IssuePriority,
@@ -157,6 +158,17 @@ export class TRelatedIssueTarget extends TDoc implements RelatedIssueTarget {
   target!: Ref<Project>
 
   rule!: RelatedClassRule | RelatedSpaceRule
+}
+
+@Model(tracker.class.IssueIdentifierAlias, core.class.Doc, DOMAIN_TRACKER)
+export class TIssueIdentifierAlias extends TDoc implements IssueIdentifierAlias {
+  @Prop(TypeString(), tracker.string.ProjectIdentifier)
+  @Index(IndexKind.Indexed)
+  identifier!: string
+
+  @Prop(TypeRef(tracker.class.Issue), tracker.string.Issue)
+  @Index(IndexKind.Indexed)
+  issue!: Ref<Issue>
 }
 
 /**
