@@ -77,7 +77,8 @@
 
   function handleClickTab(): void {
     selectTab(tab._id)
-    const tabLoc = getTabLocation(tab)
+    // Selecting may move the tab (e.g. away from a removed document), so read its location afterwards.
+    const tabLoc = getTabLocation($tabsStore.find((t) => t._id === tab._id) ?? tab)
     const loc = getCurrentLocation()
     const currentApp = loc.path[2]
     const newApp = tabLoc.path[2]

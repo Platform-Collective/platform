@@ -25,7 +25,15 @@ import Workbench from './components/Workbench.svelte'
 import ServerManager from './components/ServerManager.svelte'
 import WorkbenchTabs from './components/WorkbenchTabs.svelte'
 import { isAdminUser } from '@hcengineering/presentation'
-import { canCloseTab, closeCurrentTab, closeTab, OpenInNewTab, pinTab, unpinTab } from './workbench'
+import {
+  canCloseTab,
+  closeCurrentTab,
+  closeTab,
+  handleMissingTabDocument,
+  OpenInNewTab,
+  pinTab,
+  unpinTab
+} from './workbench'
 import { closeWidget, closeWidgetTab, createWidgetTab, getSidebarObject } from './sidebar'
 
 async function hasArchiveSpaces (spaces: Space[]): Promise<boolean> {
@@ -65,6 +73,7 @@ export default async (): Promise<Resources> => ({
     CloseWidgetTab: closeWidgetTab,
     CloseWidget: closeWidget,
     GetSidebarObject: getSidebarObject,
+    HandleMissingTabDocument: handleMissingTabDocument,
     LogIn: logIn,
     LogOut: logOut,
     OpenInNewTab
