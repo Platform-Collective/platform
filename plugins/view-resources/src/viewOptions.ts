@@ -80,7 +80,7 @@ function setStore (key: string, options: ViewOptions): void {
   viewOptionStore.set(map)
 }
 
-function _getViewOptions (viewlet: Viewlet, viewOptionStore: Map<string, ViewOptions>): ViewOptions | null {
+export function getStoredViewOptions (viewlet: Viewlet, viewOptionStore: Map<string, ViewOptions>): ViewOptions | null {
   const key = makeViewOptionsKey(viewlet, viewlet.variant)
   const store = viewOptionStore.get(key)
   if (store !== undefined) {
@@ -107,7 +107,7 @@ export function getViewOptions (
   if (viewlet === undefined) {
     return { ...defaults }
   }
-  const res = _getViewOptions(viewlet, viewOptionStore)
+  const res = getStoredViewOptions(viewlet, viewOptionStore)
   if (res !== null) return res
   return defaults
 }

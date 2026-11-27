@@ -2,7 +2,14 @@
 import { SortingOrder, type Ref } from '@hcengineering/core'
 import { type IntlString } from '@hcengineering/platform'
 import { type Viewlet, type ViewOptions, type ViewOptionsModel } from '@hcengineering/view'
-import { defaultOptions, getDefaultViewOptions, getViewOptions, noCategory, viewOptionStore } from '../viewOptions'
+import {
+  defaultOptions,
+  getDefaultViewOptions,
+  getStoredViewOptions,
+  getViewOptions,
+  noCategory,
+  viewOptionStore
+} from '../viewOptions'
 
 jest.mock('@hcengineering/core', () => ({ SortingOrder: { Ascending: 1, Descending: -1 } }), { virtual: true })
 jest.mock('@hcengineering/platform', () => ({}), { virtual: true })
@@ -64,6 +71,14 @@ describe('viewlet model defaults and saved preferences', () => {
   it('uses generic defaults when there is no model', () => {
     expect(getDefaultViewOptions()).toEqual(defaultOptions)
     expect(getViewOptions(undefined, new Map(), getDefaultViewOptions())).toEqual(defaultOptions)
+  })
+
+  it('distinguishes missing preferences from explicitly saved defaults', () => {
+    expect(getStoredViewOptions(viewlet, new Map())).toBeNull()
+    const saved = { ...defaultOptions }
+    expect(getStoredViewOptions(viewlet, new Map([[storageKey, saved]]))).toEqual(saved)
+    storage.set(storageKey, JSON.stringify(saved))
+    expect(getStoredViewOptions(viewlet, new Map())).toEqual(saved)
   })
 
   it('falls back to generic grouping and ordering when the model lists are empty', () => {
