@@ -87,6 +87,7 @@
   import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
+  import { createIssueTypeMixinDefaults } from '../utils'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
@@ -139,8 +140,8 @@
   // let project: Project | undefined
   let object = getDefaultObjectFromDraft() ?? getDefaultObject(id)
   let isAssigneeTouched = false
-  let kind: Ref<TaskType> | undefined = originalIssue?.kind
-  let duplicateSource = originalIssue
+  let kind: Ref<TaskType> | undefined = draft == null ? originalIssue?.kind : undefined
+  let duplicateSource = draft == null ? originalIssue : undefined
 
   let templateId: Ref<IssueTemplate> | undefined = draft?.template?.template
   let appliedTemplateId: Ref<IssueTemplate> | undefined = draft?.template?.template
@@ -212,6 +213,8 @@
         status: originalIssue.status,
         priority: originalIssue.priority,
         component: originalIssue.component,
+        milestone: originalIssue.milestone ?? null,
+        startDate: originalIssue.startDate ?? null,
         dueDate: originalIssue.dueDate,
         assignee: originalIssue.assignee,
         estimation: originalIssue.estimation,
@@ -261,6 +264,11 @@
   }
 
   $: objectChange(object, empty)
+
+  $: if (duplicateSource !== undefined && _space !== undefined && _space !== duplicateSource.space) {
+    if (object.milestone != null && object.milestone === duplicateSource.milestone) object.milestone = null
+    if (object.component != null && object.component === duplicateSource.component) object.component = null
+  }
 
   $: if (_space !== undefined && object.space !== _space) {
     object.space = _space
@@ -529,6 +537,7 @@
       }
 
       await docCreateManager.commit(operations, _id, currentProject, value, 'pre')
+      fillDefaults(hierarchy, value, tracker.class.Issue)
 
       await operations.addCollection(
         tracker.class.Issue,
@@ -539,8 +548,16 @@
         value,
         _id
       )
+      const taskTypeMixin = operations.getModel().findObject(kind)?.targetClass
+      await createIssueTypeMixinDefaults(
+        operations,
+        _id,
+        _space,
+        kind,
+        taskTypeMixin === undefined ? undefined : customFields.mixins.get(taskTypeMixin)
+      )
       for (const [mixin, attributes] of customFields.mixins) {
-        await operations.createMixin(_id, tracker.class.Issue, _space, mixin, attributes)
+        if (mixin !== taskTypeMixin) await operations.createMixin(_id, tracker.class.Issue, _space, mixin, attributes)
       }
       await docCreateManager.commit(operations, _id, currentProject, value, 'post')
       for (const label of object.labels) {

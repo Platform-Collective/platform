@@ -30,11 +30,13 @@ let toHandler: any
 export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
   let opt = options
   const show = (): void => {
+    if (!hasContent(opt)) return
     const shown = !!(storedValue.label !== undefined || storedValue.component !== undefined)
     if (!shown) {
       if (opt?.kind !== 'submenu' || opt.timeout !== undefined) {
         clearTimeout(toHandler)
         toHandler = setTimeout(() => {
+          if (!hasContent(opt)) return
           showTooltip(
             opt?.label,
             node,
@@ -80,7 +82,7 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
   }
 
   return {
-    update (options: LabelAndProps) {
+    update (options?: LabelAndProps) {
       const hadContent = hasContent(opt)
       const hasNowContent = hasContent(options)
       opt = options
@@ -91,9 +93,11 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
       } else if (hadContent && !hasNowContent) {
         node.removeEventListener('mousemove', show)
         node.removeEventListener('mouseleave', hide)
+        clearTimeout(toHandler)
+        if (node === storedValue.element) closeTooltip()
       }
 
-      if (hasNowContent && node === storedValue.element) {
+      if (hasNowContent && opt !== undefined && node === storedValue.element) {
         const shown = !!(storedValue.label !== undefined || storedValue.component !== undefined)
         if (shown) {
           showTooltip(

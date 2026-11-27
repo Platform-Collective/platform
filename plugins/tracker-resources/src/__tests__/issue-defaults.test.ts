@@ -71,6 +71,7 @@ async function loadSubIssues (client: object): Promise<SubIssuesMethods> {
     '@hcengineering/view-resources': { statusStore: { byId: new Map() } },
     '../plugin': { __esModule: true, default: tracker },
     '../issue-defaults': { fillIssueDefaults },
+    '../utils': { createIssueTypeMixinDefaults: jest.fn().mockResolvedValue(undefined) },
     './icons/Collapsed.svelte': {},
     './icons/Expanded.svelte': {},
     './templates/DraftIssueChildList.svelte': {}
