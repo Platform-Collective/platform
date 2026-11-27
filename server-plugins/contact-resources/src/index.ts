@@ -332,6 +332,13 @@ export async function OnContactDelete (
       continue
     }
 
+    if (hierarchy.isDerived(removeContact._class, contact.class.Person)) {
+      const profiles = await findAll<UserProfile>(ctx, contact.class.UserProfile, { person: removeContact._id })
+      for (const profile of profiles) {
+        result.push(txFactory.createTxRemoveDoc(profile._class, profile.space, profile._id))
+      }
+    }
+
     const members = await findAll(ctx, contact.class.Member, { contact: removeContact._id })
     for (const member of members) {
       const removeTx = txFactory.createTxRemoveDoc(member._class, member.space, member._id)
