@@ -28,6 +28,7 @@ import { createRelativePositionFromTypeIndex, type RelativePosition, type Doc as
 import { isChangeEditable } from '../hooks/editable'
 
 import MermaidPopup from './MermaidPopup.svelte'
+import { registerMermaidIconPacks } from './mermaid-icon-packs'
 
 export interface MermaidOptions extends CodeBlockLowlightOptions {
   ydoc?: YDoc
@@ -454,6 +455,8 @@ async function renderMermaidDiagram (code: string, theme: MermaidConfig['theme']
   // Has no practical effect now, but in case the Webpack
   // configuration gets changed to split the vendor bundle, it might come in handy
   const mermaid = (await import(/* webpackMode: "lazy-once" */ 'mermaid')).default
+
+  registerMermaidIconPacks(mermaid)
 
   const useMaxWidth = false
 
