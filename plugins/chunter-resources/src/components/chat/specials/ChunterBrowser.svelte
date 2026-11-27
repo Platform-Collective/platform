@@ -43,7 +43,7 @@
     filterClass?: Ref<Class<Doc>>
     props?: Record<string, any>
   }[] = [
-    { searchType: SearchType.Messages, component: MessagesBrowser },
+    { searchType: SearchType.Messages, component: MessagesBrowser, filterClass: chunter.class.ChatMessage },
     {
       searchType: SearchType.Files,
       component: FileBrowser,
@@ -97,7 +97,7 @@
     />
   </svelte:fragment>
 </Header>
-{#if components[searchType].filterClass !== undefined}
+{#if searchType !== SearchType.Messages && components[searchType].filterClass !== undefined}
   <FilterBar
     _class={components[searchType].filterClass}
     space={undefined}

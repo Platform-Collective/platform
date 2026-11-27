@@ -22,10 +22,12 @@
     IconSize,
     Menu,
     showPopup,
-    NavItem
+    NavItem,
+    Label
   } from '@hcengineering/ui'
   import { NotifyMarker } from '@hcengineering/notification-resources'
   import { Asset, IntlString } from '@hcengineering/platform'
+  import chunter from '../../../plugin'
 
   export let _id: string
   export let icon: Asset | AnySvelteComponent | undefined
@@ -34,6 +36,7 @@
   export let withIconBackground: boolean = true
   export let isSelected: boolean = false
   export let isSecondary: boolean = false
+  export let hasDraft = false
   export let count: number | null = null
   export let secondaryNotifyMarker: boolean = false
   export let title: string | undefined = undefined
@@ -95,6 +98,9 @@
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="notify">
+    {#if hasDraft}
+      <span class="draft-marker" data-chat-draft><Label label={chunter.string.Draft} /></span>
+    {/if}
     {#if count != null && count > 0}
       <div class="antiHSpacer" />
       <div class="notify">
@@ -112,6 +118,11 @@
 </NavItem>
 
 <style lang="scss">
+  .draft-marker {
+    margin-inline: var(--spacing-1);
+    color: var(--global-primary-TextColor);
+    font-size: 0.75rem;
+  }
   .action {
     display: flex;
     align-items: center;

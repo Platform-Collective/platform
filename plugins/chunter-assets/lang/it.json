@@ -1,6 +1,10 @@
 {
   "string": {
     "ApplicationLabelChunter": "Chat",
+    "Drafts": "Drafts",
+    "Draft": "Draft",
+    "DraftsLocal": "Unsent messages saved in this browser only. Drafts for unavailable conversations are not shown.",
+    "NoDrafts": "No unsent drafts",
     "LeftComment": "ha lasciato un commento",
     "Channels": "Canali",
     "DirectMessages": "Messaggi diretti",

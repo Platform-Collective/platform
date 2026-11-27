@@ -61,6 +61,13 @@ export function toggleSections (_id: string): void {
 
 export const chatSpecials: SpecialNavModel[] = [
   {
+    id: 'drafts',
+    label: chunter.string.Drafts,
+    icon: view.icon.Edit,
+    component: chunter.component.Drafts,
+    position: 'top'
+  },
+  {
     id: 'threads',
     label: chunter.string.Threads,
     icon: chunter.icon.Thread,
