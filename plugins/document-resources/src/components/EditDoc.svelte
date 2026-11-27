@@ -21,7 +21,7 @@
   import { Document, DocumentEvents, Teamspace } from '@hcengineering/document'
   import notification from '@hcengineering/notification'
   import { Panel } from '@hcengineering/panel'
-  import { getResource, setPlatformStatus, unknownError } from '@hcengineering/platform'
+  import { getResource, setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
   import {
     ComponentExtensions,
     IconWithEmoji,
@@ -42,6 +42,7 @@
     IconMoreH,
     Label,
     TimeSince,
+    addNotification,
     createFocusManager,
     getPlatformColorDef,
     showPopup,
@@ -53,6 +54,7 @@
     IconPicker,
     ParentsNavigator,
     RelationsEditor,
+    SimpleNotification,
     restrictionStore,
     showMenu
   } from '@hcengineering/view-resources'
@@ -61,6 +63,7 @@
   import { unlockContent } from '..'
   import { getDocumentIconUpdate } from '../document-icon'
   import document from '../plugin'
+  import { DOCUMENT_RESTORED_NOTICE } from '../snapshots'
   import { getDocumentUrl } from '../utils'
   import DocumentEditor from './DocumentEditor.svelte'
   import DocumentPresenter from './DocumentPresenter.svelte'
@@ -218,6 +221,11 @@
 
   const aside: ButtonItem[] = [
     {
+      id: 'history',
+      icon: document.icon.History,
+      showTooltip: { label: document.string.History, direction: 'bottom' }
+    },
+    {
       id: 'references',
       icon: document.icon.References,
       showTooltip: { label: document.string.Backlinks, direction: 'bottom' }
@@ -252,6 +260,13 @@
   onMount(() => {
     Analytics.handleEvent(DocumentEvents.DocumentOpened, { id: _id })
   })
+
+  async function handleContentNotice(
+    evt: CustomEvent<{ type: string, params: Record<string, string> }>
+  ): Promise<void> {
+    if (evt.detail.type !== DOCUMENT_RESTORED_NOTICE) return
+    addNotification(await translate(document.string.VersionRestored, evt.detail.params), '', SimpleNotification)
+  }
 
   let spaceElement: Teamspace | undefined
 
@@ -413,6 +428,7 @@
             attachFile={async (file) => {
               return await createEmbedding(file)
             }}
+            on:content-notice={handleContentNotice}
             on:headings={(evt) => {
               headings = evt.detail
             }}

@@ -37,19 +37,42 @@ export interface CreateContentResponse {
 }
 
 /** @public */
-export interface UpdateContentRequest {
-  content: Record<string, Markup>
+export interface CollaborationNotice {
+  type: string
+  params: Record<string, string>
 }
 
 /** @public */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export const CONTENT_NOTICE_MAP = 'content-notices'
+
+/** @public */
+export const CONTENT_NOTICE_KEY = 'latest'
+
+/** @public */
+export function parseCollaborationNotice (value: unknown): CollaborationNotice | undefined {
+  if (value === null || typeof value !== 'object' || !('type' in value) || !('params' in value)) return
+
+  const { type, params } = value
+  if (typeof type !== 'string' || type === '' || params === null || typeof params !== 'object') return
+  if (!('title' in params) || typeof params.title !== 'string') return
+
+  return { type, params: { title: params.title } }
+}
+
+/** @public */
+export interface UpdateContentRequest {
+  content: Record<string, Markup>
+  notice?: CollaborationNotice
+}
+
+/** @public */
 export interface UpdateContentResponse {}
 
 /** @public */
 export interface CollaboratorClient {
   getMarkup: (document: CollaborativeDoc, source?: Ref<Blob> | null) => Promise<Markup>
   createMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<MarkupBlobRef>
-  updateMarkup: (document: CollaborativeDoc, markup: Markup) => Promise<void>
+  updateMarkup: (document: CollaborativeDoc, markup: Markup, notice?: CollaborationNotice) => Promise<void>
   copyContent: (source: CollaborativeDoc, target: CollaborativeDoc) => Promise<void>
 }
 
@@ -126,7 +149,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     return res.content[document.objectAttr]
   }
 
-  async updateMarkup (document: CollaborativeDoc, markup: Markup): Promise<void> {
+  async updateMarkup (document: CollaborativeDoc, markup: Markup, notice?: CollaborationNotice): Promise<void> {
     const content = {
       [document.objectAttr]: markup
     }
@@ -134,7 +157,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     await retry(
       3,
       async () => {
-        await this.rpc<UpdateContentRequest, UpdateContentResponse>(document, 'updateContent', { content })
+        await this.rpc<UpdateContentRequest, UpdateContentResponse>(document, 'updateContent', { content, notice })
       },
       50
     )

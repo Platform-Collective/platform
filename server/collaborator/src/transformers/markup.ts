@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { CONTENT_NOTICE_MAP } from '@hcengineering/collaborator-client'
 import { markupToYDoc, yDocToMarkup } from '@hcengineering/text-ydoc'
 import { Transformer } from '@hocuspocus/transformer'
 import { Doc } from 'yjs'
@@ -27,12 +28,9 @@ export class MarkupTransformer implements Transformer {
       fieldName = Array.from(document.share.keys())
     }
 
-    const data: Record<string, string> = {}
-    fieldName?.forEach((field) => {
-      data[field] = yDocToMarkup(document, field)
-    })
-
-    return data
+    return Object.fromEntries(
+      fieldName.filter((field) => field !== CONTENT_NOTICE_MAP).map((field) => [field, yDocToMarkup(document, field)])
+    )
   }
 
   toYdoc (document: any, fieldName: string): Doc {

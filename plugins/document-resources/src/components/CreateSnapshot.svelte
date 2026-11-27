@@ -16,9 +16,11 @@
 -->
 <script lang="ts">
   import { Document } from '@hcengineering/document'
+  import { setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { Card, getClient } from '@hcengineering/presentation'
   import { EditBox } from '@hcengineering/ui'
   import document from '../plugin'
+  import { createDocumentSnapshot } from '../snapshots'
 
   export let doc: Document
 
@@ -27,23 +29,15 @@
   let name = ''
 
   async function create(): Promise<void> {
-    // TODO implement me
-    // const snapshot = await takeSnapshot(doc.content, name)
-    // await client.addCollection(
-    //   document.class.DocumentSnapshot,
-    //   doc.space,
-    //   doc._id,
-    //   document.class.Document,
-    //   'snapshots',
-    //   {
-    //     name,
-    //     content: snapshot
-    //   }
-    // )
+    try {
+      await createDocumentSnapshot(client, doc, name)
+    } catch (err) {
+      await setPlatformStatus(unknownError(err))
+    }
   }
 </script>
 
-<Card label={document.string.Snapshot} okAction={create} canSave={name.trim().length > 0} on:close>
+<Card label={document.string.Snapshot} okAction={create} canSave on:close>
   <div class="flex-row-center clear-mins">
     <EditBox placeholder={document.string.Name} bind:value={name} kind={'large-style'} autoFocus />
   </div>

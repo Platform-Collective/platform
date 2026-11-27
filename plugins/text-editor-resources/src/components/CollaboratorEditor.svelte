@@ -103,6 +103,7 @@
     {spellcheck}
     {kitOptions}
     {requestSideSpace}
+    on:content-notice
     on:editor
     on:update
     on:blur
