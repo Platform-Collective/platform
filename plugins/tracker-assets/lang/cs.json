@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Podrobnosti",
+    "PanelSectionPlanning": "Plánování",
+    "PanelSectionDates": "Termíny",
+    "PanelSectionAttributes": "Atributy",
     "Calendar": "Kalendář",
     "CalendarWithoutDueDate": "Počet úkolů bez termínu: {count}",
     "CalendarUpdateFailed": "Termíny úkolu se nepodařilo aktualizovat. Zkuste to znovu.",
@@ -231,6 +235,7 @@
     "TimeSpendReportDate": "Datum",
     "TimeSpendReportValue": "Strávený čas",
     "TimeSpendReportValueTooltip": "Strávený čas v hodinách",
+    "TimeSpendReportValuePlaceholder": "např. 1h 30m",
     "TimeSpendReportDescription": "Popis",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",
