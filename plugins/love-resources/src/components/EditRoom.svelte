@@ -24,6 +24,7 @@
   import { infos, myOffice, currentRoom, meetings, myConnectingSessionId } from '../stores'
   import { lkSessionConnected } from '../liveKitClient'
   import { createMeeting, joinMeeting } from '../meetings'
+  import { isPendingJoinInThisSession } from '../session'
   import { get } from 'svelte/store'
   import RoomPreview from './RoomPreview.svelte'
   import { Ref } from '@hcengineering/core'
@@ -71,7 +72,7 @@
 
   // Check if pending join is for THIS session (same browser tab)
   $: currentSessionId = getMetadata(presentation.metadata.SessionId)
-  $: hasPendingJoinInThisSession = $myConnectingSessionId !== null && $myConnectingSessionId === currentSessionId
+  $: hasPendingJoinInThisSession = isPendingJoinInThisSession($myConnectingSessionId, currentSessionId)
 
   $: void updateConnecting(object, $infos, hasPendingJoinInThisSession)
 

@@ -57,7 +57,9 @@
     "RectangleTool": "Prostokąt",
     "EllipseTool": "Elipsa",
     "PaletteManagementMenu": "Zarządzaj początkowymi kolorami",
-    "BetaVersion": "Wersja testowa"
+    "BetaVersion": "Wersja testowa",
+    "TabOpened": "Karta otwarta",
+    "FailedToOpenTab": "Nie udało się otworzyć karty"
   },
   "status": {
     "FileTooLarge": "Plik zbyt duży"

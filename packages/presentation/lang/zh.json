@@ -57,7 +57,9 @@
     "RectangleTool": "矩形",
     "EllipseTool": "椭圆",
     "PaletteManagementMenu": "管理颜色预设",
-    "BetaVersion": "Beta 版本"
+    "BetaVersion": "Beta 版本",
+    "TabOpened": "标签页已打开",
+    "FailedToOpenTab": "无法打开标签页"
   },
   "status": {
     "FileTooLarge": "文件太大"

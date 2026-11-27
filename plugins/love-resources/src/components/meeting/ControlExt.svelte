@@ -31,6 +31,7 @@
   import { lkIsConnecting, lkSessionConnected } from '../../liveKitClient'
   import RoomPopup from '../RoomPopup.svelte'
   import { currentMeeting, leaveMeeting } from '../../meetings'
+  import { isPendingJoinInThisSession } from '../../session'
   import { get } from 'svelte/store'
 
   const client = getClient()
@@ -139,7 +140,7 @@
 
   // Check if pending join is for THIS session (same browser tab)
   $: currentSessionId = getMetadata(presentation.metadata.SessionId)
-  $: hasPendingJoinInThisSession = $myConnectingSessionId !== null && $myConnectingSessionId === currentSessionId
+  $: hasPendingJoinInThisSession = isPendingJoinInThisSession($myConnectingSessionId, currentSessionId)
 
   $: checkActiveMeeting($location, $lkSessionConnected, $currentRoom?._id, hasPendingJoinInThisSession)
 

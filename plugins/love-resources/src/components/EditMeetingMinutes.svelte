@@ -20,6 +20,7 @@
 
   import love from '../plugin'
   import { joinMeeting, leaveMeeting } from '../meetings'
+  import { isPendingJoinInThisSession } from '../session'
   import { currentMeetingMinutes, currentRoom, infos, myConnectingSessionId, rooms } from '../stores'
   import { lkIsConnecting, lkSessionConnected } from '../liveKitClient'
   import { getMetadata } from '@hcengineering/platform'
@@ -54,7 +55,7 @@
   // Check if pending join is for THIS session (same browser tab)
   $: currentSessionId = getMetadata(presentation.metadata.SessionId)
   $: hasPendingJoinInThisSession =
-    $myConnectingSessionId !== null && $myConnectingSessionId === currentSessionId && $lkIsConnecting
+    isPendingJoinInThisSession($myConnectingSessionId, currentSessionId) && $lkIsConnecting
 
   async function connect(): Promise<void> {
     await joinMeeting(object)
