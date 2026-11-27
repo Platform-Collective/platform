@@ -28,6 +28,21 @@ const DISCOVERY_BACKOFF_FACTOR = 2
 const RETRY_WARN_FIRST_ATTEMPTS = 5
 const RETRY_WARN_EVERY_NTH_ATTEMPT = 60
 
+/** Parses the opt-in fixed lifetime, in seconds. Invalid values are handled at startup. */
+export function parseOidcSessionLifetime (value: string | undefined): number | undefined {
+  if (value === undefined) return undefined
+  const seconds = Number(value)
+  if (!/^\d+$/.test(value) || !Number.isInteger(seconds) || seconds < 60 || seconds > 31536000) {
+    throw new Error('OPENID_SESSION_LIFETIME must be an integer between 60 and 31536000 seconds')
+  }
+  return seconds
+}
+
+/** Gives each successful login a fresh deadline using the startup-validated lifetime. */
+export function resolveOidcSessionExp (lifetime: number | undefined, nowMs: number): number | undefined {
+  return lifetime === undefined ? undefined : Math.floor(nowMs / 1000) + lifetime
+}
+
 export interface OidcRegistrationParams {
   issuerUrl: string
   clientId: string
@@ -256,6 +271,11 @@ export function registerOpenid (
   }
   openidRouters.add(router)
 
+  const sessionLifetime = parseOidcSessionLifetime(process.env.OPENID_SESSION_LIFETIME)
+  if (sessionLifetime === undefined) {
+    measureCtx.warn('OPENID_SESSION_LIFETIME is unset; OIDC sessions retain the legacy unbounded lifetime')
+  }
+
   let oidcReady = false
 
   // The helper never rejects (it retries forever, and both its success and its
@@ -371,7 +391,10 @@ export function registerOpenid (
         first,
         last,
         { type: SocialIdType.OIDC, value: ctx.state.user.sub },
-        signUpDisabled
+        signUpDisabled,
+        sessionLifetime === undefined
+          ? undefined
+          : { exp: resolveOidcSessionExp(sessionLifetime, Date.now()), authMethod: 'oidc' }
       )
 
       if (redirectUrl !== '') {

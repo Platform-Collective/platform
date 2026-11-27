@@ -4,6 +4,11 @@ Changelog.
 
 ## Unreleased
 
+- `OPENID_SESSION_LIFETIME` bounds new OIDC logins to a fixed lifetime (60 to 31536000 seconds); unset
+  keeps unbounded sessions. Upgrade all account-service replicas, transactors and the frontend together
+  before setting it: older account services drop the session expiry and older transactors do not end
+  sessions. An invalid value prevents account-service startup. To roll back, unset it first and keep the
+  new account-service replicas, transactors and frontend until the bounded sessions already issued have expired.
 - Printing always allows the exact `FRONT_URL` origin. Configure additional printing
   domains with comma-separated `ALLOWED_HOSTNAMES` entries (`host`, `host:port`, or
   `*.example.com`). Bare hosts allow default HTTP/HTTPS ports only. Deployments

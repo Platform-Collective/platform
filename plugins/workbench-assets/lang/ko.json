@@ -24,6 +24,8 @@
         "OpenInNewTab": "새 탭에서 열기",
         "NewVersionAvailable": "새 버전이 출시되었습니다",
         "PleaseUpdate": "업데이트해 주세요",
+        "SessionExpiryWarning": "세션이 곧 만료됩니다",
+        "SessionExpiryWarningDescription": "몇 분 후 세션이 만료됩니다. 로그아웃되기 전에 볼 내지 않은 작업을 저장해 주세요.",
         "ServerUnderMaintenance": "새 버전을 위해 워크스페이스를 준비 중...",
         "WorkspaceCreating": "생성 중...",
         "AccessDenied": "항목이 존재하지 않거나 접근 권한이 없습니다.",

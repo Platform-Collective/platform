@@ -24,6 +24,8 @@
     "OpenInNewTab": "Apri in una nuova scheda",
     "NewVersionAvailable": "Nuova versione disponibile",
     "PleaseUpdate": "Si prega di aggiornare",
+    "SessionExpiryWarning": "La sessione sta per scadere",
+    "SessionExpiryWarningDescription": "La sessione scadrà tra pochi minuti. Salva il lavoro non inviato prima di essere disconnesso.",
     "ServerUnderMaintenance": "Il server è in manutenzione",
     "WorkspaceCreating": "Creazione in corso...",
     "AccessDenied": "L'oggetto non esiste o non hai autorizzazione per accedervi.",

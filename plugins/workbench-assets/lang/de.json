@@ -24,6 +24,8 @@
     "OpenInNewTab": "In neuem Tab öffnen",
     "NewVersionAvailable": "Neue Version verfügbar",
     "PleaseUpdate": "Bitte aktualisieren",
+    "SessionExpiryWarning": "Sitzung läuft bald ab",
+    "SessionExpiryWarningDescription": "Ihre Sitzung läuft in wenigen Minuten ab. Speichern Sie Ihre nicht gesendeten Eingaben, bevor Sie abgemeldet werden.",
     "ServerUnderMaintenance": "Workspace wird für neue Version vorbereitet...",
     "WorkspaceCreating": "Erstellung läuft...",
     "AccessDenied": "Objekt existiert nicht oder Sie haben keine Zugriffsberechtigung.",

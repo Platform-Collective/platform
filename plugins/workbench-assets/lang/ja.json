@@ -24,6 +24,8 @@
     "OpenInNewTab": "新しいタブで開く",
     "NewVersionAvailable": "新しいバージョンが利用可能です",
     "PleaseUpdate": "アップデートしてください",
+    "SessionExpiryWarning": "セッションの有効期限が近づいています",
+    "SessionExpiryWarningDescription": "セッションは数分で期限切れになります。ログアウトする前に、未送信の作業を保存してください。",
     "ServerUnderMaintenance": "新しいバージョンのためにワークスペースを準備中...",
     "WorkspaceCreating": "作成中...",
     "AccessDenied": "オブジェクトが存在しないか、アクセス権がありません。",

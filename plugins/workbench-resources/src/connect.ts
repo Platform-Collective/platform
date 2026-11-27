@@ -37,6 +37,7 @@ import platform, {
   translateCB
 } from '@hcengineering/platform'
 import presentation, {
+  decodeTokenPayload,
   loadServerConfig,
   purgeClient,
   purgeCommunicationClient,
@@ -49,19 +50,22 @@ import presentation, {
   upgradeDownloadProgress
 } from '@hcengineering/presentation'
 import {
+  addNotification,
   desktopPlatform,
   getCurrentLocation,
   locationStorageKeyId,
   navigate,
+  NotificationSeverity,
   setMetadataLocalStorage,
   themeStore
 } from '@hcengineering/ui'
 import { get, writable } from 'svelte/store'
 
 import plugin from './plugin'
+import { clearOidcSessionExpiryWarning, scheduleOidcSessionExpiryWarning } from './session-expiry'
 import { logOut, workspaceCreating } from './utils'
 import { WorkbenchEvents } from '@hcengineering/workbench'
-import { allowGuestSignUpStore } from '@hcengineering/view-resources'
+import { allowGuestSignUpStore, SimpleNotification } from '@hcengineering/view-resources'
 
 export const error = writable<string | undefined>(undefined)
 export const errorActions = writable<ErrorAction[]>([])
@@ -71,11 +75,28 @@ export interface ErrorAction {
 }
 const versionStorageKey = 'last_server_version'
 
+function showOidcSessionExpiryWarning (): void {
+  const language = get(themeStore).language
+  translateCB(plugin.string.SessionExpiryWarning, {}, language, (title) => {
+    translateCB(plugin.string.SessionExpiryWarningDescription, {}, language, (description) => {
+      addNotification(
+        title,
+        description,
+        SimpleNotification,
+        undefined,
+        NotificationSeverity.Warning,
+        'oidc-session-expiry'
+      )
+    })
+  })
+}
+
 let _token: string | undefined
 let _client: Client | undefined
 let _clientSet: boolean = false
 
 export async function disconnect (): Promise<void> {
+  clearOidcSessionExpiryWarning()
   if (_client !== undefined) {
     await _client.close()
     _client = undefined
@@ -221,6 +242,7 @@ export async function connect (title: string): Promise<Client | undefined> {
   let lastOnConnectAt = 0
 
   if (_token !== token && _client !== undefined) {
+    clearOidcSessionExpiryWarning()
     // We need to flush all data from memory
     await ctx.with('purge-client', {}, async () => {
       await purgeClient()
@@ -340,7 +362,9 @@ export async function connect (title: string): Promise<Client | undefined> {
               break
             }
             case platform.status.Unauthorized: {
-              void logOut().then(() => {
+              const payload = decodeTokenPayload(token)
+              const cookieTimeout = payload.extra?.authMethod === 'oidc' && payload.exp !== undefined ? 1000 : undefined
+              void logOut(cookieTimeout).then(() => {
                 navigate({
                   path: [loginId],
                   query: {}
@@ -587,6 +611,7 @@ export async function connect (title: string): Promise<Client | undefined> {
     await setClient(newClient)
     await setCommunicationClient(newClient)
   })
+  scheduleOidcSessionExpiryWarning(decodeTokenPayload(token), showOidcSessionExpiryWarning)
   await ctx.with('broadcast-connected', {}, async () => {
     await broadcastEvent(plugin.event.NotifyConnection, me)
   })

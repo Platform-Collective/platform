@@ -24,6 +24,8 @@
     "OpenInNewTab": "Open in a new tab",
     "NewVersionAvailable": "New version is available",
     "PleaseUpdate": "Please update",
+    "SessionExpiryWarning": "Session expiring soon",
+    "SessionExpiryWarningDescription": "Your session will expire in a few minutes. Save any unsent work before you are logged out.",
     "ServerUnderMaintenance": "Preparing workspace for new version...",
     "WorkspaceCreating": "Creation in progress...",
     "AccessDenied": "Object doesn't exist or you are not permitted to access it.",
