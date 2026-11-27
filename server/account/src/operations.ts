@@ -76,6 +76,8 @@ import {
   type InviteInfo
 } from './types'
 import {
+  inviteIdLogHash,
+  inviteLogInfo,
   addSocialIdBase,
   checkInvite,
   cleanEmail,
@@ -149,6 +151,22 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000' as AccountUuid
 const workspaceLimitPerUser =
   process.env.WORKSPACE_LIMIT_PER_USER != null ? parseInt(process.env.WORKSPACE_LIMIT_PER_USER) : 10
 
+function getWorkspaceCreationPolicy (): string {
+  const raw = process.env.WORKSPACE_CREATION?.toLowerCase()
+  return raw == null || raw === '' ? 'all' : raw
+}
+
+function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
+  return getWorkspaceCreationPolicy() === 'all' || extra?.admin === 'true'
+}
+
+const workspaceCreation = getWorkspaceCreationPolicy()
+if (workspaceCreation !== 'all' && workspaceCreation !== 'admin') {
+  console.warn('Unknown WORKSPACE_CREATION value; only platform admins can create workspaces', {
+    value: process.env.WORKSPACE_CREATION
+  })
+}
+
 /* =================================== */
 /* ============OPERATIONS============= */
 /* =================================== */
@@ -176,8 +194,8 @@ export async function loginAsGuest (
 }
 
 /**
- * Returns login affordance flags so clients can hide sign-up and guest-login
- * controls when they are disabled by env vars or unavailable (no guest person).
+ * Returns login affordance flags, including workspace creation permission for
+ * the supplied token. Anonymous callers can still query sign-up and guest login.
  */
 // L-AUTH-1: getLoginCapabilities is unauthenticated; without caching every
 // anonymous call hits the DB (db.person.findOne on the guest account) and lets
@@ -195,9 +213,17 @@ export async function getLoginCapabilities (
   ctx: MeasureContext,
   db: AccountDB,
   branding: Branding | null,
-  token: string
-): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+  token?: string
+): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean, workspaceCreationAllowed: boolean }> {
   const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true'
+  let workspaceCreationAllowed = isWorkspaceCreationAllowed()
+  if (!workspaceCreationAllowed && token != null && token !== '') {
+    try {
+      workspaceCreationAllowed = isWorkspaceCreationAllowed(decodeTokenVerbose(ctx, token).extra)
+    } catch {
+      workspaceCreationAllowed = false
+    }
+  }
 
   let guestLoginAvailable = false
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {
@@ -209,7 +235,7 @@ export async function getLoginCapabilities (
     guestLoginAvailable = guestPersonCache.value
   }
 
-  return { signUpEnabled, guestLoginAvailable }
+  return { signUpEnabled, guestLoginAvailable, workspaceCreationAllowed }
 }
 
 /**
@@ -387,7 +413,9 @@ export async function signUp (
     account,
     name: getPersonName(person),
     socialId,
-    token: !forceConfirmation ? generateToken(account) : undefined
+    token: !forceConfirmation
+      ? generateToken(account, undefined, isAdminEmail(email) ? { admin: 'true' } : undefined)
+      : undefined
   }
 }
 
@@ -636,6 +664,10 @@ export async function createWorkspace (
   }
 
   const { account, extra } = decodeTokenVerbose(ctx, token)
+
+  if (!isWorkspaceCreationAllowed(extra)) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
 
   checkRateLimit(account, workspaceName)
 
@@ -1090,7 +1122,7 @@ export async function join (
   ctx.info('Joining a workspace using invite', {
     email,
     normalizedEmail: workspaceJoinInfo.email,
-    ...workspaceJoinInfo.invite
+    ...(workspaceJoinInfo.invite != null ? inviteLogInfo(workspaceJoinInfo.invite) : {})
   })
 
   const { token, account } = await login(ctx, db, branding, _token, { email: workspaceJoinInfo.email, password })
@@ -1118,13 +1150,13 @@ export async function getInviteInfo (
   const { inviteId } = params
 
   if (inviteId == null || inviteId === '') {
-    ctx.error('Mandatory param inviteId is missing in getInviteInfo', { inviteId })
+    ctx.error('Mandatory param inviteId is missing in getInviteInfo', { inviteIdHash: inviteIdLogHash(inviteId) })
     return { workspaceName: null }
   }
 
   const invite = await getWorkspaceInvite(db, inviteId)
   if (invite == null) {
-    ctx.error('Invite not found in getInviteInfo', { inviteId })
+    ctx.error('Invite not found in getInviteInfo', { inviteIdHash: inviteIdLogHash(inviteId) })
     return { workspaceName: null }
   }
 
@@ -1169,7 +1201,7 @@ export async function checkJoin (
   const workspace = await getWorkspaceById(db, workspaceUuid)
 
   if (workspace === null) {
-    ctx.error('Workspace not found in checkJoin', { workspaceUuid, email, inviteId })
+    ctx.error('Workspace not found in checkJoin', { workspaceUuid, email, inviteIdHash: inviteIdLogHash(inviteId) })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.WorkspaceNotFound, { workspaceUuid }))
   }
 
@@ -1223,7 +1255,7 @@ export async function joinByToken (
   const workspace = await getWorkspaceById(db, workspaceUuid)
 
   if (workspace === null) {
-    ctx.error('Workspace not found in joinByToken', { workspaceUuid, email, inviteId })
+    ctx.error('Workspace not found in joinByToken', { workspaceUuid, email, inviteIdHash: inviteIdLogHash(inviteId) })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.WorkspaceNotFound, { workspaceUuid }))
   }
 
@@ -1249,12 +1281,12 @@ export async function checkAutoJoin (
   }
 
   if (invite.autoJoin !== true) {
-    ctx.warn('Not an auto-join invite', invite)
+    ctx.warn('Not an auto-join invite', inviteLogInfo(invite))
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
 
   if (invite.role !== AccountRole.Guest) {
-    ctx.warn('Auto-join not for guest role is forbidden', invite)
+    ctx.warn('Auto-join not for guest role is forbidden', inviteLogInfo(invite))
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -1263,12 +1295,16 @@ export async function checkAutoJoin (
   const workspace = await getWorkspaceById(db, workspaceUuid)
 
   if (workspace === null) {
-    ctx.warn('Workspace not found in auto-joining workflow', { workspaceUuid, email: normalizedEmail, inviteId })
+    ctx.warn('Workspace not found in auto-joining workflow', {
+      workspaceUuid,
+      email: normalizedEmail,
+      inviteIdHash: inviteIdLogHash(inviteId)
+    })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.WorkspaceNotFound, { workspaceUuid }))
   }
 
   if (normalizedEmail == null || normalizedEmail === '') {
-    ctx.error('Malformed auto-join invite', invite)
+    ctx.error('Malformed auto-join invite', inviteLogInfo(invite))
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
 
@@ -1439,7 +1475,7 @@ export async function confirm (
 
   const email = extra?.confirmEmail
   if (email === undefined) {
-    ctx.error('Email not provided for confirmation', { account, extra })
+    ctx.error('Email not provided for confirmation', { account, extraKeys: Object.keys(extra ?? {}) })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -1456,7 +1492,7 @@ export async function confirm (
     account,
     name: getPersonName(person),
     socialId,
-    token: generateToken(account)
+    token: generateToken(account, undefined, isAdminEmail(email) ? { admin: 'true' } : undefined)
   }
 
   // If invite info was carried through the confirmation token (signUpJoin flow),
@@ -1475,7 +1511,11 @@ export async function confirm (
         joinInfo.workspace,
         joinInfo.invite
       )
-      ctx.info('Email confirmed and workspace joined via invite', { account, email, inviteId })
+      ctx.info('Email confirmed and workspace joined via invite', {
+        account,
+        email,
+        inviteIdHash: inviteIdLogHash(inviteId)
+      })
       return joinResult
     } catch (err: any) {
       // The email is now verified, but the invite is stale/expired/invalid.
@@ -1700,11 +1740,11 @@ export async function restorePassword (
   }
 
   const { account, extra } = decodeTokenVerbose(ctx, token)
-  ctx.info('Restoring password', { account, extra })
+  ctx.info('Restoring password', { account })
 
   const email = extra?.restoreEmail
   if (email === undefined) {
-    ctx.error('Email not provided for restoration', { account, extra })
+    ctx.error('Email not provided for restoration', { account, extraKeys: Object.keys(extra ?? {}) })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -2166,7 +2206,10 @@ export async function getLoginInfoByToken (
   // Check if token has grants and create automatic account if needed
   if (grant != null) {
     if (workspaceUuid != null) {
-      ctx.warn('Grants are not allowed in workspace-specific tokens', { workspaceUuid, grant })
+      ctx.warn('Grants are not allowed in workspace-specific tokens', {
+        workspaceUuid,
+        grantWorkspace: grant.workspace
+      })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
     }
 
@@ -2180,7 +2223,7 @@ export async function getLoginInfoByToken (
     const grantWorkspace = await getWorkspaceById(db, workspaceUuid)
 
     if (grantWorkspace == null) {
-      ctx.warn('Workspace not found in token grant workflow', { grant })
+      ctx.warn('Workspace not found in token grant workflow', { workspace: grant.workspace, role: grant.role })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.WorkspaceNotFound, { workspaceUuid }))
     }
 

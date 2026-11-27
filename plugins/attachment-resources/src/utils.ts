@@ -191,3 +191,5 @@ export function getImageDimensions (
     minHeight: maxRem.minHeight * fontSize
   })
 }
+
+export { sortAttachments } from './attachmentOrder'

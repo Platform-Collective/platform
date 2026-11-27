@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { Attachment } from '@hcengineering/attachment'
-  import { type Doc, type Ref, type WithLookup } from '@hcengineering/core'
+  import { type Doc, type Ref, type WithLookup, SortingOrder } from '@hcengineering/core'
   import { createQuery } from '@hcengineering/presentation'
   import { onMount } from 'svelte'
 
@@ -53,7 +53,8 @@
           resAttachments = res
         },
         {
-          showArchived: true
+          showArchived: true,
+          sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending }
         }
       )
     } else {

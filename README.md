@@ -291,9 +291,8 @@ rushx dev-debug -g 'pattern' # To execute tests in debug mode with only the matc
 
 ## Package publishing
 
-```bash
-node ./common/scripts/bump.js -p projectName
-```
+Packages are released through the [Publish npm workflow](.github/workflows/publish-npm.yml).
+See [docs/RELEASING.md](docs/RELEASING.md) for access, environment protection and release instructions.
 
 ## Additional testing
 

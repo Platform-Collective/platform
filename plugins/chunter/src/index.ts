@@ -205,6 +205,7 @@ export default plugin(chunterId, {
     TranslateMessage: '' as IntlString,
     Translate: '' as IntlString,
     ShowOriginal: '' as IntlString,
+    QuoteWrote: '' as IntlString<{ author: string }>,
     Translating: '' as IntlString,
     StartConversation: '' as IntlString,
     ViewingThreadFromArchivedChannel: '' as IntlString,

@@ -7056,6 +7056,9 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
+      '@hcengineering/text-editor':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/text-editor
       '@hcengineering/ui':
         specifier: workspace:^0.7.0
         version: link:../../packages/ui
@@ -13282,6 +13285,9 @@ importers:
       '@hcengineering/calendar':
         specifier: workspace:^0.7.0
         version: link:../../plugins/calendar
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/chunter
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../../plugins/contact
@@ -16314,6 +16320,9 @@ importers:
       jest:
         specifier: ^30.4.2
         version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest-environment-jsdom:
+        specifier: ^30.4.1
+        version: 30.5.2(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
@@ -18090,6 +18099,9 @@ importers:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../foundations/utils/packages/platform-rig
+      '@hcengineering/text-markdown':
+        specifier: workspace:^0.7.21
+        version: link:../../foundations/core/packages/text-markdown
       '@types/html-to-text':
         specifier: ^8.1.1
         version: 8.1.1
@@ -28688,6 +28700,9 @@ importers:
       '@hcengineering/task-resources':
         specifier: workspace:^0.7.0
         version: link:../task-resources
+      '@hcengineering/text-core':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/core/packages/text-core
       '@hcengineering/text-editor':
         specifier: workspace:^0.7.0
         version: link:../text-editor
@@ -41752,6 +41767,9 @@ importers:
       eslint-plugin-svelte:
         specifier: ^3.23.0
         version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
       sharp:
         specifier: ~0.35.3
         version: 0.35.5(@types/node@24.13.6)

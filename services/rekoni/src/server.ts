@@ -14,7 +14,7 @@
 //
 
 import { createOpenTelemetryMetricsContext, SplitLogger } from '@hcengineering/analytics-service'
-import { newMetrics } from '@hcengineering/core'
+import { newMetrics, redactUrl, safeHttpLogFormat } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import { initStatisticsContext } from '@hcengineering/server-core'
 import { extractToken } from '@hcengineering/server-client'
@@ -70,7 +70,7 @@ export const startServer = async (): Promise<void> => {
   app.use(express.raw({ limit: '50mb' }))
   app.use(bodyParser.json())
 
-  app.use(morgan('short', { stream: myStream }))
+  app.use(morgan(safeHttpLogFormat, { stream: myStream }))
   app.use(
     bodyParser.text({
       type: 'text/plain'
@@ -249,7 +249,7 @@ export const startServer = async (): Promise<void> => {
   })
 
   app.use((_req, res, _next) => {
-    ctx.info('request', { url: _req.url })
+    ctx.info('request', { url: redactUrl(_req.url) })
     res.status(404).send({ message: 'Not found' })
   })
 

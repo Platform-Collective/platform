@@ -62,6 +62,7 @@ import { trackerOperation } from '@hcengineering/model-tracker'
 import { trainingOperation } from '@hcengineering/model-training'
 import { viewOperation } from '@hcengineering/model-view'
 import { workbenchOperation } from '@hcengineering/model-workbench'
+import { extraMigrateOperations } from './extra'
 
 export const migrateOperations: [string, MigrateOperation][] = [
   ['core', coreOperation],
@@ -112,5 +113,6 @@ export const migrateOperations: [string, MigrateOperation][] = [
   [inboxId, inboxOperation],
   [processId, processOperation],
   [communicationId, communicationOperation],
-  [recorderId, recorderOperation]
+  [recorderId, recorderOperation],
+  ...extraMigrateOperations
 ]

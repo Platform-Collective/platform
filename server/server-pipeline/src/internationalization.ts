@@ -81,6 +81,7 @@ import chatEn from '@hcengineering/chat-assets/lang/en.json'
 import cardEn from '@hcengineering/card-assets/lang/en.json'
 import mailEn from '@hcengineering/mail-assets/lang/en.json'
 import communicationEn from '@hcengineering/communication-assets/lang/en.json'
+import { registerExtraServerStringLoaders } from './extra'
 
 export function registerStringLoaders (): void {
   addStringsLoader(coreId, async (lang: string) => coreEng)
@@ -125,4 +126,5 @@ export function registerStringLoaders (): void {
   addStringsLoader(cardId, async (lang: string) => cardEn)
   addStringsLoader(mailId, async (lang: string) => mailEn)
   addStringsLoader(communicationId, async (lang: string) => communicationEn)
+  registerExtraServerStringLoaders()
 }

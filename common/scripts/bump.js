@@ -1,7 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const execSync = require('child_process').execSync
-const repo = '@hcengineering'
+const repo = '@hcengineering/'
 
 const packages = {}
 const pathes = {}
@@ -87,12 +87,12 @@ function main () {
   const version = positional[0]
 
   if (version === undefined || version === '') {
-    console.log('usage: node bump.js [--check] [--fix] [--publish] <version>')
-    return
+    console.error('usage: node bump.js [--check] [--fix] [--publish] <version>')
+    process.exit(1)
   }
-  if (!/^(\d+\.)?(\d+\.)?(\*|\d+)$/.test(version)) {
-    console.log('Invalid <version>', version, ' should be xx.xx.xx')
-    return
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+    console.error('Invalid <version>', version, 'expected major.minor.patch without a suffix')
+    process.exit(1)
   }
 
   console.log(doCheck ? 'check versions ...' : 'bump version ...', version)
@@ -117,12 +117,11 @@ function main () {
   const packageNames = Object.keys(packages)
 
   if (doCheck) {
-    let ok = true
+    let ok = packageNames.length > 0
     for (const packageName of packageNames) {
       const json = jsons[packageName]
-      if (json === undefined) continue
-      if (json.version !== version) {
-        console.error('Version mismatch:', packageName, 'expected', version, 'got', json.version)
+      if (json?.version !== version) {
+        console.error('Version mismatch:', packageName, 'expected', version, 'got', json?.version)
         ok = false
       }
     }

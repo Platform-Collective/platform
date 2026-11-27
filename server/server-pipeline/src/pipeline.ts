@@ -52,6 +52,7 @@ import {
   UserStatusMiddleware,
   TransientMiddleware
 } from '@hcengineering/middleware'
+import { WorkspaceNotificationDefaultsMiddleware } from '@hcengineering/server-notification-resources'
 import {
   createBenchmarkAdapter,
   createInMemoryAdapter,
@@ -164,6 +165,7 @@ export function createServerPipeline (
       VersioningMiddleware.create,
       IdentifierMiddleware.create, // After ApplyTx to ensure that it pass
       RatingMiddleware.create, // Rating editing restrictions
+      WorkspaceNotificationDefaultsMiddleware.create, // Workspace notification defaults editing restrictions
       TransientMiddleware.create,
       TxMiddleware.create, // Store tx into transaction domain
       ...(opt.disableTriggers === true ? [] : [TriggersMiddleware.create]),

@@ -1,5 +1,13 @@
 export * from './context'
 export * from './metrics'
+export {
+  logReplacer,
+  redactUrl,
+  safeHttpLogFormat,
+  safeLogStringify,
+  sanitizeForLog,
+  sanitizeLogFields
+} from './log-redaction'
 export type * from './types'
 
 /**

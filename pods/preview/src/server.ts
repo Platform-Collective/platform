@@ -14,7 +14,7 @@
 //
 
 import { Analytics } from '@hcengineering/analytics'
-import { MeasureContext, metricsAggregate, WorkspaceUuid } from '@hcengineering/core'
+import { MeasureContext, metricsAggregate, safeHttpLogFormat, WorkspaceUuid } from '@hcengineering/core'
 import { getCPUInfo, getMemoryInfo, StorageConfiguration } from '@hcengineering/server-core'
 import { buildStorageFromConfig, storageConfigFromEnv } from '@hcengineering/server-storage'
 import { decodeToken, TokenError } from '@hcengineering/server-token'
@@ -170,7 +170,7 @@ export async function createServer (ctx: MeasureContext, config: Config): Promis
       handleRequest(ctx, name, fn, req, res, next)
     }
 
-  app.use(morgan('short', { stream: new LogStream() }))
+  app.use(morgan(safeHttpLogFormat, { stream: new LogStream() }))
 
   app.get(
     '/metadata/:workspace/:name',

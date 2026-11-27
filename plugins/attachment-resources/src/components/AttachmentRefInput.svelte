@@ -24,6 +24,7 @@
     PersonId,
     RateLimiter,
     Ref,
+    SortingOrder,
     Space,
     generateId,
     toIdMap
@@ -37,6 +38,7 @@
     draftsStore,
     fetchLinkPreviewDetails,
     getClient,
+    getFileUrl,
     isLinkPreviewEnabled,
     uploadFile,
     LinkPreviewAttachmentMetadata,
@@ -53,6 +55,7 @@
   } from '@hcengineering/uploader'
   import { createEventDispatcher, onDestroy, tick } from 'svelte'
   import attachment from '../plugin'
+  import { diffLinkPreviewUrls, getLinkPreviewUrls } from '../linkPreviewUrls'
   import AttachmentPresenter from './AttachmentPresenter.svelte'
 
   export let objectId: Ref<Doc>
@@ -72,6 +75,9 @@
   export let autofocus = false
   export function submit(): void {
     refInput.submit()
+  }
+  export function appendMarkup(markup: Markup): void {
+    refInput.appendMarkup(markup)
   }
   export let placeholder: IntlString | undefined = undefined
   export let extraActions: RefAction[] = []
@@ -97,6 +103,13 @@
   const removedAttachments: Set<Attachment> = new Set<Attachment>()
   const maxLinkPreviewCount = 3
   const urlSet = new Set<string>()
+  // Urls found in the message text, mapped to the link preview attachment created for them
+  const previewUrls = new Map<string, Ref<Attachment> | undefined>()
+  // A request belongs to one occurrence of a URL, not to a later removal/re-add.
+  const previewRequests = new Map<string, symbol>()
+  const previewRestores = new Map<Ref<Attachment>, symbol>()
+  let previewTextKnown = false
+  let previewObjectId: Ref<Doc> | undefined
 
   let progress = false
   let loadingLinks = false
@@ -117,8 +130,8 @@
       },
       (res) => {
         existingAttachments = res.map((p) => {
-          if (p.type === 'application/link-preview') {
-            urlSet.add(getUrlKey(p.name))
+          if (p.type === 'application/link-preview' && typeof p.metadata?.url === 'string') {
+            urlSet.add(getUrlKey(p.metadata.url))
           }
           return p._id
         })
@@ -143,9 +156,73 @@
     return s
   }
 
+  function restoreLinkPreviewUrls(docs: Iterable<Attachment>): void {
+    const restored = Array.from(docs)
+    for (const [url, _id] of getLinkPreviewUrls(restored)) {
+      previewRequests.delete(url)
+      previewUrls.set(url, _id)
+      urlSet.add(getUrlKey(url))
+    }
+    for (const doc of restored) {
+      if (doc.type !== 'application/link-preview' || doc.metadata?.url || previewRestores.has(doc._id)) continue
+      const request = Symbol(doc._id)
+      previewRestores.set(doc._id, request)
+      void restoreLegacyLinkPreview(doc, objectId, request)
+    }
+  }
+
+  async function restoreLegacyLinkPreview(doc: Attachment, sourceObjectId: Ref<Doc>, request: symbol): Promise<void> {
+    try {
+      const response = await fetch(getFileUrl(doc.file), { signal: AbortSignal.timeout(5000) })
+      if (!response.ok) return
+      const meta = await response.json()
+      if (
+        objectId !== sourceObjectId ||
+        previewRestores.get(doc._id) !== request ||
+        (attachments.get(doc._id) !== doc && !removedAttachments.has(doc))
+      ) {
+        return
+      }
+      if (typeof meta?.url !== 'string' || !isValidUrl(meta.url)) return
+      // Read the original blob, never refetch metadata from the remote website.
+      const metadata = { ...doc.metadata, url: meta.url }
+      doc.metadata = metadata
+      previewRequests.delete(meta.url)
+      previewUrls.set(meta.url, removedAttachments.has(doc) ? undefined : doc._id)
+      urlSet.add(getUrlKey(meta.url))
+      saveDraft()
+      if (originalAttachments.has(doc._id)) {
+        await client.updateCollection(
+          doc._class,
+          doc.space,
+          doc._id,
+          doc.attachedTo,
+          doc.attachedToClass,
+          doc.collection,
+          { metadata }
+        )
+      }
+    } catch (err: any) {
+      console.error('Failed to restore legacy link preview', err)
+    } finally {
+      if (objectId === sourceObjectId && previewRestores.get(doc._id) === request) {
+        previewRestores.delete(doc._id)
+        if (previewTextKnown) updateLinkPreview()
+      }
+    }
+  }
+
   $: objectId && updateAttachments(objectId)
 
   async function updateAttachments(objectId: Ref<Doc>): Promise<void> {
+    if (previewObjectId !== objectId) {
+      previewObjectId = objectId
+      previewRestores.clear()
+      previewTextKnown = false
+      previewUrls.clear()
+      previewRequests.clear()
+      urlSet.clear()
+    }
     draftAttachments = $draftsStore[draftKey]
     if (draftAttachments && shouldSaveDraft) {
       attachments = new Map()
@@ -159,6 +236,9 @@
       originalAttachments.clear()
       removedAttachments.clear()
       urlSet.clear()
+      previewUrls.clear()
+      previewRequests.clear()
+      restoreLinkPreviewUrls(attachments.values())
       query.unsubscribe()
     } else if (!skipAttachmentsPreload) {
       query.query(
@@ -167,9 +247,12 @@
           attachedTo: objectId
         },
         (res) => {
+          if (previewObjectId !== objectId) return
           originalAttachments = new Set(res.map((p) => p._id))
           attachments = toIdMap(res)
-        }
+          restoreLinkPreviewUrls(res)
+        },
+        { sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending } }
       )
     } else {
       attachments = new Map()
@@ -177,6 +260,8 @@
       originalAttachments.clear()
       removedAttachments.clear()
       urlSet.clear()
+      previewUrls.clear()
+      previewRequests.clear()
       query.unsubscribe()
     }
   }
@@ -188,10 +273,10 @@
     }
   }
 
-  async function createAttachment(file: File, meta?: AttachmentMetadata): Promise<void> {
+  async function createAttachment(file: File, meta?: AttachmentMetadata): Promise<Ref<Attachment> | undefined> {
     try {
       const { uuid, metadata } = await uploadFile(file)
-      await _createAttachment(uuid, file.name, file, meta ?? metadata)
+      return await _createAttachment(uuid, file.name, file, meta ?? metadata)
     } catch (err: any) {
       void setPlatformStatus(unknownError(err))
     }
@@ -202,7 +287,7 @@
     name: string,
     blob: File | Blob,
     metadata?: BlobMetadata
-  ): Promise<void> {
+  ): Promise<Ref<Attachment> | undefined> {
     try {
       const _id: Ref<Attachment> = generateId()
 
@@ -227,6 +312,7 @@
       saved = false
       saveDraft()
       dispatch('update', { message: content, attachments: attachments.size })
+      return _id
     } catch (err: any) {
       void setPlatformStatus(unknownError(err))
     }
@@ -239,37 +325,58 @@
     }
   }
 
+  /**
+   * Uploads files in parallel, but adds them to the input in the order they were selected,
+   * so the attachment order does not depend on which upload finishes first.
+   */
+  async function createAttachmentsInOrder(list: FileList): Promise<void> {
+    const files: File[] = []
+    for (let index = 0; index < list.length; index++) {
+      const file = list.item(index)
+      if (file !== null) files.push(file)
+    }
+    const limiter = new RateLimiter(10)
+    const uploads = files.map(async (file) => {
+      try {
+        return await limiter.exec(async () => await uploadFile(file))
+      } catch (err: any) {
+        void setPlatformStatus(unknownError(err))
+        return undefined
+      }
+    })
+    for (let index = 0; index < files.length; index++) {
+      const uploaded = await uploads[index]
+      if (uploaded !== undefined) {
+        await _createAttachment(uploaded.uuid, files[index].name, files[index], uploaded.metadata)
+      }
+    }
+  }
+
   async function fileSelected(): Promise<void> {
     progress = true
     await tick()
     const list = inputFile.files
-    if (list === null || list.length === 0) return
-    const limiter = new RateLimiter(10)
-    for (let index = 0; index < list.length; index++) {
-      const file = list.item(index)
-      if (file !== null) {
-        await limiter.add(() => createAttachment(file))
-      }
+    if (list === null || list.length === 0) {
+      progress = false
+      return
     }
-    await limiter.waitProcessing()
-    inputFile.value = ''
-    progress = false
+    try {
+      await createAttachmentsInOrder(list)
+    } finally {
+      inputFile.value = ''
+      progress = false
+    }
   }
 
   async function fileDrop(e: DragEvent): Promise<void> {
     const list = e.dataTransfer?.files
-    const limiter = new RateLimiter(10)
-
     if (list === undefined || list.length === 0) return
     progress = true
-    for (let index = 0; index < list.length; index++) {
-      const file = list.item(index)
-      if (file !== null) {
-        await limiter.add(() => createAttachment(file))
-      }
+    try {
+      await createAttachmentsInOrder(list)
+    } finally {
+      progress = false
     }
-    await limiter.waitProcessing()
-    progress = false
   }
 
   async function removeAttachment(attachment: Attachment): Promise<void> {
@@ -330,19 +437,26 @@
       return
     }
     saved = true
-    const limiter = new RateLimiter(10)
-    newAttachments.forEach((p) => {
-      const attachment = attachments.get(p)
-      if (attachment !== undefined) {
-        void limiter.add(() => saveAttachment(attachment))
+    // Save new attachments one by one in input order: the server assigns createdOn on arrival,
+    // and attachments are displayed sorted by createdOn.
+    for (const [id, attachment] of attachments) {
+      if (newAttachments.has(id)) {
+        try {
+          await saveAttachment(attachment)
+        } catch (err: any) {
+          void setPlatformStatus(unknownError(err))
+        }
       }
-    })
+    }
+    const limiter = new RateLimiter(10)
     removedAttachments.forEach((p) => {
       void limiter.add(() => deleteAttachment(p))
     })
     await limiter.waitProcessing()
     newAttachments.clear()
     urlSet.clear()
+    previewUrls.clear()
+    previewRequests.clear()
     removedAttachments.clear()
     saveDraft()
   }
@@ -355,18 +469,34 @@
   }
 
   function updateLinkPreview(): void {
-    const hrefs = refContainer.getElementsByTagName('a')
-    const newUrls: string[] = []
-    for (let i = 0; i < hrefs.length; i++) {
-      if (hrefs[i].target !== '_blank' || !isValidUrl(hrefs[i].href) || hrefs[i].rel === '') {
-        continue
+    const hrefs = Array.from(refContainer.getElementsByTagName('a'))
+    const currentUrls = hrefs
+      .filter((it) => it.target === '_blank' && isValidUrl(it.href) && it.rel !== '')
+      .map((it) => it.href)
+    const { added, removed } = diffLinkPreviewUrls(previewUrls.keys(), currentUrls)
+    for (const url of removed) {
+      const _id = previewUrls.get(url)
+      previewUrls.delete(url)
+      previewRequests.delete(url)
+      urlSet.delete(getUrlKey(url))
+      const doc = _id !== undefined ? attachments.get(_id) : undefined
+      if (doc !== undefined) {
+        void removeAttachment(doc)
       }
-      const key = getUrlKey(hrefs[i].href)
-      if (urlSet.has(key)) {
+    }
+    // Wait for saved source URLs before creating previews, avoiding legacy duplicates.
+    if (previewRestores.size > 0) return
+    const newUrls: Array<{ url: string, request: symbol }> = []
+    for (const url of added) {
+      const key = getUrlKey(url)
+      if (urlSet.size >= maxLinkPreviewCount || urlSet.has(key)) {
         continue
       }
       urlSet.add(key)
-      newUrls.push(hrefs[i].href)
+      previewUrls.set(url, undefined)
+      const request = Symbol(url)
+      previewRequests.set(url, request)
+      newUrls.push({ url, request })
     }
     if (newUrls.length > 0) {
       void loadLinks(newUrls)
@@ -374,17 +504,21 @@
   }
 
   function onUpdate(event: CustomEvent): void {
-    if (isLinkPreviewEnabled() && !loading && urlSet.size < maxLinkPreviewCount) {
+    if (isLinkPreviewEnabled() && !loading) {
+      previewTextKnown = true
       updateLinkPreview()
     }
     dispatch('update', { message: event.detail, attachments: attachments.size })
   }
 
-  async function loadLinks(urls: string[]): Promise<void> {
+  async function loadLinks(urls: Array<{ url: string, request: symbol }>): Promise<void> {
     loadingLinks = true
-    for (const url of urls) {
+    for (const { url, request } of urls) {
       try {
         const meta = await fetchLinkPreviewDetails(url)
+        if (previewRequests.get(url) !== request) {
+          continue
+        }
         if (canDisplayLinkPreview(meta)) {
           const uuid = generateFileId()
           const blob = new Blob([JSON.stringify(meta)])
@@ -394,9 +528,20 @@
             image: meta.image,
             description: meta.description,
             imageWidth: meta.imageWidth,
-            imageHeight: meta.imageHeight
+            imageHeight: meta.imageHeight,
+            url
           }
-          await createAttachment(file, metadata)
+          const _id = await createAttachment(file, metadata)
+          const doc = _id !== undefined ? attachments.get(_id) : undefined
+          if (doc === undefined) {
+            continue
+          }
+          if (previewRequests.get(url) === request && previewUrls.get(url) === undefined) {
+            previewUrls.set(url, _id)
+          } else {
+            // The url was removed from the text (or already got a preview) while this one was being created
+            await removeAttachment(doc)
+          }
         }
       } catch (err: any) {
         void setPlatformStatus(unknownError(err))
@@ -420,7 +565,9 @@
     let target: HTMLElement | null = evt.target as HTMLElement
     let allowed = false
 
-    while (target != null) {
+    const seen = new Set<HTMLElement>()
+    while (target != null && !seen.has(target)) {
+      seen.add(target)
       target = target.parentElement
       if (target === refContainer) {
         allowed = true

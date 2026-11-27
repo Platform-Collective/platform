@@ -65,6 +65,8 @@
     "Messages": "Сообщения",
     "NoResults": "Нет результатов",
     "CopyLink": "Копировать ссылку",
+    "Quote": "Цитировать",
+    "QuoteWrote": "{author} написал(а):",
     "FilterBacklinks": "Упоминания",
     "DM": "Личное сообщение",
     "DMNotification": "Отправил сообщение",

@@ -14,7 +14,6 @@
 -->
 <script lang="ts">
   import { Location, location, locationStorageKeyId, locationToUrl, navigate } from '@hcengineering/ui'
-  import { setFilters } from '../../filter'
 
   export let app: string | undefined = undefined
   export let space: string | undefined = undefined
@@ -69,7 +68,6 @@
   function clickHandler(e: MouseEvent): void {
     if (e.metaKey || e.ctrlKey) return
     e.preventDefault()
-    setFilters([])
     navigate(loc)
   }
 </script>

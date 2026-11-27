@@ -49,6 +49,8 @@ export type * from './types'
 export const DOMAIN_NOTIFICATION = 'notification' as Domain
 export const DOMAIN_DOC_NOTIFY = 'notification-dnc' as Domain
 export const DOMAIN_USER_NOTIFY = 'notification-user' as Domain
+/** Storage domain of the workspace-wide notification defaults */
+export const DOMAIN_WORKSPACE_NOTIFICATION = 'workspace-notification' as Domain
 
 /**
  * @public
@@ -191,6 +193,73 @@ export interface NotificationTypeSetting extends Preference {
   attachedTo: Ref<NotificationProvider>
   type: Ref<NotificationType>
   enabled: boolean
+}
+
+/**
+ * Workspace-wide default for a notification type and provider.
+ * Applies to every user who has no own NotificationTypeSetting for the same type and provider.
+ * Only workspace owners are allowed to create, update or remove it.
+ * @public
+ */
+export interface WorkspaceNotificationTypeSetting extends Doc {
+  attachedTo: Ref<NotificationProvider>
+  type: Ref<NotificationType>
+  enabled: boolean
+}
+
+/**
+ * Deterministic id of the workspace default for a provider and notification type,
+ * so concurrent edits address the same document instead of creating duplicates.
+ * @public
+ */
+export function getWorkspaceNotificationTypeSettingId (
+  provider: Ref<NotificationProvider>,
+  type: Ref<NotificationType>
+): Ref<WorkspaceNotificationTypeSetting> {
+  return `${provider}-${type}` as Ref<WorkspaceNotificationTypeSetting>
+}
+
+/**
+ * Find the workspace default for a provider and notification type.
+ * If duplicates exist, the document with the deterministic id wins, then the most recently modified one
+ * (lowest id on a tie), so the result does not depend on the order of the input.
+ * @public
+ */
+export function findWorkspaceNotificationTypeSetting<
+  T extends Pick<WorkspaceNotificationTypeSetting, '_id' | 'attachedTo' | 'type' | 'modifiedOn'>
+> (settings: T[], provider: Ref<NotificationProvider>, type: Ref<NotificationType>): T | undefined {
+  const id = getWorkspaceNotificationTypeSettingId(provider, type)
+  let result: T | undefined
+  for (const it of settings) {
+    if (it.attachedTo !== provider || it.type !== type) continue
+    if (it._id === id) return it
+    if (
+      result === undefined ||
+      it.modifiedOn > result.modifiedOn ||
+      (it.modifiedOn === result.modifiedOn && it._id < result._id)
+    ) {
+      result = it
+    }
+  }
+  return result
+}
+
+/**
+ * Resolve whether a notification type is enabled for a provider.
+ * Precedence: user setting, then workspace default, then model defaults.
+ * @public
+ */
+export function resolveNotificationTypeEnabled (
+  type: Pick<NotificationType, '_id' | 'defaultEnabled'>,
+  provider: Ref<NotificationProvider>,
+  userSetting: Pick<NotificationTypeSetting, 'enabled'> | undefined,
+  workspaceSetting: Pick<WorkspaceNotificationTypeSetting, 'enabled'> | undefined,
+  providerDefaults: Array<Pick<NotificationProviderDefaults, 'provider' | 'enabledTypes'>>
+): boolean {
+  if (userSetting !== undefined) return userSetting.enabled
+  if (workspaceSetting !== undefined) return workspaceSetting.enabled
+  if (providerDefaults.some((it) => it.provider === provider && it.enabledTypes.includes(type._id))) return true
+  return type.defaultEnabled
 }
 
 /**
@@ -377,6 +446,7 @@ const notification = plugin(notificationId, {
     MentionInboxNotification: '' as Ref<Class<MentionInboxNotification>>,
     NotificationProvider: '' as Ref<Class<NotificationProvider>>,
     NotificationTypeSetting: '' as Ref<Class<NotificationTypeSetting>>,
+    WorkspaceNotificationTypeSetting: '' as Ref<Class<WorkspaceNotificationTypeSetting>>,
     NotificationProviderSetting: '' as Ref<Class<NotificationProviderSetting>>,
     NotificationProviderDefaults: '' as Ref<Mixin<NotificationProviderDefaults>>,
     ReactionInboxNotification: '' as Ref<Class<ReactionInboxNotification>>
