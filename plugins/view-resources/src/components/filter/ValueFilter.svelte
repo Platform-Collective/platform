@@ -195,6 +195,10 @@
       {#await promise then attribute}
         {#if objectsPromise}
           <Loading />
+        {:else if sortedValues.length === 0}
+          <div class="menu-item default-cursor content-trans-color">
+            <Label label={ui.string.NoResults} />
+          </div>
         {:else}
           {#each sortedValues as value}
             {@const realValue = [...(realValues.get(value) ?? [])][0]}
