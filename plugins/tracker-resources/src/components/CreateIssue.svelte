@@ -36,6 +36,7 @@
   import { getResource, translate } from '@hcengineering/platform'
   import preference, { SpacePreference } from '@hcengineering/preference'
   import {
+    AttributeBarEditor,
     Card,
     createMarkup,
     createQuery,
@@ -51,7 +52,7 @@
   } from '@hcengineering/presentation'
   import tags, { type TagElement, TagReference } from '@hcengineering/tags'
   import { TaskType } from '@hcengineering/task'
-  import { TaskKindSelector } from '@hcengineering/task-resources'
+  import { TaskKindSelector, taskTypeStore } from '@hcengineering/task-resources'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import {
     Component as ComponentType,
@@ -83,6 +84,18 @@
   import { ObjectBox } from '@hcengineering/view-resources'
   import { createEventDispatcher, onDestroy } from 'svelte'
 
+  import {
+    areRequiredAttributesFilled,
+    fillCreateIssueAttributeDefaults,
+    getCreateIssueAttributeObject,
+    getCreateIssueAttributes,
+    getCreateIssueAttributeValues,
+    getTaskTypeAttributes,
+    getUntouchedCreateIssueDraft,
+    removeChangedTaskTypeValues,
+    setCreateIssueMixinValues,
+    setCreateIssueAttributeValue
+  } from '../create-issue-attributes'
   import { fillIssueDefaults } from '../issue-defaults'
   import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
@@ -90,7 +103,7 @@
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
-  import { getDuplicateIssueCustomFields } from './duplicate-issue'
+  import { getDuplicateIssueCustomFields, getDuplicateIssueSource } from './duplicate-issue'
   import AssigneeEditor from './issues/AssigneeEditor.svelte'
   import IssueNotification from './issues/IssueNotification.svelte'
   import ParentIssue from './issues/ParentIssue.svelte'
@@ -134,12 +147,14 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const parentQuery = createQuery()
+  const createIssueAttributesQuery = createQuery()
 
   let _space = draft?.space ?? space
   // let project: Project | undefined
   let object = getDefaultObjectFromDraft() ?? getDefaultObject(id)
   let isAssigneeTouched = false
-  let kind: Ref<TaskType> | undefined = originalIssue?.kind
+  let kind: Ref<TaskType> | undefined =
+    originalIssue?.kind ?? (draft?.kind !== undefined && draft.kind !== '' ? draft.kind : undefined)
   let duplicateSource = originalIssue
 
   let templateId: Ref<IssueTemplate> | undefined = draft?.template?.template
@@ -207,8 +222,13 @@
       subIssues: []
     }
     if (originalIssue !== undefined && !ignoreOriginal) {
+      const customFields = getDuplicateIssueCustomFields(hierarchy, originalIssue)
+      const mixin = $taskTypeStore.get(originalIssue.kind)?.targetClass
+      const mixinValues = mixin !== undefined ? customFields.mixins.get(mixin) : undefined
       const res: IssueDraft = {
         ...base,
+        ...customFields.attributes,
+        ...(mixin !== undefined && mixinValues !== undefined ? { [mixin]: mixinValues } : {}),
         status: originalIssue.status,
         priority: originalIssue.priority,
         component: originalIssue.component,
@@ -239,7 +259,44 @@
   let currentProject: Project | undefined
 
   let descriptionBox: AttachmentStyledBox | undefined
+  let previousKind = kind
+  let defaultsKind: Ref<TaskType> | undefined
+  let attributesRevision = 0
+  let createIssueAttributes = getCreateIssueAttributes(hierarchy)
 
+  $: selectedTaskType = kind !== undefined ? $taskTypeStore.get(kind) : undefined
+  $: if (attributesRevision >= 0) {
+    createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+  }
+  $: createIssueAttributesQuery.query(
+    core.class.Attribute,
+    {
+      attributeOf: {
+        $in: [tracker.class.Issue, ...(selectedTaskType !== undefined ? [selectedTaskType.targetClass] : [])]
+      }
+    },
+    () => {
+      attributesRevision += 1
+    }
+  )
+  $: if (kind !== previousKind) {
+    duplicateSource = getDuplicateIssueSource(duplicateSource, kind)
+    const previousAttributes = getTaskTypeAttributes(
+      hierarchy,
+      previousKind !== undefined ? $taskTypeStore.get(previousKind) : undefined
+    )
+    const nextAttributes = getTaskTypeAttributes(hierarchy, selectedTaskType)
+    object = removeChangedTaskTypeValues(object, previousAttributes, nextAttributes)
+    object.kind = kind ?? ('' as Ref<TaskType>)
+    previousKind = kind
+    defaultsKind = undefined
+  }
+  $: if (selectedTaskType !== undefined && defaultsKind !== selectedTaskType._id) {
+    defaultsKind = selectedTaskType._id
+    object = fillCreateIssueAttributeDefaults(getTaskTypeAttributes(hierarchy, selectedTaskType), object)
+  }
+  $: objectValues = object as unknown as Record<string, unknown>
+  $: requiredAttributesFilled = areRequiredAttributesFilled(createIssueAttributes, objectValues)
   $: updateIssueStatusId(object, currentProject)
   $: updateAssigneeId(object, currentProject)
   $: canSave =
@@ -247,9 +304,11 @@
     normalizeIssueTitle(object.title ?? '').length > 0 &&
     object.status !== undefined &&
     kind !== undefined &&
-    currentProject !== undefined
+    currentProject !== undefined &&
+    requiredAttributesFilled
 
   $: empty = {
+    ...getUntouchedCreateIssueDraft(getTaskTypeAttributes(hierarchy, selectedTaskType), kind),
     assignee: assignee ?? currentProject?.defaultAssignee,
     status: status ?? currentProject?.defaultIssueStatus,
     parentIssue: parentIssue?._id,
@@ -270,6 +329,7 @@
     templateId = undefined
     template = undefined
     duplicateSource = undefined
+    defaultsKind = undefined
     object = getDefaultObject(undefined, true)
     fillDefaults(hierarchy, object, tracker.class.Issue)
   }
@@ -484,9 +544,27 @@
 
       const identifier = `${currentProject?.identifier}-${number}`
       const customFields = getDuplicateIssueCustomFields(hierarchy, duplicateSource, kind)
+      const draftValues = object as unknown as Record<string, unknown>
+      const issueAttributeValues = getCreateIssueAttributeValues(
+        getCreateIssueAttributes(hierarchy),
+        draftValues,
+        customFields.attributes
+      )
+      const taskTypeTargetClass = selectedTaskType?.targetClass
+      const taskTypeAttributes = getTaskTypeAttributes(hierarchy, selectedTaskType)
+      if (taskTypeTargetClass !== undefined && hierarchy.isMixin(taskTypeTargetClass)) {
+        setCreateIssueMixinValues(
+          customFields.mixins,
+          taskTypeTargetClass,
+          getCreateIssueAttributeValues(taskTypeAttributes, draftValues, customFields.mixins.get(taskTypeTargetClass))
+        )
+      }
 
       const value: DocData<Issue> = {
-        ...customFields.attributes,
+        ...issueAttributeValues,
+        ...(taskTypeTargetClass !== undefined && !hierarchy.isMixin(taskTypeTargetClass)
+          ? getCreateIssueAttributeValues(taskTypeAttributes, draftValues, issueAttributeValues)
+          : {}),
         title: normalizeIssueTitle(object.title),
         description: null,
         assignee: object.assignee,
@@ -931,6 +1009,23 @@
       />
     {/key}
   </div>
+  {#if createIssueAttributes.length > 0}
+    <div id="issue-custom-attributes" class="popupPanel-body__aside-grid m-3">
+      {#each createIssueAttributes as attribute (attribute.attr._id)}
+        <AttributeBarEditor
+          key={attribute}
+          _class={attribute._class}
+          object={getCreateIssueAttributeObject(hierarchy, objectValues, attribute)}
+          draft
+          showHeader
+          size={'medium'}
+          on:update={(event) => {
+            object = setCreateIssueAttributeValue(object, attribute, event.detail.value)
+          }}
+        />
+      {/each}
+    </div>
+  {/if}
   {#if _space}
     <SubIssues
       bind:this={subIssuesComponent}
@@ -1113,3 +1208,9 @@
     </DocCreateExtComponent>
   </svelte:fragment>
 </Card>
+
+<style lang="scss">
+  #issue-custom-attributes {
+    row-gap: 0.5rem;
+  }
+</style>

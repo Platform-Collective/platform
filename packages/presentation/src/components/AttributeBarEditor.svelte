@@ -14,13 +14,13 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import core, { type Class, type Doc, type Ref } from '@hcengineering/core'
+  import type { Class, Doc, Ref } from '@hcengineering/core'
   import type { AnySvelteComponent, ButtonKind, ButtonSize } from '@hcengineering/ui'
   import { Icon, Label, tooltip } from '@hcengineering/ui'
-  import { isEmptyMarkup } from '@hcengineering/text'
   import view from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import { getAttribute, KeyedAttribute, updateAttribute } from '../attributes'
+  import { isRequiredValueEmpty } from '../required-value'
   import { getAttributeEditor, getClient } from '../utils'
 
   export let key: KeyedAttribute | string
@@ -72,11 +72,7 @@
 
   $: icon = attribute?.icon ?? attribute?.type?.icon
   $: value = getAttribute(client, object, { key: attributeKey, attr: attribute })
-  $: isRequiredAndEmpty =
-    (attribute?.required ?? false) &&
-    (attribute?.type?._class === core.class.TypeMarkup
-      ? isEmptyMarkup(value)
-      : value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0))
+  $: isRequiredAndEmpty = (attribute?.required ?? false) && isRequiredValueEmpty(attribute, value)
 </script>
 
 {#if editor}
