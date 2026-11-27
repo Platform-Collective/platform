@@ -34,6 +34,7 @@ import {
   type IterateOptions,
   Hierarchy,
   MeasureMetricsContext,
+  type MeasureContext,
   type Mixin,
   type MixinData,
   type MixinUpdate,
@@ -52,12 +53,12 @@ import {
   type TxResult,
   type WithLookup
 } from '@hcengineering/core'
-import { PlatformError, type Status, unknownError } from '@hcengineering/platform'
+import { PlatformError, type Status } from '@hcengineering/platform'
 
 import { AuthOptions } from '../types'
 import { getWorkspaceToken } from '../utils'
 import type { EnsurePersonOptions, RestClient } from './types'
-import { extractJson, withRetry } from './utils'
+import { extractJson, RestHttpError, withRetry } from './utils'
 
 export function createRestClient (endpoint: string, workspaceId: string, token: string): RestClient {
   return new RestClientImpl(endpoint, workspaceId, token)
@@ -69,6 +70,9 @@ export async function connectRest (url: string, options: AuthOptions): Promise<R
 }
 
 const rateLimitError = 'rate-limit'
+const maxWriteAttempts = 5
+const defaultRetryAfterMs = 1000
+const minRetryAfterMs = 100
 
 function isRLE (err: any): boolean {
   return err.message === rateLimitError
@@ -124,7 +128,7 @@ export class RestClientImpl implements RestClient {
       const response = await fetch(requestUrl, this.requestInit())
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
       return await extractJson<FindResult<T>>(response)
@@ -183,7 +187,7 @@ export class RestClientImpl implements RestClient {
       })
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
       return await extractJson<FindPageResult<T>>(response)
@@ -272,15 +276,22 @@ export class RestClientImpl implements RestClient {
       const rateLimitReset = response.headers.get('X-RateLimit-Reset')
 
       this.updateRateLimit(response)
-      const waitTime =
+      const requestedWaitTime =
         (retryAfterMS != null ? parseInt(retryAfterMS) : undefined) ??
         (retryAfter != null
           ? parseInt(retryAfter) * 1000
           : rateLimitReset != null
             ? new Date(parseInt(rateLimitReset)).getTime() - Date.now()
-            : 1000) // Default to 1 seconds if no headers are provided
+            : defaultRetryAfterMs)
+      const waitTime =
+        Number.isFinite(requestedWaitTime) && requestedWaitTime > 0
+          ? Math.max(requestedWaitTime, minRetryAfterMs)
+          : defaultRetryAfterMs
       await new Promise((resolve) => setTimeout(resolve, waitTime))
-      throw new Error(rateLimitError)
+      const failure = new RestHttpError(response.status, rateLimitError)
+      failure.retryAfterMs = waitTime
+      failure.rejectedBeforeWrite = true
+      throw failure
     }
   }
 
@@ -291,7 +302,7 @@ export class RestClientImpl implements RestClient {
       const response = await fetch(requestUrl, this.requestInit())
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
       return await extractJson<Account>(response)
@@ -302,7 +313,7 @@ export class RestClientImpl implements RestClient {
     return result
   }
 
-  async getModel (full: boolean = false): Promise<{ hierarchy: Hierarchy, model: ModelDb }> {
+  async getModel (full: boolean = false, ctx?: MeasureContext): Promise<{ hierarchy: Hierarchy, model: ModelDb }> {
     const requestUrl = new URL(concatLink(this.endpoint, `/api/v1/load-model/${this.workspace}`))
     if (full) {
       requestUrl.searchParams.append('full', 'true')
@@ -312,7 +323,7 @@ export class RestClientImpl implements RestClient {
       const response = await fetch(requestUrl, this.requestInit())
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
 
@@ -321,8 +332,7 @@ export class RestClientImpl implements RestClient {
       const hierarchy = new Hierarchy()
       const model = new ModelDb(hierarchy)
 
-      const ctx = new MeasureMetricsContext('loadModel', {})
-      buildModel(ctx, modelResponse, undefined, hierarchy, model)
+      buildModel(ctx ?? new MeasureMetricsContext('loadModel', {}), modelResponse, undefined, hierarchy, model)
 
       return { hierarchy, model }
     }, isRLE)
@@ -340,23 +350,56 @@ export class RestClientImpl implements RestClient {
     return (await this.findAll(_class, query, { ...options, limit: 1 })).shift()
   }
 
+  private async sendWrite (requestUrl: string, body: string): Promise<unknown> {
+    let attempts = 0
+    while (true) {
+      attempts++
+      let response: Response
+      try {
+        response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: this.jsonHeaders(),
+          keepalive: true,
+          body
+        })
+      } catch (error) {
+        const failure = new RestHttpError()
+        failure.outcomeUnknown = true
+        failure.cause = error
+        throw failure
+      }
+      if (response.status === 429) {
+        try {
+          await this.checkRateLimits(response)
+        } catch (error) {
+          if (isRLE(error) && attempts < maxWriteAttempts) continue
+          throw error
+        }
+      }
+      if (!response.ok) {
+        const failure = new RestHttpError(response.status)
+        if (response.status >= 500) failure.outcomeUnknown = true
+        throw failure
+      }
+      this.updateRateLimit(response)
+      try {
+        return await extractJson<unknown>(response)
+      } catch (error) {
+        const failure = new RestHttpError(response.status)
+        failure.outcomeUnknown = true
+        failure.cause = error
+        throw failure
+      }
+    }
+  }
+
   async tx (tx: Tx): Promise<TxResult> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/tx/${this.workspace}`)
     await this.checkRate()
-    const result = await withRetry<TxResult & { error?: Status }>(async () => {
-      const response = await fetch(requestUrl, {
-        method: 'POST',
-        headers: this.jsonHeaders(),
-        keepalive: true,
-        body: JSON.stringify(tx)
-      })
-      if (!response.ok) {
-        await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
-      }
-      this.updateRateLimit(response)
-      return await extractJson<TxResult>(response)
-    }, isRLE)
+    const parsed = await this.sendWrite(requestUrl, JSON.stringify(tx))
+    // A successful transaction may carry an empty result such as `[]` or `null`; any valid JSON body is accepted.
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const result = parsed as TxResult & { error?: Status }
     if (result.error !== undefined) {
       throw new PlatformError(result.error)
     }
@@ -384,7 +427,7 @@ export class RestClientImpl implements RestClient {
       })
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
       return await extractJson<TxResult>(response)
@@ -412,7 +455,7 @@ export class RestClientImpl implements RestClient {
       })
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
       const value = await extractJson<T>(response)
@@ -444,7 +487,7 @@ export class RestClientImpl implements RestClient {
       })
       if (!response.ok) {
         await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
+        throw new RestHttpError(response.status)
       }
       this.updateRateLimit(response)
       return await extractJson<{ uuid: PersonUuid, socialId: PersonId, localPerson: string }>(response)
@@ -458,20 +501,13 @@ export class RestClientImpl implements RestClient {
   private async v1op<T extends Doc, P> (op: string, data: any): Promise<P> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/${op}/${this.workspace}`)
     await this.checkRate()
-    const result = await withRetry<{ result?: Ref<T>, error?: Status }>(async () => {
-      const response = await fetch(requestUrl, {
-        method: 'POST',
-        headers: this.jsonHeaders(),
-        keepalive: true,
-        body: JSON.stringify(data)
-      })
-      if (!response.ok) {
-        await this.checkRateLimits(response)
-        throw new PlatformError(unknownError(response.statusText))
-      }
-      this.updateRateLimit(response)
-      return await extractJson<TxResult>(response)
-    }, isRLE)
+    const parsed = await this.sendWrite(requestUrl, JSON.stringify(data))
+    if (typeof parsed === 'string') return parsed as unknown as P
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      const emptyResult: unknown = {}
+      return emptyResult as P
+    }
+    const result = parsed as { result?: Ref<T>, error?: Status }
     if (result.error !== undefined) {
       throw new PlatformError(result.error)
     }

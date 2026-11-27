@@ -4,6 +4,12 @@ Changelog.
 
 ## Unreleased
 
+- REST client writes no longer retry automatically after network failures, HTTP 5xx responses, or malformed
+  successful replies. Callers must handle `RestHttpError.outcomeUnknown` and verify the affected state before
+  retrying. HTTP 429 retries are limited to five attempts with sanitized delays. HTTP error messages now use
+  `HTTP error <status>` instead of `statusText`; consumers should inspect `httpStatus` instead of matching messages.
+- `@hcengineering/platform` now exports the public `HttpError` base class. The published platform, API client, and
+  collaborator client versions are bumped together so consumers resolve a compatible platform release.
 - Printing always allows the exact `FRONT_URL` origin. Configure additional printing
   domains with comma-separated `ALLOWED_HOSTNAMES` entries (`host`, `host:port`, or
   `*.example.com`). Bare hosts allow default HTTP/HTTPS ports only. Deployments

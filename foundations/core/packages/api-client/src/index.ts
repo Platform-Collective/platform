@@ -15,6 +15,7 @@
 
 export * from './client'
 export * from './markup/types'
+export { RestHttpError } from './rest/utils'
 export * from './socket'
 export type * from './types'
 export * from './rest'

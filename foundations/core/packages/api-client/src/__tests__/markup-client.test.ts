@@ -47,6 +47,41 @@ describe('MarkupOperations', () => {
     operations = createMarkupOperations(url, workspace, token, mockConfig)
   })
 
+  it.each([401, 403])('preservesTypedCollaboratorErrorsThroughMarkup (%i)', async (status) => {
+    const actualCollaborator = jest.requireActual<typeof import('@hcengineering/collaborator-client')>(
+      '@hcengineering/collaborator-client'
+    )
+    const ErrorClass = Reflect.get(actualCollaborator, 'CollaboratorHttpError')
+    expect(typeof ErrorClass).toBe('function')
+    const failure = new ErrorClass(status)
+    mockCollaborator.getMarkup.mockRejectedValue(failure)
+    mockCollaborator.createMarkup.mockRejectedValue(failure)
+    mockCollaborator.updateMarkup.mockRejectedValue(failure)
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      await expect(operations.fetchMarkup('class:test.Doc', 'doc', 'content', 'ref', 'markup')).rejects.toBe(failure)
+      await expect(operations.uploadMarkup('class:test.Doc', 'doc', 'content', 'content', 'markup')).rejects.toBe(
+        failure
+      )
+      await expect(operations.updateMarkup('class:test.Doc', 'doc', 'content', 'content', 'markup')).rejects.toBe(
+        failure
+      )
+      expect(failure).toBeInstanceOf(ErrorClass)
+      expect(failure.httpStatus).toBe(status)
+      expect(failure.message).toBe(`HTTP error ${status}`)
+      expect(log).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+      expect(errorLog).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+      warn.mockRestore()
+      errorLog.mockRestore()
+    }
+  })
+
   describe('fetchMarkup', () => {
     const objectClass = 'class:test.Doc' as any
     const objectId = 'doc-id-123' as any

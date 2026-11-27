@@ -3309,6 +3309,9 @@ importers:
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../core
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../platform
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21

@@ -62,6 +62,25 @@ export class PlatformError<P extends Record<string, any>> extends Error {
 }
 
 /**
+ * HTTP failure with optional metadata for callers and adapters.
+ * @public
+ */
+export class HttpError extends PlatformError<Record<string, unknown>> {
+  readonly httpStatus?: number
+
+  constructor (
+    name: string,
+    httpStatus?: number,
+    message = httpStatus === undefined ? 'HTTP error' : `HTTP error ${httpStatus}`
+  ) {
+    super(unknownError(message))
+    this.name = name
+    this.message = message
+    this.httpStatus = httpStatus
+  }
+}
+
+/**
  * OK Status
  * @public
  */

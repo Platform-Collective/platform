@@ -14,7 +14,15 @@
 //
 
 import { Blob, CollaborativeDoc, Markup, MarkupBlobRef, Ref, WorkspaceUuid, concatLink } from '@hcengineering/core'
+import { HttpError } from '@hcengineering/platform'
 import { encodeDocumentId } from './utils'
+
+/** HTTP failure with optional metadata for callers and adapters. @public */
+export class CollaboratorHttpError extends HttpError {
+  constructor (httpStatus?: number, message?: string) {
+    super('CollaboratorHttpError', httpStatus, message)
+  }
+}
 
 /** @public */
 export interface GetContentRequest {
@@ -82,7 +90,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     })
 
     if (!res.ok) {
-      throw new Error('HTTP error ' + res.status)
+      throw new CollaboratorHttpError(res.status)
     }
 
     const result = await res.json()
