@@ -14,7 +14,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import contact from '@hcengineering/contact'
+  import contact, { type Employee } from '@hcengineering/contact'
   import core, {
     AccountUuid,
     Class,
@@ -41,6 +41,7 @@
 
   import MentionVersionPopup from './MentionVersionPopup.svelte'
   import { createMentionSearch, mergeMemberResults } from './mention-search'
+  import { excludeMentionItems } from './mention'
 
   export let query: string = ''
   export let multipleMentions: boolean = false
@@ -260,7 +261,32 @@
     return false
   }
 
-  const fullTextSearch = createMentionSearch((query: string) => searchFor('mention', query))
+  const categoryLimit = 5
+
+  // Fulltext index has no `active` flag, so inactive employees are removed after the search.
+  // A person is also found through its profile card, so profile ids are excluded as well.
+  // Fetch more items than shown to keep the category filled after the removal.
+  async function getInactiveEmployees(searchItems: SearchItem[]): Promise<Set<Ref<Doc>>> {
+    const ids = searchItems.map((it) => it.item.doc._id)
+    if (ids.length === 0) return new Set()
+    const [byId, byProfile] = await Promise.all([
+      client.findAll(contact.mixin.Employee, { _id: { $in: ids as Array<Ref<Employee>> }, active: false }),
+      client.findAll(contact.mixin.Employee, {
+        profile: { $in: ids as Array<NonNullable<Employee['profile']>> },
+        active: false
+      })
+    ])
+    const excluded = new Set<Ref<Doc>>()
+    for (const it of [...byId, ...byProfile]) {
+      excluded.add(it._id)
+      if (it.profile !== undefined) excluded.add(it.profile)
+    }
+    return excluded
+  }
+
+  const fullTextSearch = createMentionSearch((query: string) =>
+    searchFor('mention', query, undefined, categoryLimit * 2)
+  )
 
   const updateItems = reduceCalls(async function (
     localQuery: string,
@@ -273,17 +299,15 @@
         r.items,
         (it) => it.category.classToSearch === contact.mixin.Employee
       )
-      const latestIndex = searchItems.findLastIndex((it) => it.category.classToSearch === contact.mixin.Employee)
+      const found = excludeMentionItems(searchItems, await getInactiveEmployees(searchItems), categoryLimit)
+      const latestIndex = found.findLastIndex((it) => it.category.classToSearch === contact.mixin.Employee)
       const multipleEmployeeSearchItems = await getMultipleEmployeeSearchItems(localQuery, latestIndex)
+      if (r.query !== query) return
 
       items =
         latestIndex === -1
-          ? [...multipleEmployeeSearchItems, ...searchItems]
-          : [
-              ...searchItems.slice(0, latestIndex + 1),
-              ...multipleEmployeeSearchItems,
-              ...searchItems.slice(latestIndex + 1)
-            ]
+          ? [...multipleEmployeeSearchItems, ...found]
+          : [...found.slice(0, latestIndex + 1), ...multipleEmployeeSearchItems, ...found.slice(latestIndex + 1)]
     }
   })
   // Runs again when the members of the space change, so the list does not stay stale.
