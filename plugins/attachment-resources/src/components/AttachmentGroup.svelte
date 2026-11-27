@@ -19,6 +19,7 @@
   import { AttachmentImageSize } from '../types'
   import AttachmentList from './AttachmentList.svelte'
   import LinkPreviewList from './LinkPreviewList.svelte'
+  import { sortAttachments } from '../utils'
 
   export let attachments: WithLookup<Attachment>[]
   export let savedAttachmentsIds: Ref<Attachment>[] = []
@@ -33,7 +34,8 @@
   function filter(value: WithLookup<Attachment>[]): void {
     linkPreviewAttachments = []
     otherAttachments = []
-    for (const attachment of value) {
+    // Attachments may come from a reverse $lookup, which has no defined order
+    for (const attachment of sortAttachments(value)) {
       if (attachment === undefined) {
         continue
       }

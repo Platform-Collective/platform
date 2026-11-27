@@ -42,10 +42,14 @@ interface MockState {
   initial: PreviewDocument[]
   callbacks: Array<(docs: PreviewDocument[]) => void>
   fetchDetails: jest.MockedFunction<(url: string) => Promise<typeof details>>
-  upload: jest.MockedFunction<() => Promise<{ uuid: string }>>
+  upload: jest.MockedFunction<UploadFn>
   updateCollection: jest.MockedFunction<(...args: unknown[]) => Promise<void>>
+  addCollection: jest.MockedFunction<(...args: unknown[]) => Promise<void>>
   saveDraft: jest.MockedFunction<(draft: Record<string, PreviewDocument>) => void>
+  queryOptions: unknown[]
 }
+
+type UploadFn = (file?: File) => Promise<{ uuid: string, metadata?: Record<string, unknown> }>
 
 let mockState: MockState
 
@@ -67,29 +71,35 @@ jest.mock('@hcengineering/attachment', () => ({}))
 jest.mock('@hcengineering/core', () => ({
   generateId: () => 'attachment-' + ++mockState.sequence,
   toIdMap: (docs: PreviewDocument[]) => new Map(docs.map((doc) => [doc._id, doc])),
+  SortingOrder: { Ascending: 1, Descending: -1 },
   RateLimiter: class {
     async add (fn: () => Promise<void>): Promise<void> {
       await fn()
+    }
+    async exec<T> (fn: () => Promise<T>): Promise<T> {
+      return await fn()
     }
     async waitProcessing (): Promise<void> {}
   }
 }))
 jest.mock('@hcengineering/platform', () => ({
   setPlatformStatus: jest.fn(),
-  unknownError: (err: Error) => {
-    throw err
-  }
+  unknownError: (err: Error) => ({ code: 'unknown', message: err.message })
 }))
 jest.mock('@hcengineering/presentation', () => ({
   getClient: () => ({
     updateCollection: async (...args: unknown[]): Promise<void> => {
       await mockState.updateCollection(...args)
+    },
+    addCollection: async (...args: unknown[]): Promise<void> => {
+      await mockState.addCollection(...args)
     }
   }),
   getFileUrl: (file: string) => '/files/' + file,
   createQuery: () => ({
-    query: (_class: unknown, _query: unknown, callback: (docs: PreviewDocument[]) => void) => {
+    query: (_class: unknown, _query: unknown, callback: (docs: PreviewDocument[]) => void, options?: unknown) => {
       mockState.callbacks.push(callback)
+      mockState.queryOptions.push(options)
     },
     unsubscribe: () => {}
   }),
@@ -109,7 +119,7 @@ jest.mock('@hcengineering/presentation', () => ({
   fetchLinkPreviewDetails: async (url: string) => await mockState.fetchDetails(url),
   canDisplayLinkPreview: () => true,
   generateFileId: () => 'preview-' + ++mockState.sequence,
-  uploadFile: async () => await mockState.upload(),
+  uploadFile: async (file?: File) => await mockState.upload(file),
   deleteFile: jest.fn()
 }))
 jest.mock('@hcengineering/text', () => ({ EmptyMarkup: '', isEmptyMarkup: () => true }))
@@ -147,6 +157,7 @@ jest.mock('../components/AttachmentPresenter.svelte', () => ({
     </script>
     <button
       data-attachment-id={value._id}
+      data-attachment-name={value.name}
       data-testid="attachment-remove"
       on:click={() => dispatch('remove')}
     ></button>
@@ -190,9 +201,14 @@ interface Composer {
   update: (urls: string[]) => void
   settle: () => Promise<void>
   fetch: jest.MockedFunction<(url: string) => Promise<typeof details>>
-  upload: jest.MockedFunction<() => Promise<{ uuid: string }>>
+  upload: jest.MockedFunction<UploadFn>
   fetchStored: jest.MockedFunction<StoredFetch>
   updateCollection: jest.MockedFunction<(...args: unknown[]) => Promise<void>>
+  addCollection: jest.MockedFunction<(...args: unknown[]) => Promise<void>>
+  queryOptions: () => unknown[]
+  names: () => Array<string | null>
+  selectFiles: (files: File[]) => void
+  createAttachments: () => Promise<void>
   saveDraft: jest.MockedFunction<(draft: Record<string, PreviewDocument>) => void>
   switchObject: (next: Ref<Doc>) => Promise<void>
   platform: { setPlatformStatus: jest.Mock }
@@ -201,6 +217,7 @@ interface Composer {
 const cleanups: Array<() => void> = []
 afterEach((): void => {
   for (const cleanup of cleanups.splice(0)) cleanup()
+  jest.requireMock<{ setPlatformStatus: jest.Mock }>('@hcengineering/platform').setPlatformStatus.mockClear()
 })
 
 async function composer (
@@ -209,10 +226,24 @@ async function composer (
   stored: StoredFetch = async () => ({ ok: true, json: async () => details })
 ): Promise<Composer> {
   const fetchDetails = jest.fn(async (_url: string) => details)
-  const upload = jest.fn(async () => ({ uuid: 'blob-' + ++mockState.sequence }))
+  const upload = jest.fn<ReturnType<UploadFn>, Parameters<UploadFn>>(async () => ({
+    uuid: 'blob-' + ++mockState.sequence
+  }))
   const updateCollection = jest.fn(async (..._args: unknown[]) => {})
+  const addCollection = jest.fn(async (..._args: unknown[]) => {})
   const saveDraft = jest.fn((_draft: Record<string, PreviewDocument>) => {})
-  mockState = { sequence: 0, draft, initial, callbacks: [], fetchDetails, upload, updateCollection, saveDraft }
+  mockState = {
+    sequence: 0,
+    draft,
+    initial,
+    callbacks: [],
+    fetchDetails,
+    upload,
+    updateCollection,
+    addCollection,
+    saveDraft,
+    queryOptions: []
+  }
   const fetchStored = jest.fn(stored)
   const originalFetch = Object.getOwnPropertyDescriptor(globalThis, 'fetch')
   Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchStored })
@@ -272,6 +303,17 @@ async function composer (
     component.$set({ objectId: next })
     await tick()
   }
+  const names = (): Array<string | null> =>
+    Array.from(container.querySelectorAll('[data-attachment-name]')).map((element) =>
+      element.getAttribute('data-attachment-name')
+    )
+  const selectFiles = (files: File[]): void => {
+    const input = target.querySelector('input[type="file"]')
+    if (!(input instanceof HTMLInputElement)) throw new Error('File input was not rendered')
+    const list = { length: files.length, item: (index: number) => files[index] ?? null }
+    Object.defineProperty(input, 'files', { configurable: true, value: list })
+    input.dispatchEvent(new Event('change'))
+  }
   const platform = jest.requireMock<{ setPlatformStatus: jest.Mock }>('@hcengineering/platform')
   return {
     state,
@@ -281,6 +323,13 @@ async function composer (
     upload,
     fetchStored,
     updateCollection,
+    addCollection,
+    queryOptions: () => mockState.queryOptions,
+    names,
+    selectFiles,
+    createAttachments: async () => {
+      await (component as unknown as { createAttachments: () => Promise<void> }).createAttachments()
+    },
     saveDraft,
     switchObject,
     platform
@@ -491,5 +540,88 @@ describe('legacy preview source restoration', () => {
     } finally {
       errorLog.mockRestore()
     }
+  })
+})
+
+describe('AttachmentRefInput file order', () => {
+  function file (name: string): File {
+    return new File([name], name, { type: 'text/plain' })
+  }
+
+  function rejected<T> (): { promise: Promise<T>, reject: (err: Error) => void } {
+    let fail: (err: Error) => void = () => {}
+    const promise = new Promise<T>((_resolve, reject) => {
+      fail = reject
+    })
+    return { promise, reject: fail }
+  }
+
+  it('requests saved attachments sorted by createdOn, then _id', async () => {
+    const c = await composer()
+    expect(c.queryOptions()).toContainEqual({ sort: { createdOn: 1, _id: 1 } })
+  })
+
+  it('keeps selection order when the last upload finishes first and the middle one fails', async () => {
+    const c = await composer()
+    const first = deferred<{ uuid: string }>()
+    const middle = rejected<{ uuid: string }>()
+    c.upload.mockImplementation(async (selected?: File) => {
+      if (selected?.name === 'first.txt') return await first.promise
+      if (selected?.name === 'middle.txt') return await middle.promise
+      return { uuid: 'blob-third' }
+    })
+
+    c.selectFiles([file('first.txt'), file('middle.txt'), file('third.txt')])
+    await c.settle()
+    // The third upload is done, but it must wait for the first one.
+    expect(c.upload).toHaveBeenCalledTimes(3)
+    expect(c.names()).toEqual([])
+
+    middle.reject(new Error('upload failed'))
+    await c.settle()
+    expect(c.names()).toEqual([])
+
+    first.resolve({ uuid: 'blob-first' })
+    await c.settle()
+    await tick()
+    expect(c.names()).toEqual(['first.txt', 'third.txt'])
+    expect(c.platform.setPlatformStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves new attachments one at a time in selection order', async () => {
+    const c = await composer()
+    c.upload.mockImplementation(async (selected?: File) => ({ uuid: 'blob-' + (selected?.name ?? '') }))
+    c.selectFiles([file('first.txt'), file('second.txt'), file('third.txt')])
+    await c.settle()
+    await tick()
+    expect(c.names()).toEqual(['first.txt', 'second.txt', 'third.txt'])
+
+    const firstSave = deferred<undefined>()
+    c.addCollection.mockImplementationOnce(async () => {
+      await firstSave.promise
+    })
+    const saving = c.createAttachments()
+    await c.settle()
+    // The server assigns createdOn on arrival, so the next save must wait.
+    expect(c.addCollection).toHaveBeenCalledTimes(1)
+
+    firstSave.resolve(undefined)
+    await saving
+    const savedNames = c.addCollection.mock.calls.map((call) => (call[5] as { name: string }).name)
+    expect(savedNames).toEqual(['first.txt', 'second.txt', 'third.txt'])
+  })
+
+  it('keeps going after a failed save', async () => {
+    const c = await composer()
+    c.upload.mockImplementation(async (selected?: File) => ({ uuid: 'blob-' + (selected?.name ?? '') }))
+    c.selectFiles([file('first.txt'), file('second.txt'), file('third.txt')])
+    await c.settle()
+    c.addCollection.mockImplementation(async (...args: unknown[]) => {
+      if ((args[5] as { name: string }).name === 'second.txt') throw new Error('save failed')
+    })
+    await c.createAttachments()
+    const savedNames = c.addCollection.mock.calls.map((call) => (call[5] as { name: string }).name)
+    expect(savedNames).toEqual(['first.txt', 'second.txt', 'third.txt'])
+    expect(c.platform.setPlatformStatus).toHaveBeenCalledTimes(1)
   })
 })
