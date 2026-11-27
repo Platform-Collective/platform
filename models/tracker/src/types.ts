@@ -14,7 +14,7 @@
 //
 
 import chunter from '@hcengineering/chunter'
-import contact, { type Employee, type Person } from '@hcengineering/contact'
+import contact, { type Employee, type Person, type PersonSpace } from '@hcengineering/contact'
 import {
   DOMAIN_MODEL,
   DateRangeMode,
@@ -47,6 +47,7 @@ import {
   TypeRecord,
   TypeRef,
   TypeString,
+  TypeTimestamp,
   UX
 } from '@hcengineering/model'
 import attachment from '@hcengineering/model-attachment'
@@ -63,6 +64,7 @@ import {
   type DependencyShiftedNotification,
   type DependencyShiftRequest,
   type Issue,
+  type IssueTimer,
   type IssueChildInfo,
   type IssueParentInfo,
   type IssuePriority,
@@ -375,6 +377,27 @@ export class TTimeSpendReport extends TAttachedDoc implements TimeSpendReport {
 
   @Prop(TypeString(), tracker.string.TimeSpendReportDescription)
   description!: string
+}
+
+@Model(tracker.class.IssueTimer, core.class.Doc, DOMAIN_TRACKER)
+export class TIssueTimer extends TDoc implements IssueTimer {
+  declare space: Ref<PersonSpace>
+
+  @Prop(TypeRef(tracker.class.Issue), tracker.string.Issue)
+  @Index(IndexKind.Indexed)
+  issueId!: Ref<Issue>
+
+  @Prop(TypeString(), tracker.string.Identifier)
+  identifier!: string
+
+  @Prop(TypeRef(tracker.class.TimeSpendReport), tracker.string.TimeSpendReport)
+  reportId!: Ref<TimeSpendReport>
+
+  @Prop(TypeTimestamp(), tracker.string.StartDate)
+  startedAt!: Timestamp
+
+  @Prop(TypeTimestamp(), tracker.string.TimeSpendReportDate)
+  stoppedAt?: Timestamp
 }
 
 /**

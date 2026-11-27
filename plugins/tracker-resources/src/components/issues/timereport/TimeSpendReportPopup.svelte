@@ -14,17 +14,20 @@
 -->
 <script lang="ts">
   import contact, { Employee, getCurrentEmployee } from '@hcengineering/contact'
-  import { AttachedData, Class, DocumentUpdate, Ref, Space } from '@hcengineering/core'
+  import { AttachedData, Class, Ref, Space } from '@hcengineering/core'
+  import { translate } from '@hcengineering/platform'
   import type { IntlString } from '@hcengineering/platform'
-  import presentation, { Card, getClient } from '@hcengineering/presentation'
+  import presentation, { Card, getClientWithTxErrors } from '@hcengineering/presentation'
   import { UserBox } from '@hcengineering/contact-resources'
-  import { Issue, TimeReportDayType, TimeSpendReport, TrackerEvents } from '@hcengineering/tracker'
-  import { Button, DatePresenter, EditBox, Label } from '@hcengineering/ui'
+  import { Issue, TimeReportDayType, TimeSpendReport } from '@hcengineering/tracker'
+  import { addNotification, Button, DatePresenter, EditBox, Label, NotificationSeverity } from '@hcengineering/ui'
+  import { SimpleNotification } from '@hcengineering/view-resources'
   import tracker from '../../../plugin'
   import { getTimeReportDate, getTimeReportDayType } from '../../../utils'
   import TitlePresenter from '../TitlePresenter.svelte'
   import TimeReportDayDropdown from './TimeReportDayDropdown.svelte'
-  import { Analytics } from '@hcengineering/analytics'
+  import { saveTimeSpendReport } from './create-time-spend-report'
+  import type { IssueTimerWarning } from './issue-timer'
 
   export let issue: Issue | undefined = undefined
   export let issueId: Ref<Issue> | undefined = issue?._id
@@ -35,11 +38,15 @@
   export let value: TimeSpendReport | undefined
   export let placeholder: IntlString = tracker.string.TimeSpendReportValue
   export let defaultTimeReportDay: TimeReportDayType = TimeReportDayType.PreviousWorkDay
+  // Prefill a new report, e.g. with the time measured by an issue timer, and reuse its ID so retries cannot duplicate it.
+  export let initialValue: Partial<Pick<TimeSpendReport, 'date' | 'value' | 'description'>> | undefined = undefined
+  export let reportId: Ref<TimeSpendReport> | undefined = undefined
+  export let timerWarnings: IssueTimerWarning[] = []
 
   const data = {
-    date: value?.date ?? getTimeReportDate(defaultTimeReportDay),
-    description: value?.description ?? '',
-    value: value?.value,
+    date: value?.date ?? initialValue?.date ?? getTimeReportDate(defaultTimeReportDay),
+    description: value?.description ?? initialValue?.description ?? '',
+    value: value?.value ?? initialValue?.value,
     employee: value?.employee ?? getCurrentEmployee() ?? assignee ?? null
   }
 
@@ -49,40 +56,25 @@
     return true
   }
 
-  const client = getClient()
+  const client = getClientWithTxErrors()
 
-  async function create(): Promise<void> {
-    if (value === undefined) {
-      if (space && issueId) {
-        await client.addCollection(
-          tracker.class.TimeSpendReport,
-          space,
-          issueId,
-          issueClass,
-          'reports',
-          data as AttachedData<TimeSpendReport>
-        )
-        Analytics.handleEvent(TrackerEvents.IssueTimeSpentAdded, { issue: issue?.identifier ?? issueId })
-      }
-    } else {
-      const ops: DocumentUpdate<TimeSpendReport> = {}
-      if (value.value !== data.value) {
-        ops.value = data.value
-      }
-      if (value.employee !== data.employee) {
-        ops.employee = data.employee
-      }
-      if (value.description !== data.description) {
-        ops.description = data.description
-      }
-      if (value.date !== data.date) {
-        ops.date = data.date
-      }
-      if (Object.keys(ops).length > 0) {
-        await client.update(value, ops)
-        Analytics.handleEvent(TrackerEvents.IssueTimeSpentUpdated, { issue: issue?.identifier ?? issueId })
-      }
-    }
+  async function notify(label: IntlString, severity: NotificationSeverity): Promise<void> {
+    addNotification(await translate(label, {}), '', SimpleNotification, undefined, severity)
+  }
+
+  async function save(): Promise<void> {
+    const target =
+      space !== undefined && issueId !== undefined
+        ? { _id: issueId, _class: issueClass, space, identifier: issue?.identifier ?? issueId }
+        : undefined
+    await saveTimeSpendReport(client, {
+      target,
+      value,
+      data: data as AttachedData<TimeSpendReport>,
+      reportId,
+      onAlreadySaved: async () => await notify(tracker.string.TimeReportAlreadySaved, NotificationSeverity.Info),
+      onSaveFailed: async () => await notify(tracker.string.TimeReportSaveFailed, NotificationSeverity.Error)
+    })
   }
 
   $: canSave = Number.isFinite(data.value) && data.value !== 0 && space !== undefined && issueId !== undefined
@@ -91,7 +83,7 @@
 <Card
   label={value === undefined ? tracker.string.TimeSpendReportAdd : tracker.string.TimeSpendReportValue}
   {canSave}
-  okAction={create}
+  okAction={save}
   gap={'gapV-4'}
   on:close
   okLabel={value === undefined ? presentation.string.Create : presentation.string.Save}
@@ -102,6 +94,16 @@
       <TitlePresenter showParent={false} value={issue} />
     {/if}
   </svelte:fragment>
+  {#if timerWarnings.includes('long')}
+    <div class="timer-warning">
+      <Label label={tracker.string.TimerLongDuration} />
+    </div>
+  {/if}
+  {#if timerWarnings.includes('pastMidnight')}
+    <div class="timer-warning">
+      <Label label={tracker.string.TimerPastMidnight} />
+    </div>
+  {/if}
   <div class="flex-row-center gap-2">
     <EditBox
       autoFocus
@@ -162,3 +164,9 @@
     />
   </svelte:fragment>
 </Card>
+
+<style>
+  .timer-warning {
+    color: var(--theme-warning-color);
+  }
+</style>
