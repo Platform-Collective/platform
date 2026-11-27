@@ -27,7 +27,7 @@
 
   import { editingMessageStore, messageInFocus } from '../activity'
   import { combineActivityMessages, sortActivityMessages } from '../activityMessagesUtils'
-  import { canGroupMessages, getActivityNewestFirst, getMessageFromLoc, getSpace } from '../utils'
+  import { getActivityNewestFirst, getMessageFromLoc, getSpace } from '../utils'
   import ActivityMessagePresenter from './activity-message/ActivityMessagePresenter.svelte'
   import ActivityExtensionComponent from './ActivityExtension.svelte'
   import ActivityFilter from './ActivityFilter.svelte'
@@ -323,14 +323,13 @@
     >
       {#if filteredMessages.length}
         <Grid column={1} rowGap={0}>
-          {#each filteredMessages as message, index (message._id)}
-            {@const canGroup = canGroupMessages(message, filteredMessages[index - 1])}
+          {#each filteredMessages as message (message._id)}
             {#if selectedMessageId}
               <ActivityMessagePresenter
                 value={message}
                 doc={object}
                 hideLink={true}
-                type={canGroup ? 'short' : 'default'}
+                presentation="activity"
                 isHighlighted={selectedMessageId === message._id}
                 withShowMore
               />
@@ -340,7 +339,7 @@
                   value={message}
                   doc={object}
                   hideLink={true}
-                  type={canGroup ? 'short' : 'default'}
+                  presentation="activity"
                   isHighlighted={selectedMessageId === message._id}
                   withShowMore
                 />
@@ -375,6 +374,19 @@
   }
 
   .p-activity {
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      inset-inline-start: 1.5rem;
+      width: 1px;
+      background-color: var(--global-ui-BorderColor);
+      pointer-events: none;
+    }
+
     &.newest-first {
       padding-bottom: 1.75rem;
     }

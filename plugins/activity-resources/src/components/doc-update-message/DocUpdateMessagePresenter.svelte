@@ -37,6 +37,7 @@
   import { getAttributeModel, getCollectionAttribute } from '../../activityMessagesUtils'
   import { getIsTextType } from '../../utils'
   import { Person } from '@hcengineering/contact'
+  import { getActivityMessagePresentation } from '../activity-message/activity-message-presentation'
 
   export let value: DisplayDocUpdateMessage
   export let doc: Doc | undefined = undefined
@@ -58,6 +59,7 @@
   export let space: Ref<Space> | undefined = undefined
   export let onClick: (() => void) | undefined = undefined
 
+  const presentationStore = getActivityMessagePresentation()
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
@@ -170,6 +172,13 @@
 {#if clazz != null}
   <ActivityMessageTemplate
     message={value}
+    presentation={$presentationStore}
+    isEvent
+    eventIcon={viewlet?.icon ??
+      attributeModel?.icon ??
+      collectionAttribute?.icon ??
+      clazz.icon ??
+      activity.icon.Activity}
     {parentMessage}
     {person}
     {showNotify}

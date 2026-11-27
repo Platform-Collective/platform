@@ -28,6 +28,7 @@
     "Removed": "removed",
     "Replies": "Replies",
     "RepliesCount": "{replies, plural, =1 {# reply} other {# replies}}",
+    "ShowMoreReplies": "{count, plural, =1 {Show # more reply} other {Show # more replies}}",
     "Set": "set",
     "To": "to",
     "Unset": "Unset",

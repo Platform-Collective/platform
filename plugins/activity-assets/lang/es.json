@@ -28,6 +28,7 @@
     "Removed": "eliminado",
     "Replies": "Respuestas",
     "RepliesCount": "{replies, plural, =1 {# respuesta} other {# respuestas}}",
+    "ShowMoreReplies": "Mostrar {count} más respuestas",
     "Set": "establecido",
     "To": "a",
     "Unset": "No establecido",

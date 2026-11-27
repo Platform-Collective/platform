@@ -18,7 +18,8 @@
     ActivityDocLink,
     ActivityMessageTemplate,
     MessageInlineAction,
-    editingMessageStore
+    editingMessageStore,
+    getActivityMessagePresentation
   } from '@hcengineering/activity-resources'
   import { Attachment } from '@hcengineering/attachment'
   import { AttachmentDocList, AttachmentImageSize } from '@hcengineering/attachment-resources'
@@ -61,6 +62,7 @@
   export let onClick: (() => void) | undefined = undefined
   export let onReply: ((message: ActivityMessage) => void) | undefined = undefined
 
+  const presentationStore = getActivityMessagePresentation()
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const STALE_TIMEOUT_MS = 5000
@@ -241,6 +243,7 @@
 {:else if value && !inline}
   <ActivityMessageTemplate
     message={value}
+    presentation={$presentationStore}
     {viewlet}
     {parentMessage}
     {person}
