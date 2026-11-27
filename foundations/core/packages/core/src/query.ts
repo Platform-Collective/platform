@@ -75,6 +75,12 @@ function mapSortingValue (order: SortingOrder | SortingRules<any>, val: any): an
     return val
   }
   for (const r of order.cases) {
+    if (r.query === null) {
+      if (val == null) {
+        return r.index
+      }
+      continue
+    }
     if (typeof r.query === 'object') {
       const q: SortQuerySelector<any> = r.query
       if (q.$in?.includes(val) ?? false) {
@@ -91,15 +97,18 @@ function mapSortingValue (order: SortingOrder | SortingRules<any>, val: any): an
       return r.index
     }
   }
+  return order.default ?? order.cases.length
 }
 
 function getSortingResult (aValue: any, bValue: any, order: SortingOrder | SortingRules<any>): number {
   let res = 0
-  if (typeof aValue === 'undefined') {
-    return typeof bValue === 'undefined' ? 0 : -1
-  }
-  if (typeof bValue === 'undefined') {
-    return 1
+  if (typeof order !== 'object') {
+    if (typeof aValue === 'undefined') {
+      return typeof bValue === 'undefined' ? 0 : -1
+    }
+    if (typeof bValue === 'undefined') {
+      return 1
+    }
   }
 
   const orderOrder = typeof order === 'object' ? order.order : order
@@ -141,7 +150,7 @@ function getEnums<T extends Doc> (
 function getValue<T extends Doc> (key: string, obj: any, _class: Ref<Class<T>>, hierarchy: Hierarchy): any {
   const tkey = checkMixinKey(key, _class, hierarchy)
   let value = getObjectValue(tkey, obj)
-  if (typeof value === 'object' && !Array.isArray(value)) {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     value = JSON.stringify(value)
   }
   return value

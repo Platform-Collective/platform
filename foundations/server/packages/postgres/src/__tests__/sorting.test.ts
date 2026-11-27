@@ -56,39 +56,44 @@ describe('SQL sorting rules', () => {
 })
 
 describe('SQL adapter priority sorting', () => {
-  it.each([SortingOrder.Ascending, SortingOrder.Descending])('orders before LIMIT in direction %s', async (order) => {
-    const hierarchy = new Hierarchy()
-    jest.spyOn(hierarchy, 'getDomain').mockReturnValue('task' as Domain)
-    jest.spyOn(hierarchy, 'findAttribute').mockReturnValue(undefined)
-    jest.spyOn(hierarchy, 'isMixin').mockReturnValue(false)
-    const execute = jest.fn(async (_sql: string, _params: unknown[]) => Object.assign([], { count: 0 }))
-    const adapter: PostgresAdapter = Object.assign(Object.create(PostgresAdapter.prototype), {
-      hierarchy,
-      workspaceId: 'workspace',
-      mgrId: 'test',
-      mgr: {
-        retry: async (
-          _ctx: unknown,
-          _id: unknown,
-          operation: (connection: { execute: typeof execute }) => Promise<unknown>
-        ) => await operation({ execute })
+  it.each([SortingOrder.Ascending, SortingOrder.Descending])(
+    'orders priorities and null before LIMIT in direction %s',
+    async (order) => {
+      const hierarchy = new Hierarchy()
+      jest.spyOn(hierarchy, 'getDomain').mockReturnValue('task' as Domain)
+      jest.spyOn(hierarchy, 'findAttribute').mockReturnValue(undefined)
+      jest.spyOn(hierarchy, 'isMixin').mockReturnValue(false)
+      const execute = jest.fn(async (_sql: string, _params: unknown[]) => Object.assign([], { count: 0 }))
+      const adapter: PostgresAdapter = Object.assign(Object.create(PostgresAdapter.prototype), {
+        hierarchy,
+        workspaceId: 'workspace',
+        mgrId: 'test',
+        mgr: {
+          retry: async (
+            _ctx: unknown,
+            _id: unknown,
+            operation: (connection: { execute: typeof execute }) => Promise<unknown>
+          ) => await operation({ execute })
+        }
+      })
+      const options = {
+        sort: {
+          priority: { order, cases: [null, 1, 2, 3, 4, 0].map((query, index) => ({ query, index: index + 1 })) }
+        },
+        limit: 2
       }
-    })
-    const options = {
-      sort: { priority: { order, cases: [1, 2, 3, 4, 0].map((query, index) => ({ query, index: index + 1 })) } },
-      limit: 2
-    }
 
-    const ctx = new MeasureMetricsContext('', {}) as MeasureContext<SessionData>
-    await adapter.findAll(ctx, core.class.Doc, {}, { ...options, skipClass: true })
-    await adapter.rawFindAll('task' as Domain, {}, options)
+      const ctx = new MeasureMetricsContext('', {}) as MeasureContext<SessionData>
+      await adapter.findAll(ctx, core.class.Doc, {}, { ...options, skipClass: true })
+      await adapter.rawFindAll('task' as Domain, {}, options)
 
-    expect(execute).toHaveBeenCalledTimes(2)
-    for (const [sql, params] of execute.mock.calls) {
-      expect(sql).toContain('ORDER BY CASE WHEN')
-      expect(sql).toContain(`END ${order === SortingOrder.Ascending ? 'ASC' : 'DESC'} LIMIT 2`)
-      expect(params).toEqual(['workspace', '1', 1, '2', 2, '3', 3, '4', 4, '0', 5])
-      expect(sql).toContain('THEN $3::numeric')
+      expect(execute).toHaveBeenCalledTimes(2)
+      for (const [sql, params] of execute.mock.calls) {
+        expect(sql).toContain('ORDER BY CASE WHEN')
+        expect(sql).toContain('IS NULL THEN $2::numeric')
+        expect(sql).toContain(`END ${order === SortingOrder.Ascending ? 'ASC' : 'DESC'} LIMIT 2`)
+        expect(params).toEqual(['workspace', 1, '1', 2, '2', 3, '3', 4, '4', 5, '0', 6])
+      }
     }
-  })
+  )
 })

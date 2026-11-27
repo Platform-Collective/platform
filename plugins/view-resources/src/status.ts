@@ -20,12 +20,14 @@ import { writable } from 'svelte/store'
 interface Store {
   byId: IdMap<Status>
   array: Status[]
+  ready: boolean
 }
 
 // Issue status live query
 export const statusStore = writable<Store>({
   byId: new Map(),
-  array: []
+  array: [],
+  ready: false
 })
 
 const query = createQuery(true)
@@ -33,7 +35,8 @@ onClient(() => {
   query.query(core.class.Status, {}, (res) => {
     const obj = {
       byId: toIdMap(res),
-      array: res
+      array: res,
+      ready: true
     }
     statusStore.set(obj)
   })

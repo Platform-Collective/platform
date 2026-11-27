@@ -16,9 +16,18 @@
   import { Class, Doc, Ref, SortingOrder } from '@hcengineering/core'
   import { createQuery } from '@hcengineering/presentation'
   import { TagCategory, TagElement } from '@hcengineering/tags'
-  import { ModernButton, getPlatformColorForTextDef, showPopup, themeStore, ScrollerBar } from '@hcengineering/ui'
+  import {
+    Label,
+    ModernButton,
+    getPlatformColorForTextDef,
+    showPopup,
+    themeStore,
+    ScrollerBar
+  } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import tags from '../plugin'
+  import { groupTagElements } from '../tag-category-groups'
+  import type { TagCategoryGroup } from '../tag-category-groups'
   import { getTagStyle, TagElementInfo } from '../utils'
   import TagsCategoryPopup from './TagsCategoryPopup.svelte'
 
@@ -30,15 +39,12 @@
   export let tagElements: Map<Ref<TagElement>, TagElementInfo> | undefined
 
   let categories: TagCategory[] = []
-  let visibleCategories: TagCategory[] = []
+  let visibleCategories: TagCategoryGroup[] = []
 
   const dispatch = createEventDispatcher()
 
   let elements: TagElement[] = []
   let scroller: HTMLElement
-
-  let categoryCounts = new Map<Ref<TagCategory>, TagElement[]>()
-  let categoryKeys: Ref<TagCategory>[] = []
 
   const elementsQuery = createQuery()
   $: if (tagElements !== undefined && tagElements.size > 0) {
@@ -56,22 +62,15 @@
     )
   } else {
     elementsQuery.unsubscribe()
+    elements = []
   }
 
-  $: {
-    const counts = new Map<Ref<TagCategory>, TagElement[]>()
-    for (const e of elements) {
-      if (e.category !== undefined) {
-        if (selected.includes(e._id) && category === undefined) {
-          category = e.category
-        }
-        const els = counts.get(e.category) ?? []
-        els.push(e)
-        counts.set(e.category, els)
-      }
-    }
-    categoryCounts = counts
-    categoryKeys = Array.from(categoryCounts.keys())
+  $: visibleCategories = groupTagElements(categories, elements, tags.category.NoCategory).filter(
+    (group) => group.elements.length > 0
+  )
+
+  $: if (selected.length > 0 && category === undefined) {
+    category = visibleCategories.find((group) => group.elements.some((element) => selected.includes(element._id)))?._id
   }
 
   const categoriesQuery = createQuery()
@@ -86,28 +85,26 @@
     { sort: { label: SortingOrder.Ascending } }
   )
 
-  $: visibleCategories = categories.filter((it) => categoryKeys.includes(it._id))
+  $: dispatch('categories', { categories, visibleCategories })
 
-  $: dispatch('categories', visibleCategories)
-
-  const selectItem = (item: TagCategory): void => {
+  const selectItem = (item: TagCategoryGroup): void => {
     if (category === item._id) {
       category = undefined
     } else {
       category = item._id
     }
-    selected = (category !== undefined ? (categoryCounts.get(category) ?? []) : []).map((it) => it._id)
+    selected = category !== undefined ? item.elements.map((it) => it._id) : []
     dispatch('change', { category, elements: selected })
   }
 
-  function selectTag(evt: Event, category: TagCategory): void {
+  function selectTag(evt: Event, category: TagCategoryGroup): void {
     showPopup(
       TagsCategoryPopup,
       {
         category,
         targetClass,
         selected,
-        keyLabel: category.label,
+        keyLabel: category.label ?? '',
         hideAdd: true
       },
       evt.target as HTMLElement,
@@ -131,7 +128,7 @@
   }
 </script>
 
-{#if visibleCategories.length > 1}
+{#if visibleCategories.length > 1 || category !== undefined}
   <div class="hulyHeader-container clearPadding justify-between flex-gap-4">
     <ModernButton
       label={tags.string.AllCategories}
@@ -139,12 +136,13 @@
       size={'small'}
       on:click={() => {
         category = undefined
+        selected = []
         dispatch('change', { category, elements: [] })
       }}
     />
     <ScrollerBar bind:scroller {gap}>
       {#each visibleCategories as item, i}
-        {@const color = getPlatformColorForTextDef(item.label, $themeStore.dark)}
+        {@const color = getPlatformColorForTextDef(item.label ?? '', $themeStore.dark)}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div
@@ -160,11 +158,11 @@
             }
           }}
         >
-          {item.label}
+          {#if item.label !== undefined}{item.label}{:else}<Label label={tags.string.OtherCategoryLabel} />{/if}
           {#if item._id === category && mode === 'item'}
-            ({selected.length}/{categoryCounts.get(item._id)?.length ?? ''})
+            ({selected.length}/{item.elements.length})
           {:else}
-            ({categoryCounts.get(item._id)?.length ?? ''})
+            ({item.elements.length})
           {/if}
         </div>
       {/each}

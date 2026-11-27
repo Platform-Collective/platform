@@ -160,7 +160,7 @@ export type SortQuerySelector<T> = {
 /**
  * @public
  */
-export type SortRuleQueryType<T> = (T extends Array<infer U> ? U | U[] : T) | SortQuerySelector<T>
+export type SortRuleQueryType<T> = (T extends Array<infer U> ? U | U[] : T) | SortQuerySelector<T> | null
 
 /**
  * @public

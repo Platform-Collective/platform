@@ -47,7 +47,6 @@
   export let limiter: RateLimiter
 
   export let cardDragOver: (evt: CardDragEvent, object: Item) => void
-  export let cardDrop: (evt: CardDragEvent, object: Item) => void
   export let onDragStart: (object: Item, state: CategoryType) => void
   export let showMenu: (evt: MouseEvent, object: Item) => void
 
@@ -109,9 +108,6 @@
       class="p-1 flex-no-shrink border-radius-1 clear-mins"
       on:dragover|preventDefault={(evt) => {
         cardDragOver(evt, object)
-      }}
-      on:drop|preventDefault={(evt) => {
-        cardDrop(evt, object)
       }}
     >
       <div
