@@ -22,6 +22,7 @@
     type IdMap,
     type Ref
   } from '@hcengineering/core'
+  import { Analytics } from '@hcengineering/analytics'
   import { translateCB } from '@hcengineering/platform'
   import { createQuery, KeyedAttribute } from '@hcengineering/presentation'
   import { TagElement, TagReference } from '@hcengineering/tags'
@@ -39,6 +40,7 @@
   import tags from '../plugin'
   import TagItem from './TagItem.svelte'
   import TagsPopup from './TagsPopup.svelte'
+  import { hasTagReference } from '../tag-reference'
   import WeightPopup from './WeightPopup.svelte'
 
   export let items: TagReference[] = []
@@ -47,6 +49,8 @@
   export let showTitle = true
   export let schema: '0' | '3' | '9' = key.attr.schema ?? '0'
   export let readonly = false
+  // Persisted parents serialize popup intent even before a new reference reaches the live query.
+  export let onToggle: ((tag: TagElement, selected: boolean) => Promise<void>) | undefined = undefined
 
   let elements: IdMap<TagElement> = new Map()
   const elementQuery = createQuery()
@@ -74,10 +78,12 @@
     { items: initial, label: tags.string.Initial }
   ]
 
-  async function addRef(tag: TagElement): Promise<void> {
+  function addRef(tag: TagElement): void {
+    if (hasTagReference(items, tag)) return
+
     dispatch('open', tag)
   }
-  async function addTag(evt: Event): Promise<void> {
+  function addTag(evt: Event): void {
     showPopup(
       TagsPopup,
       {
@@ -90,8 +96,17 @@
       () => {},
       (result) => {
         if (result !== undefined) {
-          if (result.action === 'add') addRef(result.tag)
-          else if (result.action === 'remove') removeTag(items.filter((it) => it.tag === result.tag._id)[0]._id)
+          if (result.action !== 'add' && result.action !== 'remove') return
+          if (onToggle !== undefined) {
+            void onToggle(result.tag, result.action === 'add').catch((error: unknown) => {
+              Analytics.handleError(error instanceof Error ? error : new Error(String(error)))
+            })
+          } else if (result.action === 'add') {
+            addRef(result.tag)
+          } else {
+            const reference = items.find((it) => it.tag === result.tag._id)
+            if (reference !== undefined) removeTag(reference._id)
+          }
         }
       },
       {
@@ -102,7 +117,7 @@
     )
   }
 
-  async function removeTag(id: Ref<TagReference>): Promise<void> {
+  function removeTag(id: Ref<TagReference>): void {
     dispatch('delete', id)
   }
 </script>
