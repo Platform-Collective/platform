@@ -44,6 +44,8 @@ export default mergeIds(timeId, time, {
     Done: '' as IntlString,
     ToDos: '' as IntlString,
     Unplanned: '' as IntlString,
+    BlockedBy: '' as IntlString,
+    StartsOn: '' as IntlString,
     Planned: '' as IntlString,
     AddSlot: '' as IntlString,
     SetPriority: '' as IntlString,

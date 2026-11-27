@@ -28,9 +28,12 @@
     deviceOptionsStore as deviceInfo
   } from '@hcengineering/ui'
   import { ToDo, WorkSlot } from '@hcengineering/time'
+  import tracker, { type Issue } from '@hcengineering/tracker'
+  import { getDragDropDuration, getFutureWorkslotsDuration, getIssueSlotDuration } from '../issue-planning'
   import time from '../plugin'
   import { filterVisibleWorkSlots } from '../to-do-query'
   import IconSun from './icons/Sun.svelte'
+  import { createEventDispatcher } from 'svelte'
 
   export let dragItem: ToDo | null = null
   export let currentDate: Date = new Date()
@@ -38,6 +41,7 @@
   export let element: HTMLElement | undefined = undefined
   export let createComponent: AnyComponent | undefined = calendar.component.CreateEvent
 
+  const dispatch = createEventDispatcher()
   const q = createQuery()
   const hierarchy = getClient().getHierarchy()
   const isWorkSlot = (event: Event): boolean => hierarchy.isDerived(event._class, time.class.WorkSlot)
@@ -51,6 +55,46 @@
     },
     { projection: { _id: 1 }, showArchived: true }
   )
+
+  const issueQuery = createQuery()
+  const workslotQuery = createQuery()
+  let dragIssue: Issue | undefined
+  let dragWorkslots: WorkSlot[] = []
+  // While either query is loading, the drop reads the current issue and slots itself.
+  let dragIssueLoaded = true
+  let dragWorkslotsLoaded = true
+
+  function updateDragIssue(todo: ToDo | null): void {
+    if (todo !== null && getClient().getHierarchy().isDerived(todo.attachedToClass, tracker.class.Issue)) {
+      if (
+        issueQuery.query(tracker.class.Issue, { _id: todo.attachedTo as Ref<Issue> }, (res) => {
+          dragIssue = res[0]
+          dragIssueLoaded = true
+        })
+      ) {
+        dragIssue = undefined
+        dragIssueLoaded = false
+      }
+      if (
+        workslotQuery.query(time.class.WorkSlot, { attachedTo: todo._id, date: { $gte: Date.now() } }, (res) => {
+          dragWorkslots = res
+          dragWorkslotsLoaded = true
+        })
+      ) {
+        dragWorkslots = []
+        dragWorkslotsLoaded = false
+      }
+    } else {
+      issueQuery.unsubscribe()
+      workslotQuery.unsubscribe()
+      dragIssue = undefined
+      dragWorkslots = []
+      dragIssueLoaded = true
+      dragWorkslotsLoaded = true
+    }
+  }
+
+  $: updateDragIssue(dragItem)
 
   function getFrom(date: Date): Timestamp {
     return new Date(date).setHours(0, 0, 0, 0)
@@ -126,15 +170,44 @@
   }
 
   const dragItemId = 'drag_item' as Ref<WorkSlot>
+
+  function updateDragDuration(issue: Issue | undefined, workslots: WorkSlot[]): void {
+    const current = raw.find((p) => p._id === dragItemId)
+    if (current === undefined) return
+    const futureWorkTime = getFutureWorkslotsDuration(workslots, Date.now())
+    const dueDate = current.date + getIssueSlotDuration(issue, current.date, futureWorkTime)
+    if (current.dueDate !== dueDate) {
+      current.dueDate = dueDate
+      raw = raw
+      // eslint-disable-next-line svelte/no-reactive-reassign
+      all = getAllEvents(filterVisibleWorkSlots(raw, archivedSpaces, isWorkSlot), from, to)
+      objects = hidePrivateEvents(all, $calendarByIdStore)
+    }
+  }
+
+  $: updateDragDuration(dragIssue, dragWorkslots)
+
+  // Create the slot with the same duration the preview shows, without another round trip.
+  function dragDrop(e: CustomEvent<{ day: Date, hour: number, date: Date }>): void {
+    const start = e.detail.date.getTime()
+    const preview = raw.find((p) => p._id === dragItemId)
+    const duration =
+      dragIssueLoaded && dragWorkslotsLoaded
+        ? getDragDropDuration(dragIssue, dragWorkslots, preview, start, Date.now())
+        : undefined
+    dispatch('dragDrop', { ...e.detail, duration })
+  }
+
   function dragEnter(e: CustomEvent<any>) {
     if (dragItem != null) {
       const current = raw.find((p) => p._id === dragItemId)
+      const futureWorkTime = getFutureWorkslotsDuration(dragWorkslots, Date.now())
       if (current !== undefined) {
         current.attachedTo = dragItem._id
         current.$lookup = { ...current.$lookup, attachedTo: dragItem }
         current.attachedToClass = dragItem._class
         current.date = e.detail.date.getTime()
-        current.dueDate = new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30)
+        current.dueDate = current.date + getIssueSlotDuration(dragIssue, current.date, futureWorkTime)
       } else {
         const ev: WithLookup<WorkSlot> = {
           $lookup: { attachedTo: dragItem },
@@ -156,7 +229,7 @@
           participants: [getCurrentEmployee()],
           modifiedOn: Date.now(),
           date: e.detail.date.getTime(),
-          dueDate: new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30),
+          dueDate: e.detail.date.getTime() + getIssueSlotDuration(dragIssue, e.detail.date.getTime(), futureWorkTime),
           user: myAcc.primarySocialId
         }
         raw.push(ev)
@@ -256,7 +329,7 @@
       on:create={(e) => {
         showCreateDialog(e.detail.date, e.detail.withTime)
       }}
-      on:dragDrop
+      on:dragDrop={dragDrop}
       bind:currentDate
       bind:todayDate
     />

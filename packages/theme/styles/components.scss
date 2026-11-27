@@ -992,6 +992,9 @@
   outline: none;
 
   .hulyToDoLine-title { color: var(--global-primary-TextColor); }
+  &.isUnavailable .hulyToDoLine-title {
+    opacity: 0.55;
+  }
   &.isDone {
     .hulyToDoLine-title {
       color: var(--global-tertiary-TextColor);
