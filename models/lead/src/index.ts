@@ -655,7 +655,7 @@ export function createModel (builder: Builder): void {
     visibilityTester: view.function.CanEditSpace,
     override: [view.action.Open],
     context: {
-      mode: ['context', 'browser'],
+      mode: ['context', 'browser', 'spaceEditor'],
       group: 'associate'
     }
   })

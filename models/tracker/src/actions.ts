@@ -100,7 +100,7 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
       visibilityTester: view.function.CanEditSpace,
       query: {},
       context: {
-        mode: ['context', 'browser'],
+        mode: ['context', 'browser', 'spaceEditor'],
         group: 'edit'
       }
     },
