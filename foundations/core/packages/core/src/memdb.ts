@@ -400,65 +400,36 @@ export class TxDb extends MemDb {
  *
  * @public
  */
+/**
+ * Thrown by `ModelDb.addTxes` after the whole batch was applied when required
+ * transactions could not be applied.
+ * @public
+ */
+export class RequiredModelTxError extends Error {
+  constructor (readonly txIds: Array<Ref<Tx>>) {
+    super(`Failed to apply required model transactions: ${txIds.join(', ')}`)
+    this.name = 'RequiredModelTxError'
+  }
+}
+
 export class ModelDb extends MemDb {
   protected override async txCreateDoc (tx: TxCreateDoc<Doc>): Promise<TxResult> {
     this.addDoc(TxProcessor.createDoc2Doc(tx))
     return {}
   }
 
-  addTxes (ctx: MeasureContext, txes: Tx[], doClone: boolean): void {
+  addTxes (ctx: MeasureContext, txes: Tx[], doClone: boolean, requiredTxes?: ReadonlySet<Ref<Tx>>): void {
     // Materialize first, index by class after: a doc may appear before its own class is created.
-    const created: Doc[] = []
+    const created: Array<{ doc: Doc, tx: Tx }> = []
     // Orphan-targeted txes are reported as one summary line at the end, not one warning each.
-    const orphans: Array<{ _id: Ref<Doc>, _class: string, objectId: Ref<Doc> }> = []
-    for (const tx of txes) {
-      // Hierarchy references the created instance instead of deserializing its own copy.
-      let ownDoc: Doc | undefined
-      switch (tx._class) {
-        case core.class.TxCreateDoc: {
-          const doc = TxProcessor.createDoc2Doc(tx as TxCreateDoc<Doc>, doClone)
-          this.objectById.set(doc._id, doc)
-          created.push(doc)
-          ownDoc = doc
-          break
-        }
-        case core.class.TxUpdateDoc: {
-          const cud = tx as TxUpdateDoc<Doc>
-          const doc = this.ownDoc(cud.objectId)
-          if (doc !== undefined) {
-            this.updateDoc(cud.objectId, doc, cud)
-            TxProcessor.updateDoc2Doc(doc, cud)
-          } else {
-            orphans.push({ _id: tx._id, _class: tx._class, objectId: cud.objectId })
-          }
-          break
-        }
-        case core.class.TxRemoveDoc:
-          try {
-            this.delDoc((tx as TxRemoveDoc<Doc>).objectId)
-          } catch (err: any) {
-            orphans.push({
-              _id: tx._id,
-              _class: tx._class,
-              objectId: (tx as TxRemoveDoc<Doc>).objectId
-            })
-          }
-          break
-        case core.class.TxMixin: {
-          const mix = tx as TxMixin<Doc, Doc>
-          const doc = this.ownDoc(mix.objectId)
-          if (doc !== undefined) {
-            this.updateDoc(mix.objectId, doc, mix)
-            TxProcessor.updateMixin4Doc(doc, mix)
-          } else {
-            orphans.push({ _id: tx._id, _class: tx._class, objectId: mix.objectId })
-          }
-          break
-        }
-      }
+    const orphans: Tx[] = []
+    const skipped = new Map<Ref<Tx>, Tx>()
+    const pending = new Map<Ref<Doc>, Array<TxUpdateDoc<Doc> | TxMixin<Doc, Doc>>>()
+    const applyHierarchy = (tx: Tx, doc?: Doc): void => {
       try {
-        this.hierarchy.tx(tx, ownDoc)
-      } catch (err: any) {
+        this.hierarchy.tx(tx, doc)
+      } catch (err: unknown) {
+        skipped.set(tx._id, tx)
         ctx.warn('failed to apply model transaction to hierarchy, skipping', {
           _id: tx._id,
           _class: tx._class,
@@ -466,19 +437,81 @@ export class ModelDb extends MemDb {
         })
       }
     }
-    for (const doc of created) {
+    const applyMutation = (tx: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>): boolean => {
+      const doc = this.ownDoc(tx.objectId)
+      if (doc === undefined) return false
+      this.updateDoc(tx.objectId, doc, tx)
+      if (tx._class === core.class.TxUpdateDoc) {
+        TxProcessor.updateDoc2Doc(doc, tx as TxUpdateDoc<Doc>)
+      } else {
+        TxProcessor.updateMixin4Doc(doc, tx as TxMixin<Doc, Doc>)
+      }
+      applyHierarchy(tx)
+      return true
+    }
+    for (const tx of txes) {
+      switch (tx._class) {
+        case core.class.TxCreateDoc: {
+          const doc = TxProcessor.createDoc2Doc(tx as TxCreateDoc<Doc>, doClone)
+          this.objectById.set(doc._id, doc)
+          created.push({ doc, tx })
+          // Register ownership before applying mutations, so hierarchy operators are not applied twice.
+          applyHierarchy(tx, doc)
+          const waiting = pending.get(doc._id)
+          pending.delete(doc._id)
+          // Replay only this object's current generation, before any later input mutation.
+          for (const mutation of waiting ?? []) {
+            if (!applyMutation(mutation)) orphans.push(mutation)
+          }
+          break
+        }
+        case core.class.TxUpdateDoc:
+        case core.class.TxMixin: {
+          const mutation = tx as TxUpdateDoc<Doc> | TxMixin<Doc, Doc>
+          if (!applyMutation(mutation)) {
+            const waiting = pending.get(mutation.objectId) ?? []
+            waiting.push(mutation)
+            pending.set(mutation.objectId, waiting)
+          }
+          break
+        }
+        case core.class.TxRemoveDoc: {
+          const objectId = (tx as TxRemoveDoc<Doc>).objectId
+          // A remove closes the pending generation even when its document never arrived.
+          for (const mutation of pending.get(objectId) ?? []) orphans.push(mutation)
+          pending.delete(objectId)
+          try {
+            this.delDoc(objectId)
+          } catch (err: unknown) {
+            orphans.push(tx)
+          }
+          applyHierarchy(tx)
+          break
+        }
+        default:
+          applyHierarchy(tx)
+      }
+    }
+    for (const waiting of pending.values()) {
+      for (const mutation of waiting) orphans.push(mutation)
+    }
+    for (const { doc, tx } of created) {
       // Skip what a later tx of the same batch removed or replaced.
       if (this.objectById.get(doc._id) !== doc) continue
       try {
         this.indexByClass(doc)
       } catch (err: any) {
+        skipped.set(tx._id, tx)
         // A doc of an unknown class must not stop indexing the rest of the batch.
         ctx.warn('failed to index model document, skipping', { _id: doc._id, _class: doc._class, err })
       }
     }
     if (orphans.length > 0) {
       const byClass: Record<string, number> = {}
-      for (const o of orphans) byClass[o._class] = (byClass[o._class] ?? 0) + 1
+      for (const tx of orphans) {
+        skipped.set(tx._id, tx)
+        byClass[tx._class] = (byClass[tx._class] ?? 0) + 1
+      }
       // Single coalesced info line per addTxes call. The previous per-TX
       // `ctx.warn` produced one console line per orphan on every page
       // load. MeasureContext has no `debug` channel, so a deeper dump for
@@ -488,6 +521,11 @@ export class ModelDb extends MemDb {
         total: orphans.length,
         byClass
       })
+    }
+    const skippedRequired = Array.from(skipped.values()).filter((tx) => requiredTxes?.has(tx._id) === true)
+    if (skippedRequired.length > 0) {
+      // The model is complete except for these transactions; callers decide whether that is fatal.
+      throw new RequiredModelTxError(skippedRequired.map((tx) => tx._id))
     }
   }
 
