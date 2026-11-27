@@ -60,6 +60,9 @@
     "BetaVersion": "ベータ版"
   },
   "status": {
-    "FileTooLarge": "ファイルサイズが大きすぎます"
+    "FileTooLarge": "ファイルサイズが大きすぎます",
+    "CreateAlreadyCommitted": "作成済みです。再試行する前に既存のレコードを確認してください。",
+    "CreateOutcomeUnknown": "作成結果が不明です。再試行する前に既存のレコードを確認してください。",
+    "CreateNotCommitted": "作成されませんでした。再試行できます。"
   }
 }

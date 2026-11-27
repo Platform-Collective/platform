@@ -60,6 +60,9 @@
     "BetaVersion": "Version bêta"
   },
   "status": {
-    "FileTooLarge": "Fichier trop volumineux"
+    "FileTooLarge": "Fichier trop volumineux",
+    "CreateAlreadyCommitted": "Déjà créé. Vérifiez les éléments existants avant de réessayer.",
+    "CreateOutcomeUnknown": "Résultat de création inconnu. Vérifiez les éléments avant de réessayer.",
+    "CreateNotCommitted": "Élément non créé. Vous pouvez réessayer."
   }
 }

@@ -13,6 +13,8 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { type IntlString, translateCB } from '@hcengineering/platform'
+  import { themeStore } from '@hcengineering/theme'
   import { createEventDispatcher } from 'svelte'
 
   export let checked: boolean = false
@@ -23,8 +25,18 @@
   export let color: string | undefined = undefined
   export let readonly: boolean = false
   export let disabled: boolean = false
+  export let label: IntlString | undefined = undefined
 
   const dispatch = createEventDispatcher()
+
+  let ariaLabel: string | undefined
+  $: if (label !== undefined) {
+    translateCB(label, {}, $themeStore.language, (res) => {
+      ariaLabel = res
+    })
+  } else {
+    ariaLabel = undefined
+  }
 
   $: oldChecked = checked
 
@@ -58,6 +70,7 @@
     class="chBox"
     disabled={readonly || disabled}
     type="checkbox"
+    aria-label={ariaLabel}
     bind:checked
     on:change|capture={handleValueChanged}
   />

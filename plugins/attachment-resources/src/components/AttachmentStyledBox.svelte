@@ -45,6 +45,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte'
 
   import attachment from '../plugin'
+  import { prepareAttachmentTransaction } from '../attachmentTransactions'
   import AttachmentsGrid from './AttachmentsGrid.svelte'
 
   export let objectId: Ref<Doc> | undefined = undefined
@@ -112,6 +113,11 @@
   let originalAttachments: Set<Ref<Attachment>> = new Set<Ref<Attachment>>()
   const newAttachments: Set<Ref<Attachment>> = new Set<Ref<Attachment>>()
   const removedAttachments: Set<Attachment> = new Set<Attachment>()
+  // Keep newly uploaded blobs alive while a deferred parent transaction may still commit.
+  const preparedAttachments: Set<Ref<Attachment>> = new Set<Ref<Attachment>>()
+  // A rejected commit can have an unknown server outcome; keep those blobs protected across retries.
+  const uncertainAttachments: Set<Ref<Attachment>> = new Set<Ref<Attachment>>()
+  let destroyed = false
 
   $: draftKey && updateAttachments(objectId, $draftsStore[draftKey])
 
@@ -275,8 +281,10 @@
   }
 
   onDestroy(() => {
+    destroyed = true
     if (!saved && !shouldSaveDraft) {
       newAttachments.forEach((p) => {
+        if (preparedAttachments.has(p) || uncertainAttachments.has(p)) return
         const attachment = attachments.get(p)
         if (attachment !== undefined) {
           void deleteAttachment(attachment)
@@ -311,6 +319,49 @@
     if (attachment !== undefined) {
       await removeAttachment(attachment)
     }
+  }
+
+  /**
+   * Queue a snapshot in an enclosing transaction without consuming the draft or uploaded refs.
+   * Discard the transaction on preparation/commit failure; prepare again for a retry.
+   * Call the returned finalizer exactly after a successful commit. Direct writes are incompatible.
+   * Existing attachment removals join the transaction; unused uploads are deleted only after commit.
+   * Blob cleanup errors are reported separately and must never turn a committed create into a retry.
+   */
+  export async function prepareAttachments(
+    op: TxOperations,
+    _id: Ref<Doc> | undefined = objectId
+  ): ReturnType<typeof prepareAttachmentTransaction> {
+    if (useDirectAttachDelete || space === undefined || _id === undefined || _class === undefined) {
+      throw new Error('Deferred attachments require a transaction and an attachment target')
+    }
+    return await prepareAttachmentTransaction(
+      op,
+      attachment.class.Attachment,
+      _id,
+      _class,
+      space,
+      {
+        attachments,
+        newAttachments,
+        removedAttachments,
+        originalAttachments,
+        preparedAttachments,
+        uncertainAttachments
+      },
+      {
+        deleteFile,
+        removeDraft,
+        saveDraft,
+        isDestroyed: () => destroyed,
+        setSaved: (value) => {
+          saved = value
+        },
+        reportError: (error) => {
+          void setPlatformStatus(unknownError(error))
+        }
+      }
+    )
   }
 
   export async function createAttachments(_id: Ref<Doc> | undefined = objectId, op?: TxOperations): Promise<void> {
