@@ -77,10 +77,18 @@ import {
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import serverToken, { decodeTokenVerbose, generateToken, TokenError } from '@hcengineering/server-token'
 import { Analytics } from '@hcengineering/analytics'
-import { randomBytes } from 'crypto'
+import * as crypto from 'crypto'
 
 import { type AccountDB, type AccountEvent, AccountEventType, type Workspace } from '../types'
 import { accountPlugin } from '../plugin'
+
+jest.mock('crypto', () => {
+  const actual = jest.requireActual<typeof import('crypto')>('crypto')
+  return {
+    ...actual,
+    timingSafeEqual: jest.fn(actual.timingSafeEqual)
+  }
+})
 
 // Mock platform with minimum required functionality
 jest.mock('@hcengineering/platform', () => {
@@ -470,7 +478,7 @@ describe('account utils', () => {
         ['🔑password', 'password with emoji'],
         [' password ', 'password with spaces']
       ])('should hash "%s" consistently (%s)', (password, description) => {
-        const salt = randomBytes(32)
+        const salt = crypto.randomBytes(32)
         const hash1 = hashWithSalt(password, salt)
         const hash2 = hashWithSalt(password, salt)
 
@@ -480,8 +488,8 @@ describe('account utils', () => {
 
       test('should produce different hashes for different salts', () => {
         const password = 'password123'
-        const salt1 = randomBytes(32)
-        const salt2 = randomBytes(32)
+        const salt1 = crypto.randomBytes(32)
+        const salt2 = crypto.randomBytes(32)
 
         const hash1 = hashWithSalt(password, salt1)
         const hash2 = hashWithSalt(password, salt2)
@@ -491,7 +499,7 @@ describe('account utils', () => {
       })
 
       test('should produce different hashes for different passwords', () => {
-        const salt = randomBytes(32)
+        const salt = crypto.randomBytes(32)
         const hash1 = hashWithSalt('password1', salt)
         const hash2 = hashWithSalt('password2', salt)
 
@@ -509,15 +517,15 @@ describe('account utils', () => {
         ['password with spaces', ' password123 ', true],
         ['password with special chars', 'p@ssw0rd!123', true]
       ])('should verify %s', (description, password, shouldMatch) => {
-        const salt = randomBytes(32)
+        const salt = crypto.randomBytes(32)
         const hash = shouldMatch ? hashWithSalt(password, salt) : hashWithSalt('different', salt)
 
         expect(verifyPassword(password, hash, salt)).toBe(shouldMatch)
       })
 
       test.each([
-        ['null hash', 'password123', null, randomBytes(32)],
-        ['null salt', 'password123', randomBytes(32), null],
+        ['null hash', 'password123', null, crypto.randomBytes(32)],
+        ['null salt', 'password123', crypto.randomBytes(32), null],
         ['null both', 'password123', null, null]
       ])('should handle %s', (description, password, hash, salt) => {
         expect(verifyPassword(password, hash, salt)).toBe(false)
@@ -773,6 +781,8 @@ describe('account utils', () => {
       }
 
       const mockDb = {
+        reserveOtpSend: jest.fn(),
+        advanceLatestOtpAttempt: jest.fn(),
         otp: {
           findOne: jest.fn(),
           find: jest.fn(),
@@ -788,6 +798,11 @@ describe('account utils', () => {
 
       beforeEach(() => {
         jest.clearAllMocks()
+        jest.mocked(mockDb.reserveOtpSend).mockReset().mockResolvedValue({
+          reserved: true,
+          now: 1000,
+          retryOn: 31000
+        })
         console.error = jest.fn()
         ;(getMetadata as jest.Mock).mockImplementation((key) => {
           switch (key) {
@@ -845,21 +860,115 @@ describe('account utils', () => {
           key: 'email:test@example.com'
         }
 
-        test('should return existing OTP if not expired', async () => {
+        test('should reserve the resend delay before delivery and block concurrent sends', async () => {
+          let retryOn = 0
+          jest.mocked(mockDb.otp.find).mockResolvedValue([])
+          jest.mocked(mockDb.otp.findOne).mockResolvedValue(null)
+          jest.mocked(mockDb.reserveOtpSend).mockImplementation(async (socialId, retryDelayMs) => {
+            expect(socialId).toBe(socialIdId)
+            const now = 1000
+            if (retryOn > now) return { reserved: false, now, retryOn }
+            retryOn = now + retryDelayMs
+            return { reserved: true, now, retryOn }
+          })
+
+          const results = await Promise.all(
+            Array.from({ length: 6 }, async () => await sendOtp(mockCtx, mockDb, mockBranding, mockSocialId))
+          )
+
+          expect(results).toEqual(Array.from({ length: 6 }, () => ({ sent: true, retryOn })))
+          expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(socialIdId, 30000)
+          expect(mockFetch).toHaveBeenCalledTimes(1)
+          expect(mockDb.otp.insertOne).toHaveBeenCalledTimes(1)
+          expect(jest.mocked(mockDb.reserveOtpSend).mock.invocationCallOrder[0]).toBeLessThan(
+            mockFetch.mock.invocationCallOrder[0]
+          )
+        })
+
+        test('should retain the resend delay after OTP consumption or cleanup', async () => {
+          const retryOn = Date.now() + 15000
+          jest.mocked(mockDb.otp.find).mockResolvedValue([])
+          jest.mocked(mockDb.reserveOtpSend).mockResolvedValue({ reserved: false, now: retryOn - 15000, retryOn })
+
+          await expect(sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)).resolves.toEqual({
+            sent: true,
+            retryOn
+          })
+          expect(mockFetch).not.toHaveBeenCalled()
+          expect(mockDb.otp.insertOne).not.toHaveBeenCalled()
+        })
+
+        test('should not deliver an OTP when reserving the resend delay fails', async () => {
+          const error = new Error('database unavailable')
+          jest.mocked(mockDb.otp.find).mockResolvedValue([])
+          jest.mocked(mockDb.reserveOtpSend).mockRejectedValue(error)
+
+          await expect(sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)).rejects.toBe(error)
+          expect(mockFetch).not.toHaveBeenCalled()
+          expect(mockDb.otp.insertOne).not.toHaveBeenCalled()
+        })
+
+        test('should retain the resend reservation when delivery fails', async () => {
+          let retryOn = 0
+          jest.mocked(mockDb.otp.find).mockResolvedValue([])
+          jest.mocked(mockDb.otp.findOne).mockResolvedValue(null)
+          jest.mocked(mockDb.reserveOtpSend).mockImplementation(async (socialId, retryDelayMs) => {
+            expect(socialId).toBe(socialIdId)
+            const now = 1000
+            if (retryOn > now) return { reserved: false, now, retryOn }
+            retryOn = now + retryDelayMs
+            return { reserved: true, now, retryOn }
+          })
+          const error = new Error('delivery failed')
+          mockFetch.mockRejectedValueOnce(error)
+
+          await expect(sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)).rejects.toBe(error)
+          await expect(sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)).resolves.toEqual({
+            sent: true,
+            retryOn
+          })
+          expect(mockFetch).toHaveBeenCalledTimes(1)
+          expect(mockDb.otp.insertOne).not.toHaveBeenCalled()
+        })
+
+        test('should retain the database resend cooldown even when the code has expired', async () => {
+          const now = Date.now()
+          const otpData = { code: '123456', expiresOn: now - 1000, createdOn: now - 15000 }
+          jest.mocked(mockDb.otp.find).mockResolvedValue([{ ...otpData, socialId: socialIdId }])
+          jest.mocked(mockDb.reserveOtpSend).mockResolvedValue({
+            reserved: false,
+            now,
+            retryOn: otpData.createdOn + 30000
+          })
+
+          const result = await sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)
+
+          expect(result).toEqual({ sent: true, retryOn: otpData.createdOn + 30000 })
+          expect(mockDb.otp.insertOne).not.toHaveBeenCalled()
+          expect(global.fetch).not.toHaveBeenCalled()
+        })
+
+        test('should use the database reservation instead of a legacy OTP timestamp', async () => {
           const now = Date.now()
           const mockOtpData = {
             code: '123456',
             expiresOn: now + 60000,
-            createdOn: now - 15000
+            createdOn: now + 86400000
           }
           ;(mockDb.otp.find as jest.Mock).mockResolvedValue([mockOtpData])
+          jest.mocked(mockDb.reserveOtpSend).mockResolvedValue({
+            reserved: false,
+            now,
+            retryOn: now + 30000
+          })
 
           const result = await sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)
 
           expect(result).toEqual({
             sent: true,
-            retryOn: mockOtpData.createdOn + 30000
+            retryOn: now + 30000
           })
+          expect(mockDb.otp.find).not.toHaveBeenCalled()
           expect(mockDb.otp.insertOne).not.toHaveBeenCalled()
         })
 
@@ -876,8 +985,9 @@ describe('account utils', () => {
           expect(mockDb.otp.insertOne).toHaveBeenCalledWith({
             socialId: mockSocialId._id,
             code: expect.any(String),
-            expiresOn: expect.any(Number),
-            createdOn: expect.any(Number)
+            expiresOn: 61000,
+            createdOn: 1000,
+            attempts: 0
           })
         })
 
@@ -927,6 +1037,31 @@ describe('account utils', () => {
       })
 
       describe('verifyOtpAttempt', () => {
+        const clockCases: Array<[number, number, string]> = [
+          [1000, 121000, 'valid'],
+          [61000, -59000, 'invalid']
+        ]
+        test.each(clockCases)(
+          'uses database expiry at DB=%s and replica=%s',
+          async (databaseNow, replicaNow, expected) => {
+            const row = { code: '123456', attempts: 1, expiresOn: 61000 }
+            const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow)
+            const db = {
+              advanceLatestOtpAttempt: jest.fn(async () => (row.expiresOn > databaseNow ? row : null)),
+              otp: {
+                find: jest.fn(async (query) => (row.expiresOn > query.expiresOn.$gt ? [row] : [])),
+                update: jest.fn(),
+                findOne: jest.fn(async () => row)
+              }
+            } as unknown as AccountDB
+            try {
+              expect(await verifyOtpAttempt(db, socialIdId, '123456')).toBe(expected)
+            } finally {
+              clock.mockRestore()
+            }
+          }
+        )
+
         const now = Date.now()
         let store: any[] = []
 
@@ -938,31 +1073,16 @@ describe('account utils', () => {
           createdOn
         })
 
-        const matches = (it: any, query: any): boolean =>
-          Object.entries(query ?? {}).every(([key, cond]: [string, any]) =>
-            cond !== null && typeof cond === 'object' && '$gt' in cond ? it[key] > cond.$gt : it[key] === cond
-          )
-
-        // Stateful stand-in for db.otp: $inc is applied, so attempt counters really accumulate
+        // Model the atomic adapter result, with an independent database clock.
         const useStore = (initial: any[]): void => {
           store = initial.map((it) => ({ ...it }))
-          ;(mockDb.otp.find as jest.Mock).mockImplementation(async (query: any, sort?: any, limit?: number) => {
-            let res = store.filter((it) => matches(it, query))
-            if (sort?.createdOn === 'descending') {
-              res = [...res].sort((x, y) => y.createdOn - x.createdOn)
-            }
-            return (limit !== undefined ? res.slice(0, limit) : res).map((it) => ({ ...it }))
-          })
-          ;(mockDb.otp.findOne as jest.Mock).mockImplementation(async (query: any) => {
-            const found = store.find((it) => matches(it, query))
-            return found !== undefined ? { ...found } : null
-          })
-          ;(mockDb.otp.update as jest.Mock).mockImplementation(async (query: any, ops: any) => {
-            for (const it of store.filter((it) => matches(it, query))) {
-              for (const [key, value] of Object.entries(ops.$inc ?? {})) {
-                it[key] = (it[key] ?? 0) + (value as number)
-              }
-            }
+          ;(mockDb.advanceLatestOtpAttempt as jest.Mock).mockImplementation(async () => {
+            const latest = store
+              .filter((it) => it.socialId === socialIdId && it.expiresOn > now)
+              .sort((x, y) => y.createdOn - x.createdOn)[0]
+            if (latest === undefined) return null
+            latest.attempts = (latest.attempts ?? 0) + 1
+            return { code: latest.code, attempts: latest.attempts }
           })
         }
 
@@ -973,6 +1093,16 @@ describe('account utils', () => {
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
           expect(attemptsOf('123456')).toBe(1)
+        })
+
+        test('should use timingSafeEqual only for equal-length code buffers', async () => {
+          useStore([otp('123456', 0)])
+          const compare = jest.mocked(crypto.timingSafeEqual)
+
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+          expect(compare).toHaveBeenCalledWith(Buffer.from('123456'), Buffer.from('123456'))
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '12345')).toBe('invalid')
+          expect(compare).toHaveBeenCalledTimes(1)
         })
 
         test('should return invalid for wrong code', async () => {
@@ -1032,10 +1162,10 @@ describe('account utils', () => {
         test('should not accept a code created between the counting and the check', async () => {
           useStore([])
           // Emulate sendOtp inserting a code right after the lookup of the active code
-          const find = mockDb.otp.find as jest.Mock
-          const lookup = find.getMockImplementation() as (...args: any[]) => Promise<any[]>
-          find.mockImplementationOnce(async (...args: any[]) => {
-            const res = await lookup(...args)
+          const advance = mockDb.advanceLatestOtpAttempt as jest.Mock
+          const lookup = advance.getMockImplementation() as () => Promise<any>
+          advance.mockImplementationOnce(async () => {
+            const res = await lookup()
             store.push(otp('123456', 0))
             return res
           })
@@ -1840,11 +1970,8 @@ describe('account utils', () => {
   })
 
   describe('cleanExpiredOtp', () => {
-    const mockDb = {
-      otp: {
-        deleteMany: jest.fn()
-      }
-    } as unknown as AccountDB
+    const cleanExpired = jest.fn()
+    const mockDb = { cleanExpiredOtp: cleanExpired } as unknown as AccountDB
 
     beforeEach(() => {
       jest.clearAllMocks()
@@ -1853,9 +1980,7 @@ describe('account utils', () => {
     test('should delete expired OTP records', async () => {
       await cleanExpiredOtp(mockDb)
 
-      expect(mockDb.otp.deleteMany).toHaveBeenCalledWith({
-        expiresOn: { $lte: expect.any(Number) }
-      })
+      expect(cleanExpired).toHaveBeenCalledWith()
     })
   })
 

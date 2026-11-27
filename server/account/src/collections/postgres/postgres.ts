@@ -21,6 +21,7 @@ import {
   type AccountRole,
   type WorkspaceUuid,
   type AccountUuid,
+  type PersonId,
   type PersonUuid
 } from '@hcengineering/core'
 
@@ -34,6 +35,7 @@ import type {
   AccountDB,
   Account,
   OTP,
+  OtpSendReservation,
   WorkspaceInvite,
   AccountEvent,
   SocialId,
@@ -558,7 +560,7 @@ export class PostgresAccountDB implements AccountDB {
     this.socialId = new PostgresDbCollection<SocialId, '_id'>('social_id', client, {
       ns,
       idKey: '_id',
-      timestampFields: ['createdOn', 'verifiedOn'],
+      timestampFields: ['createdOn', 'verifiedOn', 'otpRetryOn'],
       withRetryClient
     })
     this.workspaceStatus = new PostgresDbCollection<WorkspaceStatus>('workspace_status', client, {
@@ -813,6 +815,70 @@ export class PostgresAccountDB implements AccountDB {
       err.code === 'CONNECTION_DESTROYED' || // This error is thrown for any queries that were pending when the timeout to sql.end({ timeout: X }) was reached. If the DB client is being closed completely retry will result in CONNECTION_ENDED which is not retried so should be fine.
       msg.includes('RETRY_SERIALIZABLE')
     )
+  }
+
+  async advanceLatestOtpAttempt (socialId: PersonId): Promise<Pick<OTP, 'code' | 'attempts'> | null> {
+    return await this.withRetry(async (client) => {
+      const table = this.otp.getTableName()
+      const result = await client.unsafe<Pick<OTP, 'code' | 'attempts'>[]>(
+        `UPDATE ${table} SET attempts = COALESCE(attempts, 0) + 1
+         WHERE social_id = $1 AND code = (
+           SELECT code FROM ${table}
+           WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT
+           ORDER BY created_on DESC LIMIT 1
+         ) AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT
+         RETURNING code, attempts`,
+        [socialId]
+      )
+      return result[0] ?? null
+    })
+  }
+
+  async cleanExpiredOtp (): Promise<void> {
+    await this.client.unsafe(
+      `DELETE FROM ${this.otp.getTableName()}
+       WHERE expires_on <= FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT`
+    )
+  }
+
+  async reserveOtpSend (socialId: PersonId, retryDelayMs: number, reserve = true): Promise<OtpSendReservation> {
+    return await this.withRetry(async (client) => {
+      // statement_timestamp is database time and is stable throughout each conditional write.
+      const now = 'FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT'
+      // Import every observed legacy write, preserving any longer existing reservation.
+      // Keep the imported deadline after code consumption. Old mail-before-insert writers
+      // still require a compatible writer deployment; this cannot fence their mail call.
+      await client.unsafe(
+        `UPDATE ${this.socialId.getTableName()} SET otp_retry_on = GREATEST(COALESCE(otp_retry_on, 0),
+           COALESCE((SELECT MAX(LEAST(expires_on, created_on + $2)) FROM ${this.otp.getTableName()}
+             WHERE social_id = $1 AND expires_on > ${now}), 0))
+         WHERE _id = $1`,
+        [socialId, retryDelayMs]
+      )
+      const result = reserve
+        ? await client.unsafe(
+            `UPDATE ${this.socialId.getTableName()} SET otp_retry_on = ${now} + $2
+             WHERE _id = $1 AND (otp_retry_on IS NULL OR otp_retry_on <= ${now})
+             RETURNING otp_retry_on - $2 AS now, otp_retry_on`,
+            [socialId, retryDelayMs]
+          )
+        : []
+      if (result.length === 1) {
+        return { reserved: true, now: Number(result[0].now), retryOn: Number(result[0].otp_retry_on) }
+      }
+      const current = await client.unsafe(
+        `SELECT ${now} AS now, otp_retry_on FROM ${this.socialId.getTableName()} WHERE _id = $1`,
+        [socialId]
+      )
+      if (current.length !== 1 || (reserve && current[0].otp_retry_on == null)) {
+        throw new Error('OTP identity or reservation is missing')
+      }
+      return {
+        reserved: false,
+        now: Number(current[0].now),
+        retryOn: Number(current[0].otp_retry_on ?? current[0].now)
+      }
+    })
   }
 
   async createWorkspace (data: WorkspaceData, status: WorkspaceStatusData): Promise<WorkspaceUuid> {

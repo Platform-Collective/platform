@@ -51,10 +51,18 @@ export interface Person extends BasePerson {
   migratedTo?: PersonUuid
 }
 
+/** Reservation times come from the database, never from an account-service replica clock. */
+export interface OtpSendReservation {
+  reserved: boolean
+  now: Timestamp
+  retryOn: Timestamp
+}
+
 export interface SocialId extends SocialIdBase {
   personUuid: PersonUuid
   createdOn?: Timestamp
   verifiedOn?: Timestamp
+  otpRetryOn?: Timestamp
 }
 
 export interface Account {
@@ -353,6 +361,11 @@ export interface AccountDB {
   apiToken: DbCollection<ApiToken>
 
   init: () => Promise<void>
+  reserveOtpSend: (socialId: PersonId, retryDelayMs: number, reserve?: boolean) => Promise<OtpSendReservation>
+  /** Atomically count an attempt on the newest active code using database time. */
+  advanceLatestOtpAttempt: (socialId: PersonId) => Promise<Pick<OTP, 'code' | 'attempts'> | null>
+  /** Delete expired codes using the same database clock as issuance and attempt accounting. */
+  cleanExpiredOtp: () => Promise<void>
   createWorkspace: (data: WorkspaceData, status: WorkspaceStatusData) => Promise<WorkspaceUuid>
   updateAllowReadOnlyGuests: (workspaceId: WorkspaceUuid, readOnlyGuestsAllowed: boolean) => Promise<void>
   updateAllowGuestSignUp: (workspaceId: WorkspaceUuid, guestSignUpAllowed: boolean) => Promise<void>
@@ -515,6 +528,7 @@ export interface WorkspaceLoginInfo extends LoginInfo {
 }
 
 export interface OtpInfo {
+  /** Request accepted, including resend suppression; this does not guarantee a fresh delivery. */
   sent: boolean
   retryOn: Timestamp
 }

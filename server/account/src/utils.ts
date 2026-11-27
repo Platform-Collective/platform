@@ -38,7 +38,7 @@ import {
 import { getMongoClient } from '@hcengineering/mongo' // TODO: get rid of this import later
 import platform, { getMetadata, PlatformError, Severity, Status, translate } from '@hcengineering/platform'
 import { getDBClient, setDBExtraOptions } from '@hcengineering/postgres'
-import { createHmac, pbkdf2Sync, randomBytes } from 'crypto'
+import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto'
 import otpGenerator from 'otp-generator'
 import { authenticator } from 'otplib'
 
@@ -663,14 +663,6 @@ export async function sendOtp (
   branding: Branding | null,
   socialId: SocialId
 ): Promise<OtpInfo> {
-  const ts = Date.now()
-  const otpData = (await db.otp.find({ socialId: socialId._id }, { createdOn: 'descending' }, 1))[0]
-  const retryDelay = getMetadata(accountPlugin.metadata.OtpRetryDelaySec) ?? 30
-
-  if (otpData !== undefined && otpData.expiresOn > ts && otpData.createdOn + retryDelay * 1000 > ts) {
-    return { sent: true, retryOn: otpData.createdOn + retryDelay * 1000 }
-  }
-
   let sendMethod: (ctx: MeasureContext, branding: Branding | null, code: string, target: string) => Promise<void>
 
   switch (socialId.type) {
@@ -684,12 +676,20 @@ export async function sendOtp (
 
   const retryDelayMs = (getMetadata(accountPlugin.metadata.OtpRetryDelaySec) ?? 30) * 1000
   const ttlMs = (getMetadata(accountPlugin.metadata.OtpTimeToLiveSec) ?? 60) * 1000
+  // Reserve the cooldown before delivery, across replicas. Keep it even if sending fails or the OTP is consumed.
+  const reservation = await db.reserveOtpSend(socialId._id, retryDelayMs)
+  if (!reservation.reserved) {
+    // `sent` is the existing request-accepted contract; it does not promise a fresh delivery.
+    return { sent: true, retryOn: reservation.retryOn }
+  }
+  const ts = reservation.now
+
   const code = await generateUniqueOtp(db)
 
   await sendMethod(ctx, branding, code, socialId.value)
-  await db.otp.insertOne({ socialId: socialId._id, code, expiresOn: ts + ttlMs, createdOn: ts })
+  await db.otp.insertOne({ socialId: socialId._id, code, expiresOn: ts + ttlMs, createdOn: ts, attempts: 0 })
 
-  return { sent: true, retryOn: ts + retryDelayMs }
+  return { sent: true, retryOn: reservation.retryOn }
 }
 
 export async function sendOtpEmail (
@@ -744,20 +744,12 @@ export async function verifyOtpAttempt (
   socialId: PersonId,
   code: string
 ): Promise<OtpVerificationResult> {
-  const now = Date.now()
   const maxAttempts = getOtpMaxAttempts()
 
   // Only the newest active code is accepted: a resend supersedes older codes,
   // so an attempt is always counted on the same code it is checked against.
-  const [latest] = await db.otp.find({ socialId, expiresOn: { $gt: now } }, { createdOn: 'descending' }, 1)
-  if (latest === undefined) {
-    return 'invalid'
-  }
-
-  // Count the attempt before checking the code and re-read the counter,
-  // so concurrent requests cannot exceed the limit.
-  await db.otp.update({ socialId, code: latest.code }, { $inc: { attempts: 1 } })
-  const otpData = await db.otp.findOne({ socialId, code: latest.code })
+  // Use the database clock and the counter returned by the same atomic write.
+  const otpData = await db.advanceLatestOtpAttempt(socialId)
   if (otpData == null) {
     // Consumed or cleaned up concurrently
     return 'invalid'
@@ -767,7 +759,10 @@ export async function verifyOtpAttempt (
     return 'locked'
   }
 
-  return otpData.code === code ? 'valid' : 'invalid'
+  const expected = Buffer.from(otpData.code)
+  const candidate = Buffer.from(code)
+  const matches = expected.length === candidate.length && timingSafeEqual(expected, candidate)
+  return matches ? 'valid' : 'invalid'
 }
 
 /**
@@ -1910,7 +1905,7 @@ export function flattenStatus (ws: WorkspaceInfoWithStatus): WorkspaceInfoWithSt
 }
 
 export async function cleanExpiredOtp (db: AccountDB): Promise<void> {
-  await db.otp.deleteMany({ expiresOn: { $lte: Date.now() } })
+  await db.cleanExpiredOtp()
 }
 
 export async function getWorkspaces (

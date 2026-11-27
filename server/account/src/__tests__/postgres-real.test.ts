@@ -4,9 +4,11 @@
 
 import { generateUuid, SocialIdType, type AccountUuid, type PersonId } from '@hcengineering/core'
 import { getDBClient, shutdownPostgres, type PostgresClientReference } from '@hcengineering/postgres'
+import type { Sql } from 'postgres'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
 import { type SocialId } from '../types'
 import { createAccount, getDbFlavor, normalizeValue, verifyOtpAttempt } from '../utils'
+import { otpCooldownCases } from './otpCooldownCases'
 
 jest.setTimeout(90000)
 
@@ -30,6 +32,8 @@ describe('real-account', () => {
 
   let crClient: PostgresClientReference
   let pgClient: PostgresClientReference
+  let crRawClient: Sql | undefined
+  let pgRawClient: Sql | undefined
 
   let crAccount: PostgresAccountDB
   let pgAccount: PostgresAccountDB
@@ -91,8 +95,10 @@ describe('real-account', () => {
   })
 
   beforeEach(async () => {
+    crRawClient = undefined
+    pgRawClient = undefined
     // Create a unique database for each test to ensure isolation
-    dbUuid = 'accountdb' + Date.now().toString()
+    dbUuid = 'otp296db' + generateUuid().replace(/-/g, '')
     crDbUri = cockroachDB.replace('/defaultdb', '/' + dbUuid)
     const c = postgresDB.split('/')
     c[c.length - 1] = dbUuid
@@ -108,9 +114,11 @@ describe('real-account', () => {
 
     crClient = getDBClient(crDbUri)
     const crPGClient = await crClient.getClient()
+    crRawClient = crPGClient
 
     pgClient = getDBClient(pgDbUri)
     const pgPGClient = await pgClient.getClient()
+    pgRawClient = pgPGClient
 
     // Initial DB's
 
@@ -124,19 +132,22 @@ describe('real-account', () => {
   })
 
   afterEach(async () => {
+    // Reference.close() starts asynchronous shutdown and cannot be awaited.
+    // Wait for these UUID-database pools only before dropping their databases.
     try {
-      pgClient.close()
-      crClient.close()
-
-      // Use admin client to drop the test database
-      const adminClient = await adminClientCRRef.getClient()
-      await adminClient`DROP DATABASE IF EXISTS ${adminClient(dbUuid)} CASCADE`
-
-      const adminClientPG = await adminClientPGRef.getClient()
-      await adminClientPG`DROP DATABASE IF EXISTS ${adminClient(dbUuid)}`
-    } catch (err) {
-      console.error('Cleanup error:', err)
+      await Promise.all([pgRawClient?.end({ timeout: 1 }), crRawClient?.end({ timeout: 1 })])
+    } finally {
+      pgClient?.close()
+      crClient?.close()
     }
+
+    // Drop only this fixture's UUID-named databases; never clean another job's namespace.
+    const adminClient = await adminClientCRRef.getClient()
+    const adminClientPG = await adminClientPGRef.getClient()
+    await Promise.all([
+      adminClient`DROP DATABASE IF EXISTS ${adminClient(dbUuid)} CASCADE`,
+      adminClientPG`DROP DATABASE IF EXISTS ${adminClientPG(dbUuid)}`
+    ])
   })
 
   it('Check accounts', async () => {
@@ -195,6 +206,23 @@ describe('real-account', () => {
       await getAccount().otp.insertOne({ socialId: socialId._id, code, expiresOn: now + 60000, createdOn: now })
       return socialId._id
     }
+
+    otpCooldownCases(
+      getAccount,
+      async () => {
+        const identity = (await getAccount().socialId.find({ personUuid: users[0].uuid })).find(
+          (it) => it.type === SocialIdType.EMAIL
+        ) as SocialId
+        return identity._id
+      },
+      async () => {
+        const client = await (_name === 'postgres' ? pgClient : crClient).getClient()
+        const rows = await client.unsafe(
+          'SELECT FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT AS now'
+        )
+        return Number(rows[0].now)
+      }
+    )
 
     it('deleteMany lets exactly one of many concurrent consumers delete the code', async () => {
       const socialId = await createOtp()
@@ -281,54 +309,20 @@ describe('real-account', () => {
   })
 })
 
-async function migratePostgreSQL (pgAccount: PostgresAccountDB, pgDbUri: string): Promise<void> {
-  let error = false
-  do {
-    try {
-      await pgAccount.init()
-      error = false
-    } catch (e) {
-      console.error('Error while initializing postgres account db', e, pgDbUri)
-      error = true
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-    }
-  } while (error)
+async function migratePostgreSQL (pgAccount: PostgresAccountDB, _pgDbUri: string): Promise<void> {
+  await pgAccount.init()
 }
 
-async function migrateCockroachDB (crAccount: PostgresAccountDB, crDbUri: string): Promise<void> {
-  let error: boolean = false
-  do {
-    try {
-      await crAccount.init()
-      error = false
-    } catch (e) {
-      console.error('Error while initializing postgres account db', e, crDbUri)
-      error = true
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-    }
-  } while (error)
+async function migrateCockroachDB (crAccount: PostgresAccountDB, _crDbUri: string): Promise<void> {
+  await crAccount.init()
 }
 
 async function initPostgreSQL (adminClientPGRef: PostgresClientReference, dbUuid: string): Promise<void> {
   const adminClientPg = await adminClientPGRef.getClient()
-  // Clean up any leftover test databases with prefix 'accountdb' for Postgres
-  const existingPgs = await adminClientPg`SELECT datname FROM pg_database WHERE datname LIKE 'accountdb%'`
-  for (const row of existingPgs) {
-    try {
-      await adminClientPg`DROP DATABASE IF EXISTS ${adminClientPg(row.datname)}`
-    } catch (err: any) {
-      // Ignore, Postgress says database is being used by other users
-    }
-  }
   await adminClientPg`CREATE DATABASE ${adminClientPg(dbUuid)}`
 }
 
 async function initCockroachDB (adminClientCRRef: PostgresClientReference, dbUuid: string): Promise<void> {
   const adminClient = await adminClientCRRef.getClient()
-  // Clean up any leftover test databases with prefix 'accountdb'
-  const existingCrs = await adminClient`SELECT datname FROM pg_database WHERE datname LIKE 'accountdb%'`
-  for (const row of existingCrs) {
-    await adminClient`DROP DATABASE IF EXISTS ${adminClient(row.datname)} CASCADE`
-  }
   await adminClient`CREATE DATABASE ${adminClient(dbUuid)}`
 }
