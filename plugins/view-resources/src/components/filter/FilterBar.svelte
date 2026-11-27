@@ -19,6 +19,7 @@
   import { Filter, FilterMode, FilteredView, ViewOptions, Viewlet } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import { filterStore, removeFilter, selectedFilterStore, setFilters, updateFilter } from '../../filter'
+  import { sameFilters } from '../../filter/compare'
   import { makeFilterQuery } from '../../filter/query-builder'
   import view from '../../plugin'
   import { activeViewlet, getActiveViewletId, makeViewletKey } from '../../utils'
@@ -121,7 +122,7 @@
     const loc = getCurrentLocation()
     const key = makeViewletKey(loc)
     if (selectedFilter.viewletId !== activeViewlet[key]) return true
-    if (selectedFilter.filters !== JSON.stringify(filters)) return true
+    if (!sameFilters(selectedFilter.filters, filters)) return true
     if (selectedFilter.viewletId !== null) {
       const viewOptions = getViewOptions({ _id: selectedFilter.viewletId } as unknown as Viewlet, viewOptionStore)
       if (JSON.stringify(selectedFilter.viewOptions) !== JSON.stringify(viewOptions)) return true
