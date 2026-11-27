@@ -70,6 +70,18 @@ export const activeProjects = derived(taskActiveProjects, (projects) => {
     Array.from(projects.values()).filter((it) => client.getHierarchy().isDerived(it._class, tracker.class.Project))
   ) as Map<Ref<Project>, Project>
 })
+
+// Time values also appear in archived projects. Share one projected query across presenters.
+export const timeProjects = writable<Map<Ref<Project>, Pick<Project, '_id' | 'hoursPerDay'>>>(new Map())
+const timeProjectsQuery = createQuery(true)
+timeProjectsQuery.query<Project>(
+  tracker.class.Project,
+  {},
+  (projects) => {
+    timeProjects.set(toIdMap(projects))
+  },
+  { projection: { _id: 1, hoursPerDay: 1 } }
+)
 export * from './types'
 
 export type ComponentsFilterMode = 'all' | 'backlog' | 'active' | 'closed'
