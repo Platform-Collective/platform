@@ -196,6 +196,8 @@
     "AllFilters": "všem filtrům",
     "NoDescription": "Žádný popis",
     "SearchIssue": "Hledat úkol...",
+    "ShowProjectOwners": "Zobrazit vlastníky v postranním panelu",
+    "HideProjectOwners": "Skrýt vlastníky v postranním panelu",
     "SearchMilestone": "Hledat milník...",
 
     "StatusHistory": "Historie stavů",
@@ -332,7 +334,15 @@
     "GanttVisibleRange": "Rozsah",
     "GanttNotScheduled": "Nenaplánováno",
     "GanttMissingStartDates": "{count} úkolů nemá datum zahájení.",
-    "GanttSetDatesHint": "Nastavte u úkolu datum zahájení a termín dokončení, aby se zobrazil v časové ose."
+    "GanttSetDatesHint": "Nastavte u úkolu datum zahájení a termín dokončení, aby se zobrazil v časové ose.",
+    "CopyReleaseList": "Kopírovat seznam vydání",
+    "ReleaseListLoading": "Načítání dokončených úkolů…",
+    "ReleaseListCount": "Dokončené úkoly: {count}",
+    "ReleaseListEmpty": "Tento milník neobsahuje žádné dokončené úkoly.",
+    "ReleaseListMarkdown": "Seznam vydání (Markdown / prostý text)",
+    "ReleaseListCopied": "Seznam vydání byl zkopírován.",
+    "ReleaseListCopyFallback": "Přístup ke schránce se nezdařil. Text je vybrán; zkopírujte jej pomocí klávesnice nebo kontextové nabídky.",
+    "ReleaseListLoadFailed": "Dokončené úkoly se nepodařilo načíst. Zavřete tento dialog a zkuste to znovu."
   },
   "status": {}
 }

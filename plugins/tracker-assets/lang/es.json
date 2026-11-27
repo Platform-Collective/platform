@@ -199,6 +199,8 @@
     "AllFilters": "todos los filtros",
     "NoDescription": "Sin descripción",
     "SearchIssue": "Buscar tarea...",
+    "ShowProjectOwners": "Mostrar propietarios en la barra lateral",
+    "HideProjectOwners": "Ocultar propietarios en la barra lateral",
     "SearchMilestone": "Buscar hito...",
     "StatusHistory": "Historial de estado",
     "NewSubIssue": "Agregar subproblema...",
@@ -325,7 +327,15 @@
     "GanttVisibleRange": "Intervalo",
     "GanttNotScheduled": "Sin programar",
     "GanttMissingStartDates": "{count} tareas no tienen fecha de inicio.",
-    "GanttSetDatesHint": "Establece las fechas de inicio y vencimiento de una tarea para mostrarla en la línea de tiempo."
+    "GanttSetDatesHint": "Establece las fechas de inicio y vencimiento de una tarea para mostrarla en la línea de tiempo.",
+    "CopyReleaseList": "Copiar la lista de lanzamientos",
+    "ReleaseListLoading": "Cargando incidencias completadas…",
+    "ReleaseListCount": "Incidencias completadas: {count}",
+    "ReleaseListEmpty": "Este hito no tiene incidencias completadas.",
+    "ReleaseListMarkdown": "Lista de lanzamientos (Markdown / texto sin formato)",
+    "ReleaseListCopied": "Lista de lanzamientos copiada.",
+    "ReleaseListCopyFallback": "No se pudo acceder al portapapeles. El texto está seleccionado; cópialo con el teclado o el menú contextual.",
+    "ReleaseListLoadFailed": "No se pudieron cargar las incidencias completadas. Cierra este diálogo e inténtalo de nuevo."
   },
   "status": {}
 }

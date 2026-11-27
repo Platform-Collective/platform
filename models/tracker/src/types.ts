@@ -40,6 +40,7 @@ import {
   Model,
   Prop,
   ReadOnly,
+  TypeBoolean,
   TypeCollaborativeDoc,
   TypeDate,
   TypeMarkup,
@@ -57,6 +58,7 @@ import { getEmbeddedLabel, type IntlString } from '@hcengineering/platform'
 import tags, { type TagElement } from '@hcengineering/tags'
 import time, { type ToDo } from '@hcengineering/time'
 import {
+  type ProjectNavigatorPreference,
   type ProjectTargetPreference,
   type Component,
   type DependencyKind,
@@ -484,6 +486,12 @@ export class TProjectTargetPreference extends TPreference implements ProjectTarg
 
   @Prop(TypeRecord(), getEmbeddedLabel('Properties'))
   props?: { key: string, value: any }[]
+}
+
+@Model(tracker.class.ProjectNavigatorPreference, preference.class.Preference)
+export class TProjectNavigatorPreference extends TPreference implements ProjectNavigatorPreference {
+  @Prop(TypeBoolean(), tracker.string.ShowProjectOwners)
+  showProjectOwners!: boolean
 }
 
 @Mixin(tracker.mixin.ClassicProjectTypeData, tracker.class.Project)

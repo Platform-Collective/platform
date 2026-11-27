@@ -199,6 +199,8 @@
     "AllFilters": "すべてのフィルター",
     "NoDescription": "説明なし",
     "SearchIssue": "タスクを検索...",
+    "ShowProjectOwners": "サイドバーにオーナーを表示",
+    "HideProjectOwners": "サイドバーのオーナーを非表示",
     "SearchMilestone": "マイルストーンを検索...",
     "StatusHistory": "状態履歴",
     "NewSubIssue": "子イシューを追加...",
@@ -325,7 +327,15 @@
     "GanttVisibleRange": "表示範囲",
     "GanttNotScheduled": "未予定",
     "GanttMissingStartDates": "{count} 件の課題に開始日が設定されていません。",
-    "GanttSetDatesHint": "課題に開始日と期限を設定すると、タイムラインに表示されます。"
+    "GanttSetDatesHint": "課題に開始日と期限を設定すると、タイムラインに表示されます。",
+    "CopyReleaseList": "リリースリストをコピー",
+    "ReleaseListLoading": "完了した課題を読み込み中…",
+    "ReleaseListCount": "完了した課題: {count}",
+    "ReleaseListEmpty": "このマイルストーンには完了した課題がありません。",
+    "ReleaseListMarkdown": "リリースリスト（Markdown / プレーンテキスト）",
+    "ReleaseListCopied": "リリースリストをコピーしました。",
+    "ReleaseListCopyFallback": "クリップボードにアクセスできませんでした。テキストが選択されているので、キーボードまたはコンテキストメニューでコピーしてください。",
+    "ReleaseListLoadFailed": "完了した課題を読み込めませんでした。このダイアログを閉じて、もう一度お試しください。"
   },
   "status": {}
 }

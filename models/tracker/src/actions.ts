@@ -736,6 +736,19 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
     },
     tracker.action.DeleteMilestone
   )
+  createAction(
+    builder,
+    {
+      action: tracker.actionImpl.CopyReleaseList,
+      label: tracker.string.CopyReleaseList,
+      icon: view.icon.Copy,
+      input: 'focus',
+      target: tracker.class.Milestone,
+      category: tracker.category.Tracker,
+      context: { mode: ['context', 'browser'], group: 'copy' }
+    },
+    tracker.action.CopyReleaseList
+  )
   builder.mixin(tracker.class.Milestone, core.class.Class, view.mixin.IgnoreActions, {
     actions: [view.action.Delete]
   })

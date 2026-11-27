@@ -203,6 +203,8 @@
     "AllFilters": "wszystkie filtry",
     "NoDescription": "Brak opisu",
     "SearchIssue": "Wyszukaj zadanie\u2026",
+    "ShowProjectOwners": "Pokaż właścicieli na pasku bocznym",
+    "HideProjectOwners": "Ukryj właścicieli na pasku bocznym",
     "SearchMilestone": "Wyszukaj cel\u2026",
 
     "StatusHistory": "Historia statusów",
@@ -309,7 +311,15 @@
     "GanttMissingStartDates": "{count} zadań nie ma daty rozpoczęcia.",
     "GanttSetDatesHint": "Ustaw datę rozpoczęcia i termin zakończenia zadania, aby wyświetlić je na osi czasu.",
     "GanttHelpCalendarDaysDrag": "Przytrzymaj podczas przeciągania, aby ignorować dni robocze (dni kalendarzowe)",
-    "GanttDragCalendarDays": "Dni kalendarzowe"
+    "GanttDragCalendarDays": "Dni kalendarzowe",
+    "CopyReleaseList": "Kopiuj listę wydań",
+    "ReleaseListLoading": "Ładowanie ukończonych zadań…",
+    "ReleaseListCount": "Ukończone zadania: {count}",
+    "ReleaseListEmpty": "Ten kamień milowy nie zawiera ukończonych zadań.",
+    "ReleaseListMarkdown": "Lista wydań (Markdown / zwykły tekst)",
+    "ReleaseListCopied": "Skopiowano listę wydań.",
+    "ReleaseListCopyFallback": "Nie udało się uzyskać dostępu do schowka. Tekst jest zaznaczony; skopiuj go za pomocą klawiatury lub menu kontekstowego.",
+    "ReleaseListLoadFailed": "Nie udało się załadować ukończonych zadań. Zamknij to okno dialogowe i spróbuj ponownie."
   },
   "status": {}
 }
