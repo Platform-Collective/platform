@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { AccountRole, Ref, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
-  import { IntlString } from '@hcengineering/platform'
+  import { IntlString, setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
   import {
     AccordionItem,
@@ -37,6 +37,7 @@
   import FloorGrid from './FloorGrid.svelte'
   import RoomPreview from './RoomPreview.svelte'
   import { loadUsersStatus } from '@hcengineering/contact-resources'
+  import { removeFloor } from '../meeting-minutes'
 
   export let floor: Floor
   export let configurable: boolean = false
@@ -74,7 +75,11 @@
   const client = getClient()
 
   async function remove(): Promise<void> {
-    await client.remove(floor)
+    try {
+      await removeFloor(client, floor)
+    } catch (err) {
+      await setPlatformStatus(unknownError(err))
+    }
   }
 
   function renameFloor(): void {

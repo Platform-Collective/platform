@@ -13,12 +13,13 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { MeetingMinutes } from '@hcengineering/love'
+  import love, { Floor, MeetingMinutes } from '@hcengineering/love'
   import { ObjectPresenter, openDoc } from '@hcengineering/view-resources'
   import view from '@hcengineering/view'
   import { ActionIcon } from '@hcengineering/ui'
   import { createQuery, getClient } from '@hcengineering/presentation'
-  import type { Doc } from '@hcengineering/core'
+  import type { Doc, Ref } from '@hcengineering/core'
+  import FloorAttributePresenter from './FloorAttributePresenter.svelte'
 
   export let object: MeetingMinutes
 
@@ -30,25 +31,30 @@
   $: docQuery.query(object.attachedToClass, { _id: object.attachedTo }, (r) => {
     doc = r.shift()
   })
+  $: floorId = doc?._class === love.class.Floor ? (doc._id as Ref<Floor>) : undefined
 </script>
 
 {#if doc}
-  <span class="label flex-row-center flex-gap-4 no-word-wrap">
-    <ObjectPresenter
-      objectId={doc._id}
-      _class={doc._class}
-      value={doc}
-      shouldShowAvatar={false}
-      disabled
-      props={{ type: 'text' }}
-    />
-    <ActionIcon
-      icon={view.icon.Open}
-      size={'small'}
-      action={async () => {
-        if (doc === undefined) return
-        await openDoc(client.getHierarchy(), doc)
-      }}
-    />
-  </span>
+  {#if floorId !== undefined}
+    <FloorAttributePresenter value={floorId} />
+  {:else}
+    <span class="label flex-row-center flex-gap-4 no-word-wrap">
+      <ObjectPresenter
+        objectId={doc._id}
+        _class={doc._class}
+        value={doc}
+        shouldShowAvatar={false}
+        disabled
+        props={{ type: 'text' }}
+      />
+      <ActionIcon
+        icon={view.icon.Open}
+        size={'small'}
+        action={async () => {
+          if (doc === undefined) return
+          await openDoc(client.getHierarchy(), doc)
+        }}
+      />
+    </span>
+  {/if}
 {/if}
