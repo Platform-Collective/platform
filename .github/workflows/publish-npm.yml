@@ -52,13 +52,11 @@ jobs:
         run: node common/scripts/install-run-rush.js install
       - name: Verify release version
         # Before tagging, run: node common/scripts/bump.js <version> (see docs/RELEASING.md).
+        # The baseline version and npm scope are set in common/config/npm-publish.json.
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           node common/scripts/bump.js --check "$VERSION"
-          if [[ "$VERSION" == "0.7.423" ]] || ! printf '%s\n' 0.7.423 "$VERSION" | sort -V -C; then
-            echo "::error::The release version must be greater than 0.7.423."
-            exit 1
-          fi
+          node common/scripts/safe-publish.js --check-version "$VERSION"
       - name: Building...
         run: node common/scripts/install-run-rush.js build
       - name: Emit TypeScript declarations
