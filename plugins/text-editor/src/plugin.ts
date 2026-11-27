@@ -35,6 +35,9 @@ export default plugin(textEditorId, {
   },
   string: {
     TableOfContents: '' as IntlString,
+    Heading1: '' as IntlString,
+    Heading2: '' as IntlString,
+    Heading3: '' as IntlString,
     Suggested: '' as IntlString,
     NoItems: '' as IntlString,
     Attach: '' as IntlString,

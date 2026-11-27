@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "目次",
+    "Heading1": "見出し 1",
+    "Heading2": "見出し 2",
+    "Heading3": "見出し 3",
     "Suggested": "候補",
     "NoItems": "アイテムなし",
     "EditorPlaceholder": "入力を開始...",

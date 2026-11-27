@@ -26,6 +26,8 @@
   import { addTableHandler } from '../utils'
   import view from '@hcengineering/view'
   import { type FileAttachFunction } from './extension/types'
+  import { isBlockCommandId, runBlockCommand } from './extension/block-commands'
+  import { insertContentAtEnd, prepareCommandAtEnd } from './extension/leftMenuEnd'
   import { inlineCommandsConfig } from './extensions'
 
   const TODO_LIST_COMMANDS = ['todo-list'] as const
@@ -86,6 +88,7 @@
   let modified: boolean = false
 
   let editor: StyledTextEditor
+  let insertImageAtEnd = false
 
   $: if (oldContent !== content) {
     oldContent = content
@@ -172,9 +175,20 @@
     editor.removeAttachment(id)
   }
 
-  async function handleCommandSelected(id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
+  async function handleCommandSelected(
+    id: string,
+    pos: number,
+    targetItem?: MouseEvent | HTMLElement,
+    insertAtEnd = false
+  ): Promise<void> {
+    if (isBlockCommandId(id)) {
+      runBlockCommand(editor.getEditor(), id, pos, undefined, insertAtEnd)
+      return
+    }
+
     switch (id) {
       case 'image':
+        insertImageAtEnd = insertAtEnd
         handleAttachImage()
         break
       case 'table': {
@@ -184,21 +198,55 @@
             targetItem instanceof MouseEvent ? getEventPositionElement(targetItem) : getPopupPositionElement(targetItem)
         }
 
-        void addTableHandler(editor.editorHandler.insertTable, position)
+        void addTableHandler((options) => {
+          if (!insertAtEnd) {
+            editor.editorHandler.insertTable(options)
+            return
+          }
+          const currentEditor = editor.getEditor()
+          if (currentEditor === undefined) return
+          const { chain, pos: endPos } = prepareCommandAtEnd(currentEditor)
+          chain.focus(endPos, { scrollIntoView: false }).insertTable(options).run()
+        }, position)
         break
       }
-      case 'code-block':
-        editor.editorHandler.insertCodeBlock(pos)
+      case 'code-block': {
+        const currentEditor = editor.getEditor()
+        if (insertAtEnd && currentEditor !== undefined) {
+          insertContentAtEnd(currentEditor, { type: 'codeBlock', content: [{ type: 'text', text: ' ' }] })
+        } else {
+          editor.editorHandler.insertCodeBlock(pos)
+        }
         break
-      case 'separator-line':
-        editor.editorHandler.insertSeparatorLine()
+      }
+      case 'separator-line': {
+        const currentEditor = editor.getEditor()
+        if (insertAtEnd && currentEditor !== undefined) {
+          insertContentAtEnd(currentEditor, { type: 'horizontalRule' })
+        } else {
+          editor.editorHandler.insertSeparatorLine()
+        }
         break
-      case 'todo-list':
-        editor.getEditor()?.chain().focus(pos).toggleTaskList().run()
+      }
+      case 'todo-list': {
+        const currentEditor = editor.getEditor()
+        if (insertAtEnd && currentEditor !== undefined) {
+          const { chain, pos: endPos } = prepareCommandAtEnd(currentEditor)
+          chain.focus(endPos, { scrollIntoView: false }).toggleTaskList().run()
+        } else {
+          currentEditor?.chain().focus(pos).toggleTaskList().run()
+        }
         break
-      case 'mermaid':
-        editor.getEditor()?.commands.insertContentAt(pos, { type: 'mermaid' })
+      }
+      case 'mermaid': {
+        const currentEditor = editor.getEditor()
+        if (insertAtEnd && currentEditor !== undefined) {
+          insertContentAtEnd(currentEditor, { type: 'mermaid' })
+        } else {
+          currentEditor?.commands.insertContentAt(pos, { type: 'mermaid' })
+        }
         break
+      }
     }
   }
 
@@ -208,7 +256,7 @@
     inputImage.click()
   }
 
-  async function createInlineImage(file: File): Promise<void> {
+  async function createInlineImage(file: File, insertAtEnd: boolean): Promise<void> {
     if (!file.type.startsWith('image/') || attachFile === undefined) {
       return
     }
@@ -219,28 +267,31 @@
     }
 
     const size = await getImageSize(file)
-
-    editor.editorHandler.insertContent(
-      {
-        type: 'image',
-        attrs: {
-          'file-id': attached.file,
-          width: imageSizeToRatio(size.width, size.pixelRatio)
-        }
-      },
-      {
-        updateSelection: false
+    const content = {
+      type: 'image',
+      attrs: {
+        'file-id': attached.file,
+        width: imageSizeToRatio(size.width, size.pixelRatio)
       }
-    )
+    }
+    const currentEditor = editor.getEditor()
+
+    if (insertAtEnd && currentEditor !== undefined) {
+      insertContentAtEnd(currentEditor, content, { updateSelection: false })
+    } else {
+      editor.editorHandler.insertContent(content, { updateSelection: false })
+    }
   }
 
   async function fileSelected(): Promise<void> {
+    const insertAtEnd = insertImageAtEnd
+    insertImageAtEnd = false
     const list = inputImage.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
       const file = list.item(index)
       if (file !== null) {
-        await createInlineImage(file)
+        await createInlineImage(file, insertAtEnd)
       }
     }
     inputImage.value = ''
@@ -305,6 +356,7 @@
           }
         },
         inlineCommands: inlineCommandsConfig(handleCommandSelected, [
+          'heading-1',
           'drawing-board',
           ...(enableTodoList ? [] : TODO_LIST_COMMANDS),
           ...(attachFile == null ? IMAGE_COMMANDS : [])

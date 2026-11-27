@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "Obsah",
+    "Heading1": "Nadpis 1",
+    "Heading2": "Nadpis 2",
+    "Heading3": "Nadpis 3",
     "Suggested": "NAVRŽENO",
     "NoItems": "Žádné položky",
     "EditorPlaceholder": "Začněte psát...",

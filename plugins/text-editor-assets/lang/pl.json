@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "Spis treści",
+    "Heading1": "Nagłówek 1",
+    "Heading2": "Nagłówek 2",
+    "Heading3": "Nagłówek 3",
     "Suggested": "ZALECANE",
     "NoItems": "Brak elementów",
     "EditorPlaceholder": "Zacznij pisać...",

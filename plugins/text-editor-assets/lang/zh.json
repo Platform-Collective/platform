@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "目录",
+    "Heading1": "标题 1",
+    "Heading2": "标题 2",
+    "Heading3": "标题 3",
     "Suggested": "推荐",
     "NoItems": "没有记录",
     "EditorPlaceholder": "开始输入...",

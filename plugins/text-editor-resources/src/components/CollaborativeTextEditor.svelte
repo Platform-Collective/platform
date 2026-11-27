@@ -76,6 +76,8 @@
   import { defaultEditorAttributes } from './editor/editorProps'
   import { SavedBoard } from './extension/drawingBoard'
   import { type FileAttachFunction } from './extension/types'
+  import { isBlockCommandId, runBlockCommand } from './extension/block-commands'
+  import { insertContentAtEnd, prepareCommandAtEnd } from './extension/leftMenuEnd'
   import { inlineCommandsConfig } from './extensions'
 
   export let object: Doc
@@ -230,12 +232,13 @@
   }
 
   let inputImage: HTMLInputElement
+  let insertImageAtEnd = false
 
   export function handleAttachImage(): void {
     inputImage.click()
   }
 
-  async function createInlineImage(file: File): Promise<void> {
+  async function createInlineImage(file: File, insertAtEnd: boolean): Promise<void> {
     if (!file.type.startsWith('image/') || attachFile === undefined) {
       return
     }
@@ -246,39 +249,52 @@
     }
 
     const size = await getImageSize(file)
-
-    editor.commands.insertContent(
-      {
-        type: 'image',
-        attrs: {
-          'file-id': attached.file,
-          width: imageSizeToRatio(size.width, size.pixelRatio)
-        }
-      },
-      {
-        updateSelection: false
+    const content = {
+      type: 'image',
+      attrs: {
+        'file-id': attached.file,
+        width: imageSizeToRatio(size.width, size.pixelRatio)
       }
-    )
+    }
+
+    if (insertAtEnd) {
+      insertContentAtEnd(editor, content, { updateSelection: false })
+    } else {
+      editor.commands.insertContent(content, { updateSelection: false })
+    }
   }
 
   async function fileSelected(): Promise<void> {
     if (readonly) return
+    const insertAtEnd = insertImageAtEnd
+    insertImageAtEnd = false
     const list = inputImage.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
       const file = list.item(index)
       if (file !== null) {
-        await createInlineImage(file)
+        await createInlineImage(file, insertAtEnd)
       }
     }
     inputImage.value = ''
   }
 
-  async function handleLeftMenuClick(id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
+  async function handleLeftMenuClick(
+    id: string,
+    pos: number,
+    targetItem?: MouseEvent | HTMLElement,
+    insertAtEnd = false
+  ): Promise<void> {
+    if (isBlockCommandId(id)) {
+      runBlockCommand(editor, id, pos, undefined, insertAtEnd)
+      return
+    }
+
     editor.commands.focus(pos, { scrollIntoView: false })
 
     switch (id) {
       case 'image':
+        insertImageAtEnd = insertAtEnd
         handleAttachImage()
         break
       case 'table': {
@@ -293,25 +309,39 @@
         setTimeout(() => {
           // addTableHandler opens popup so the editor loses focus so in the callback we need to refocus again
           void addTableHandler((options: { rows?: number, cols?: number, withHeaderRow?: boolean }) => {
-            editor.chain().focus(pos).insertTable(options).run()
+            if (insertAtEnd) {
+              const { chain, pos: endPos } = prepareCommandAtEnd(editor)
+              chain.focus(endPos, { scrollIntoView: false }).insertTable(options).run()
+            } else {
+              editor.chain().focus(pos).insertTable(options).run()
+            }
           }, position)
         }, 0)
         break
       }
       case 'code-block':
-        editor.commands.insertContentAt(pos, { type: 'codeBlock' })
+        if (insertAtEnd) insertContentAtEnd(editor, { type: 'codeBlock' })
+        else editor.commands.insertContentAt(pos, { type: 'codeBlock' })
         break
       case 'todo-list':
-        editor.chain().insertContentAt(pos, { type: 'paragraph' }).toggleTaskList().run()
+        if (insertAtEnd) {
+          const { chain, pos: endPos } = prepareCommandAtEnd(editor)
+          chain.insertContentAt(endPos, { type: 'paragraph' }).toggleTaskList().run()
+        } else {
+          editor.chain().insertContentAt(pos, { type: 'paragraph' }).toggleTaskList().run()
+        }
         break
       case 'separator-line':
-        editor.commands.setHorizontalRule()
+        if (insertAtEnd) insertContentAtEnd(editor, { type: 'horizontalRule' })
+        else editor.commands.setHorizontalRule()
         break
       case 'drawing-board':
-        editor.commands.insertContentAt(pos, { type: 'drawingBoard', attrs: { id: generateId() } })
+        if (insertAtEnd) insertContentAtEnd(editor, { type: 'drawingBoard', attrs: { id: generateId() } })
+        else editor.commands.insertContentAt(pos, { type: 'drawingBoard', attrs: { id: generateId() } })
         break
       case 'mermaid':
-        editor.commands.insertContentAt(pos, { type: 'mermaid' })
+        if (insertAtEnd) insertContentAtEnd(editor, { type: 'mermaid' })
+        else editor.commands.insertContentAt(pos, { type: 'mermaid' })
         break
     }
   }
