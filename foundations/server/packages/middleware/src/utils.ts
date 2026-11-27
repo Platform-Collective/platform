@@ -19,6 +19,7 @@ import core, {
   systemAccountUuid,
   TxProcessor,
   type Doc,
+  type DocumentUpdate,
   type Hierarchy,
   type MeasureContext,
   type SessionData,
@@ -57,4 +58,25 @@ export function filterBroadcastOnly (tx: Tx[], hierarchy: Hierarchy): Tx[] {
     return true
   })
   return ftx
+}
+
+/** Return updated root attributes, including both ends of a rename. Unknown operators fail closed. */
+export function getUpdatedAttributes (operations: DocumentUpdate<Doc>): Set<string> | 'all' {
+  const result = new Set<string>()
+  for (const [key, value] of Object.entries(operations)) {
+    if (!key.startsWith('$')) {
+      result.add(key.split('.')[0])
+      continue
+    }
+    if (!['$push', '$pull', '$inc', '$unset', '$update', '$rename', '$set'].includes(key)) return 'all'
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return 'all'
+    for (const [path, destination] of Object.entries(value)) {
+      result.add(path.split('.')[0])
+      if (key === '$rename') {
+        if (typeof destination !== 'string') return 'all'
+        result.add(destination.split('.')[0])
+      }
+    }
+  }
+  return result
 }
