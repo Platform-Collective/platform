@@ -36,6 +36,8 @@ import gmail, { Message } from '@hcengineering/gmail'
 import { TriggerControl } from '@hcengineering/server-core'
 import notification, {
   NotificationType,
+  NOTIFICATION_PROVIDER_SUPPRESSIONS,
+  type NotificationProviderSuppressions,
   InboxNotification,
   ActivityInboxNotification,
   MentionInboxNotification
@@ -302,7 +304,12 @@ async function NotificationsHandler (txes: TxCreateDoc<InboxNotification>[], con
 
   const availableProviders: AvailableProvidersCache = control.contextCache.get(AvailableProvidersCacheKey) ?? new Map()
 
-  const all: InboxNotification[] = txes.map((tx) => TxProcessor.createDoc2Doc(tx))
+  const suppressed: NotificationProviderSuppressions | undefined = control.contextCache.get(
+    NOTIFICATION_PROVIDER_SUPPRESSIONS
+  )
+  const all: InboxNotification[] = txes
+    .map((tx) => TxProcessor.createDoc2Doc(tx))
+    .filter((n) => !suppressed?.get(n._id)?.includes(gmail.providers.EmailNotificationProvider))
 
   const notificationsWithEmail = all.filter((it) => hasEmailProvider(it, availableProviders))
 
