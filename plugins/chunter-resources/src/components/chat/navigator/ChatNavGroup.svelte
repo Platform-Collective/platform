@@ -14,7 +14,6 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import activity from '@hcengineering/activity'
   import core, { Class, Doc, groupByArray, reduceCalls, Ref, Space } from '@hcengineering/core'
   import { DocNotifyContext } from '@hcengineering/notification'
   import { InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
@@ -25,6 +24,7 @@
   import chunter from '../../../plugin'
   import { ChatGroup, ChatNavGroupModel } from '../types'
   import ChatNavSection from './ChatNavSection.svelte'
+  import { filterNavGroupContexts } from './navGroupContexts'
 
   export let object: Doc | undefined
   export let model: ChatNavGroupModel
@@ -51,16 +51,7 @@
 
   let sections: Section[] = []
 
-  $: contexts = $contextsStore.filter((it) => {
-    const { objectClass, isPinned, hidden } = it
-    if (hidden) return false
-    if (model.isPinned !== isPinned) return false
-    if (model._class !== undefined && model._class !== objectClass) return false
-    if (model.skipClasses !== undefined && model.skipClasses.includes(objectClass)) return false
-    if (!hierarchy.hasClass(objectClass)) return false
-    if (hierarchy.classHierarchyMixin(objectClass, activity.mixin.ActivityDoc) === undefined) return false
-    return true
-  })
+  $: contexts = filterNavGroupContexts($contextsStore, model, hierarchy)
 
   $: loadObjects(contexts)
 
