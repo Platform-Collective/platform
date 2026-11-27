@@ -48,7 +48,7 @@
   import { ComponentType, onDestroy, onMount } from 'svelte'
   import { clearSettingsStore, settingsStore, type SettingsStore } from '../store'
   import { Analytics } from '@hcengineering/analytics'
-  import { isSettingsCategoryVisible } from '../settings-category'
+  import { isSettingsCategoryVisible, splitSettingsNavigation } from '../settings-category'
 
   export let workbenchWidth: number = 0
 
@@ -148,6 +148,10 @@
   $: $deviceInfo.replacedPanel = replacedPanel
   onDestroy(() => ($deviceInfo.replacedPanel = undefined))
 
+  let topLevelCategories: SettingsCategory[] = []
+  let workspaceCategories: SettingsCategory[] = []
+  $: ({ topLevel: topLevelCategories, inWorkspace: workspaceCategories } = splitSettingsNavigation(categories))
+
   defineSeparators('setting', settingsSeparators)
 </script>
 
@@ -165,7 +169,7 @@
       </div>
 
       <Scroller shrink>
-        {#each categories as _category}
+        {#each topLevelCategories as _category}
           {#if _category.extraComponents?.navigation && (_category.expandable ?? _category._id === setting.ids.Setting)}
             <NavGroup
               _id={_category._id}
@@ -181,6 +185,38 @@
                   categoryName: _category.name
                 }}
               />
+              {#if _category._id === setting.ids.Setting && workspaceCategories.length > 0}
+                <div class="workspace-categories">
+                  {#each workspaceCategories as _workspaceCategory}
+                    {#if _workspaceCategory.extraComponents?.navigation && _workspaceCategory.expandable === true}
+                      <NavGroup
+                        _id={_workspaceCategory._id}
+                        label={_workspaceCategory.label}
+                        categoryName={_workspaceCategory.name}
+                        highlighted={_workspaceCategory.name === categoryId}
+                        tools={_workspaceCategory.extraComponents?.tools}
+                      >
+                        <Component
+                          is={_workspaceCategory.extraComponents?.navigation}
+                          props={{
+                            kind: 'navigation',
+                            categoryName: _workspaceCategory.name
+                          }}
+                        />
+                      </NavGroup>
+                    {:else}
+                      <NavItem
+                        icon={_workspaceCategory.icon}
+                        label={_workspaceCategory.label}
+                        selected={_workspaceCategory.name === categoryId}
+                        on:click={() => {
+                          selectCategory(_workspaceCategory.name)
+                        }}
+                      />
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
             </NavGroup>
           {:else}
             <NavItem
@@ -250,3 +286,9 @@
     {/key}
   </div>
 {/if}
+
+<style lang="scss">
+  .workspace-categories {
+    padding-left: var(--spacing-2);
+  }
+</style>
