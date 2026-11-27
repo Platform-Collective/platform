@@ -106,3 +106,33 @@ export async function getAttributeValues (
 export function isActivityMessage (message: Message): message is ActivityMessage {
   return message.type === MessageType.Activity
 }
+
+/** Combines only consecutive, continuous collaborative diffs by the same author. */
+export function mergeActivityMessages (messages: Message[]): Message[] {
+  const result: Message[] = []
+  for (const message of messages) {
+    const previous = result[result.length - 1]
+    if (
+      previous !== undefined &&
+      isActivityMessage(previous) &&
+      isActivityMessage(message) &&
+      previous.extra.update?.type === ActivityUpdateType.CollaborativeChange &&
+      message.extra.update?.type === ActivityUpdateType.CollaborativeChange &&
+      previous.creator === message.creator &&
+      previous.cardId === message.cardId &&
+      previous.extra.update.attrKey === message.extra.update.attrKey &&
+      previous.extra.update.value === message.extra.update.prevValue &&
+      message.created.getTime() >= previous.created.getTime() &&
+      message.created.getTime() - previous.created.getTime() < 1000 * 60 * 10
+    ) {
+      result[result.length - 1] = {
+        ...previous,
+        created: message.created,
+        extra: { ...previous.extra, update: { ...previous.extra.update, value: message.extra.update.value } }
+      }
+    } else {
+      result.push(message)
+    }
+  }
+  return result
+}

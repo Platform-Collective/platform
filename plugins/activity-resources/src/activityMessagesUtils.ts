@@ -49,7 +49,9 @@ import activity, {
 // Use 5 minutes to combine similar messages
 const combineThresholdMs = 5 * 60 * 1000
 // Use 10 seconds to combine update messages after creation.
-const createCombineThreshold = parseInt(localStorage.getItem('platform.activity.threshold') ?? '10 * 1000')
+const createCombineThreshold = parseInt(
+  (typeof localStorage === 'undefined' ? null : localStorage.getItem('platform.activity.threshold')) ?? '10 * 1000'
+)
 
 const valueTypes: ReadonlyArray<Ref<Class<Doc>>> = [
   core.class.TypeString,
@@ -273,6 +275,11 @@ function combineByCreateThreshold (docUpdateMessages: DocUpdateMessage[]): DocUp
       return true
     }
 
+    // Preserve other authors' collaborative edits while folding the creator's initial markup.
+    if (isMarkupUpdate(message) && createMsg.createdBy !== message.createdBy) {
+      return true
+    }
+
     if (createMsg._id === _id) {
       return true
     }
@@ -318,9 +325,17 @@ export function combineActivityMessages (
     return sortActivityMessages(uncombined, sortingOrder)
   }
 
-  const result: Array<DisplayActivityMessage | undefined> = [...uncombined]
+  // Only markup is combined per author run, in chronological order. Every other update keeps the
+  // generic grouping and the incoming order.
+  const result: Array<DisplayActivityMessage | undefined> = [
+    ...uncombined,
+    ...combineMarkupUpdates(docUpdateMessages.filter(isMarkupUpdate))
+  ]
 
-  const groupedByType: Map<string, DocUpdateMessage[]> = groupByArray(docUpdateMessages, getDocUpdateMessageKey)
+  const groupedByType: Map<string, DocUpdateMessage[]> = groupByArray(
+    docUpdateMessages.filter((message) => !isMarkupUpdate(message)),
+    getDocUpdateMessageKey
+  )
 
   for (const [, groupedMessages] of groupedByType) {
     const cantMerge = groupedMessages.filter(
@@ -366,6 +381,31 @@ function canCombineMessage (message: ActivityMessage): boolean {
   return !hasReactions && !isPinned && !hasReplies
 }
 
+function isMarkupUpdate (message: DocUpdateMessage): boolean {
+  return message.attributeUpdates?.attrClass === core.class.TypeMarkup
+}
+
+/** Combines consecutive compatible markup diffs of each author run, in chronological order. */
+function combineMarkupUpdates (messages: DocUpdateMessage[]): DisplayDocUpdateMessage[] {
+  const authorRuns = new Map<string, { author: DocUpdateMessage['createdBy'], run: number }>()
+  const groupedByRun = groupByArray(sortActivityMessages(messages), (message) => {
+    const key = `${message.attachedTo}_${message.attributeUpdates?.attrKey ?? ''}`
+    const previous = authorRuns.get(key)
+    const run = previous === undefined ? 0 : previous.run + (previous.author === message.createdBy ? 0 : 1)
+    authorRuns.set(key, { author: message.createdBy, run })
+    return `${getDocUpdateMessageKey(message)}_${run}`
+  })
+
+  const result: DisplayDocUpdateMessage[] = []
+  for (const [, groupedMessages] of groupedByRun) {
+    for (const messagesForMerge of groupByAuthorRun(groupedMessages)) {
+      const mergedNotification = mergeDocUpdateMessages(messagesForMerge)
+      if (mergedNotification !== undefined) result.push(mergedNotification)
+    }
+  }
+  return result
+}
+
 function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
   const result: T[][] = []
 
@@ -391,6 +431,27 @@ function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
     result.push(forMerge)
   }
 
+  return result
+}
+
+function groupByAuthorRun (messages: DocUpdateMessage[]): DocUpdateMessage[][] {
+  const result: DocUpdateMessage[][] = []
+  for (const message of messages) {
+    const run = result[result.length - 1]
+    const previous = run?.[run.length - 1]
+    if (
+      previous !== undefined &&
+      previous.createdBy === message.createdBy &&
+      previous.attributeUpdates?.set[0] === message.attributeUpdates?.prevValue &&
+      canCombineMessage(previous) &&
+      canCombineMessage(message) &&
+      getMessageTime(message) - getMessageTime(run[0]) < combineThresholdMs
+    ) {
+      run.push(message)
+    } else {
+      result.push([message])
+    }
+  }
   return result
 }
 

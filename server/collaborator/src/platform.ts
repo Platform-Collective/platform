@@ -57,7 +57,8 @@ async function getTxOperations (client: Client, token: Token, isDerived: boolean
  * @public
  */
 export interface ClientFactoryParams {
-  derived: boolean
+  derived?: boolean
+  client?: Client
 }
 
 /**
@@ -71,7 +72,8 @@ export type ClientFactory = (params?: ClientFactoryParams) => Promise<TxOperatio
 export function simpleClientFactory (token: Token): ClientFactory {
   return async (params?: ClientFactoryParams) => {
     const derived = params?.derived ?? false
-    const client = await connect(generateToken(systemAccountUuid, token.workspace, { service: 'collaborator' }))
+    const client =
+      params?.client ?? (await connect(generateToken(systemAccountUuid, token.workspace, { service: 'collaborator' })))
     return await getTxOperations(client, token, derived)
   }
 }
@@ -82,8 +84,8 @@ export function simpleClientFactory (token: Token): ClientFactory {
 export function reusableClientFactory (token: Token, controller: Controller): ClientFactory {
   return async (params?: ClientFactoryParams) => {
     const derived = params?.derived ?? false
-    const workspaceClient = await controller.get(token.workspace)
-    return await getTxOperations(workspaceClient.client, token, derived)
+    const client = params?.client ?? (await controller.get(token.workspace)).client
+    return await getTxOperations(client, token, derived)
   }
 }
 

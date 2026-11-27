@@ -13,12 +13,13 @@
 // limitations under the License.
 //
 
-import { Blob, Ref, generateId, type WorkspaceIds } from '@hcengineering/core'
+import { Blob, Ref, generateId, type AccountUuid, type WorkspaceIds } from '@hcengineering/core'
 import { decodeToken } from '@hcengineering/server-token'
 import { onAuthenticatePayload } from '@hocuspocus/server'
 import { ClientFactory, simpleClientFactory } from './platform'
 
 export interface Context {
+  account: AccountUuid
   connectionId: string
   wsIds: WorkspaceIds
   clientFactory: ClientFactory
@@ -43,6 +44,7 @@ export function buildContext (data: onAuthenticatePayload, wsIds: WorkspaceIds):
   const content = (data.requestParameters.get('content') as Ref<Blob>) ?? undefined
 
   return {
+    account: decodedToken.account,
     connectionId,
     wsIds,
     clientFactory: simpleClientFactory(decodedToken),

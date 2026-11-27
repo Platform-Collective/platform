@@ -13,20 +13,41 @@
 // limitations under the License.
 //
 
+import type { MessageID } from '@hcengineering/communication-types'
 import { MeasureContext } from '@hcengineering/core'
 import { Doc as YDoc } from 'yjs'
 import { Context } from '../context'
+
+export interface AuthorSegment {
+  context: Context
+  prev: Record<string, string>
+  curr: Record<string, string>
+  id: string
+  timestamp: number
+  messageId?: MessageID
+  emittedAt?: number
+  eventSent?: boolean
+  activitySaved?: boolean
+}
+
+// Retained across retries of the same immutable document/markup batch.
+export interface DocumentSaveBatch {
+  segments: AuthorSegment[]
+  ydocSaved?: boolean
+  platformSaved?: boolean
+}
 
 export interface CollabStorageAdapter {
   loadDocument: (ctx: MeasureContext, documentId: string, context: Context) => Promise<YDoc | undefined>
   saveDocument: (
     ctx: MeasureContext,
     documentId: string,
-    document: YDoc,
+    document: YDoc | Uint8Array,
     context: Context,
     getMarkup: {
       prev: () => Record<string, string>
       curr: () => Record<string, string>
-    }
+    },
+    batch?: DocumentSaveBatch
   ) => Promise<Record<string, string> | undefined>
 }
