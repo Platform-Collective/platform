@@ -160,6 +160,8 @@
     "ForbidAttributeChanges": "Zablokuj zmiany: ",
     "AllowAttributeChanges": "Zezwól na zmiany: ",
     "RelationshipTable": "Macierz powiązań",
+    "PreviousItem": "Poprzedni element",
+    "NextItem": "Następny element",
     "FilterOverflowBadge": "+{count}",
     "AddFilter": "Dodaj filtr",
     "HiddenFilters": "Ukryte filtry"
