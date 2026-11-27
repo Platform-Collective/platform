@@ -32,12 +32,20 @@ import {
   shutdownPostgres,
   type PostgresClientReference
 } from '..'
-import { genMinModel } from './minmodel'
+import { createAttribute, genMinModel } from './minmodel'
 import { createTaskModel, type Task, type TaskComment, type TStat, taskPlugin } from './tasks'
 
 const txes = genMinModel()
 
 createTaskModel(txes)
+txes.push(
+  createAttribute({
+    attributeOf: taskPlugin.class.Task,
+    name: 'members',
+    label: core.string.Class,
+    type: { _class: core.class.ArrOf, of: { _class: core.class.TypeString } }
+  })
+)
 
 const contextVars: Record<string, any> = {}
 
@@ -270,6 +278,30 @@ describe('postgres operations', () => {
 
     const sortEmpty = await client.findAll(taskPlugin.class.Task, {}, { sort: {} })
     expect(sortEmpty).toHaveLength(5)
+  })
+
+  it('sorts arrays of 0, 1 and 3 members before applying limits', async () => {
+    for (const count of [1, 3, 0]) {
+      await operations.createDoc<Task & { members: string[] }>(taskPlugin.class.Task, '' as Ref<Space>, {
+        name: `members-${count}`,
+        description: '',
+        members: Array.from({ length: count }, (_, index) => `member-${index}`)
+      })
+    }
+
+    for (const order of [SortingOrder.Ascending, SortingOrder.Descending]) {
+      const expected =
+        order === SortingOrder.Ascending
+          ? ['members-0', 'members-1', 'members-3']
+          : ['members-3', 'members-1', 'members-0']
+      const sorted = await client.findAll(taskPlugin.class.Task, {}, { sort: { 'members.length': order } })
+      expect(sorted.map((doc) => doc.name)).toEqual(expected)
+
+      for (const limit of [1, 2]) {
+        const limited = await client.findAll(taskPlugin.class.Task, {}, { sort: { 'members.length': order }, limit })
+        expect(limited.map((doc) => doc.name)).toEqual(expected.slice(0, limit))
+      }
+    }
   })
 
   it('check attached', async () => {

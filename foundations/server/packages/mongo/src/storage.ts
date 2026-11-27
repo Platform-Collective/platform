@@ -634,12 +634,18 @@ abstract class MongoAdapterBase implements DbAdapter {
   ): void {
     if (options?.sort !== undefined) {
       const sort = {} as any
+      const arraySortFields: string[] = []
       for (const _key in options.sort) {
         const { key } = this.translateKey(_key, clazz)
 
         if (typeof options.sort[_key] === 'object') {
           const rules = options.sort[_key] as SortingRules<T>
           fillCustomSort(rules, key, pipeline, sort, options, _key)
+        } else if (this.isArrayLengthSort(clazz, _key)) {
+          const field = `sort_length_${arraySortFields.length}`
+          pipeline.push({ $addFields: { [field]: { $size: { $ifNull: [`$${key.slice(0, -7)}`, []] } } } })
+          sort[field] = options.sort[_key] === SortingOrder.Ascending ? 1 : -1
+          arraySortFields.push(field)
         } else if (this.isDate(clazz, _key)) {
           fillDateSort(key, pipeline, sort, options, _key)
         } else {
@@ -654,6 +660,9 @@ abstract class MongoAdapterBase implements DbAdapter {
         }
       }
       pipeline.push({ $sort: sort })
+      if (arraySortFields.length > 0) {
+        pipeline.push({ $unset: arraySortFields })
+      }
     }
   }
 
@@ -885,6 +894,16 @@ abstract class MongoAdapterBase implements DbAdapter {
     return false
   }
 
+  private isArrayLengthSort<T extends Doc> (clazz: Ref<Class<T>>, key: string): boolean {
+    if (!key.endsWith('.length')) return false
+    const arrayKey = key.slice(0, -7)
+    const [mixin, ...path] = arrayKey.split('.')
+    const attr = this.hierarchy.isMixin(mixin as Ref<Class<Doc>>)
+      ? this.hierarchy.findAttribute(mixin as Ref<Class<Doc>>, path.join('.'))
+      : this.hierarchy.findAttribute(clazz, arrayKey)
+    return attr?.type._class === core.class.ArrOf
+  }
+
   @withContext('groupBy')
   groupBy<T, D extends Doc = Doc> (
     ctx: MeasureContext,
@@ -928,7 +947,8 @@ abstract class MongoAdapterBase implements DbAdapter {
         options?.lookup != null ||
         options?.associations != null ||
         this.isEnumSort(_class, options) ||
-        this.isRulesSort(options)
+        this.isRulesSort(options) ||
+        Object.keys(options?.sort ?? {}).some((key) => this.isArrayLengthSort(_class, key))
       ) {
         return await this.findWithPipeline(ctx, domain, _class, query, options ?? {}, stTime)
       }
