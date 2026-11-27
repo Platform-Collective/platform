@@ -15,7 +15,6 @@
 import calendar, { AccessLevel, Calendar, Event, getPrimaryCalendar } from '@hcengineering/calendar'
 import contactPlugin, { Employee, Person } from '@hcengineering/contact'
 import core, {
-  AccountUuid,
   Class,
   concatLink,
   Data,
@@ -213,6 +212,7 @@ export async function ReminderTextPresenter (doc: Doc, control: TriggerControl):
 
 export async function OnEmployee (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
+  const scheduledCalendars = new Set<Ref<Calendar>>()
   for (const tx of txes) {
     const ctx = tx as TxMixin<Person, Employee>
 
@@ -237,7 +237,13 @@ export async function OnEmployee (txes: Tx[], control: TriggerControl): Promise<
       continue
     }
 
-    result.push(await createCalendar(control, employee.personUuid, socialId))
+    const calendarId = `${employee.personUuid}_calendar` as Ref<Calendar>
+    if (scheduledCalendars.has(calendarId)) continue
+    const calendars = await control.findAll(control.ctx, calendar.class.Calendar, { _id: calendarId }, { limit: 1 })
+    if (calendars.length > 0) continue
+
+    result.push(await createCalendar(control, calendarId, socialId))
+    scheduledCalendars.add(calendarId)
   }
 
   return result
@@ -255,7 +261,7 @@ async function checkCalendarsExist (control: TriggerControl, person: Ref<Person>
   return calendars.length > 0
 }
 
-async function createCalendar (control: TriggerControl, account: AccountUuid, socialId: PersonId): Promise<Tx> {
+async function createCalendar (control: TriggerControl, calendarId: Ref<Calendar>, socialId: PersonId): Promise<Tx> {
   const res: TxCreateDoc<Calendar> = control.txFactory.createTxCreateDoc(
     calendar.class.Calendar,
     calendar.space.Calendar,
@@ -266,7 +272,7 @@ async function createCalendar (control: TriggerControl, account: AccountUuid, so
       user: socialId,
       access: AccessLevel.Owner
     },
-    `${account}_calendar` as Ref<Calendar>,
+    calendarId,
     undefined,
     socialId
   )
