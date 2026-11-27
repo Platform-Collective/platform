@@ -23,6 +23,7 @@
 
   import chunter from '../../../plugin'
   import { ChatGroup, ChatNavGroupModel } from '../types'
+  import { getChatNavQuery } from './chat-nav-query'
   import ChatNavSection from './ChatNavSection.svelte'
 
   export let object: Doc | undefined
@@ -91,17 +92,15 @@
       }
 
       objectsQueryByClass.set(_class, { query, limit: limit ?? model.maxSectionItems ?? 5 })
+      const { query: objectQuery, options } = getChatNavQuery(ids, isSpace, limit)
 
       query.query(
         _class,
-        {
-          _id: { $in: limit !== -1 ? ids.slice(0, limit) : ids },
-          ...(isSpace ? { space: core.space.Space, archived: false } : {})
-        },
+        objectQuery,
         (res) => {
           objectsByClass = objectsByClass.set(_class, { docs: res, total: res.total })
         },
-        { total: true }
+        options
       )
     }
 
