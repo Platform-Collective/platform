@@ -80,6 +80,7 @@
     "WorkspaceArchivedDesc": "Workspace is archived because of being unused.",
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "Upgrade failed",
     "RestoreArchivedWorkspace": "Unarchive",
     "Hello": "Hello {name},",
     "ProcessingInvite": "Processing invite, please wait...",

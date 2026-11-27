@@ -28,7 +28,8 @@ import {
   type WorkspaceUuid,
   type AccountUuid,
   type UsageStatus,
-  readOnlyGuestAccountUuid
+  readOnlyGuestAccountUuid,
+  versionToString
 } from '@hcengineering/core'
 import platform, { getMetadata, PlatformError, Severity, Status, unknownError } from '@hcengineering/platform'
 import { decodeTokenVerbose } from '@hcengineering/server-token'
@@ -80,6 +81,39 @@ import {
 // Move to config?
 const processingTimeoutMs = 30 * 1000
 const MAX_RESTORE_ATTEMPTS = 3
+// Failure reports after this many retries of the same upgrade end in 'upgrade-failed' (four runs in total).
+const MAX_UPGRADE_RETRIES = 3
+const UPGRADE_RETRY_BASE_DELAY_MS = 60 * 1000
+
+/** Delay before the next upgrade attempt grows with each failure: 1, 4 and 16 minutes. */
+function getUpgradeRetryDelay (retries: number): number {
+  return UPGRADE_RETRY_BASE_DELAY_MS * 4 ** Math.max(0, retries)
+}
+
+const UPGRADE_FAILED_MESSAGE = 'Upgrade failed. Contact support.'
+const MIGRATION_ID = '[A-Za-z0-9._-]+/[A-Za-z0-9._-]+'
+// Keep the accepted migration-ID grammar in sync with PENDING_MIGRATIONS in workspace-service/ws-operations.ts.
+const PENDING_MIGRATIONS_REASON = new RegExp(
+  `^Upgrade failed: \\d+ migrations failed and remain pending: (${MIGRATION_ID}(?:, ${MIGRATION_ID})*)$`
+)
+
+/**
+ * The status message is visible to workspace members: keep only the IDs of pending migrations,
+ * never the free-text error (SQL, paths, hosts). Details stay in the workspace service log.
+ */
+function getUpgradeFailedMessage (reason: string | undefined): string {
+  const ids = reason !== undefined && reason.length <= 2000 ? PENDING_MIGRATIONS_REASON.exec(reason)?.[1] : undefined
+  return ids !== undefined ? `${UPGRADE_FAILED_MESSAGE} Pending migrations: ${ids}` : UPGRADE_FAILED_MESSAGE
+}
+
+const CREATE_FAILED_MESSAGE = 'Create failed. Contact support.'
+
+/** Older workspace services send the raw error with these prefixes in a ping; store a fixed text instead. */
+function getProcessingMessage (message: string): string {
+  if (message.startsWith('Upgrade failed')) return getUpgradeFailedMessage(message)
+  if (message.startsWith('Create failed')) return CREATE_FAILED_MESSAGE
+  return message
+}
 
 export async function listWorkspaces (
   ctx: MeasureContext,
@@ -152,7 +186,16 @@ export async function performWorkspaceOperation (
     const update: Partial<WorkspaceStatus> = {}
     switch (event) {
       case 'reset-attempts':
-        update.processingAttempts = 0
+        if (workspace.status.mode === 'upgrade-failed') {
+          // Retry the failed upgrade with the current version.
+          update.mode = 'upgrading'
+          // The first claim increments this to zero, matching a fresh upgrade-started.
+          update.processingAttempts = -1
+        } else {
+          update.processingAttempts = 0
+        }
+        update.processingMessage = ''
+        update.upgradeFailedVersion = null
         update.lastProcessingTime = Date.now() - processingTimeoutMs // To not wait for next step
         break
       case 'delete':
@@ -338,7 +381,7 @@ export async function updateWorkspaceInfo (
   // Only read status for certain events because it is not needed for others
   // and it interferes with status updates when concurrency is high
   let wsStatus: WorkspaceStatus | null = null
-  if (['create-started', 'upgrade-started', 'migrate-clean-done', 'restore-failed'].includes(event)) {
+  if (['create-started', 'upgrade-started', 'upgrade-failed', 'migrate-clean-done', 'restore-failed'].includes(event)) {
     wsStatus = await db.workspaceStatus.findOne({ workspaceUuid })
   }
   switch (event) {
@@ -350,6 +393,7 @@ export async function updateWorkspaceInfo (
       update.processingProgress = progress
       break
     case 'upgrade-started':
+      // Also resets the attempts of a failed upgrade that a newer version starts again.
       if (wsStatus != null && wsStatus.mode !== 'upgrading') {
         update.processingAttempts = 0
       }
@@ -373,7 +417,29 @@ export async function updateWorkspaceInfo (
       update.versionMinor = version.minor
       update.versionPatch = version.patch
       update.processingProgress = progress
+      update.upgradeFailedVersion = null
+      update.processingMessage = ''
       break
+    case 'upgrade-failed': {
+      // Ignore late reports after a successful upgrade or a reset, and reports of an older claim.
+      if (wsStatus?.mode !== 'upgrading') return
+      query.mode = 'upgrading'
+      if (wsStatus.processingAttempts != null) {
+        query.processingAttempts = wsStatus.processingAttempts
+      }
+      const retries = wsStatus.processingAttempts ?? 0
+      if (retries >= MAX_UPGRADE_RETRIES) {
+        // Not claimed again until a newer version is deployed or an operator resets the attempts.
+        update.mode = 'upgrade-failed'
+        update.upgradeFailedVersion = versionToString(version)
+      } else {
+        // A claim needs lastProcessingTime older than processingTimeoutMs; wait longer after each failure.
+        update.lastProcessingTime = ts + getUpgradeRetryDelay(retries) - processingTimeoutMs
+      }
+      update.processingProgress = progress
+      update.processingMessage = getUpgradeFailedMessage(message)
+      break
+    }
     case 'progress':
       update.processingProgress = progress
       query.processingProgress = { $lte: progress }
@@ -451,8 +517,8 @@ export async function updateWorkspaceInfo (
       break
   }
 
-  if (event !== 'restore-failed' && message != null) {
-    update.processingMessage = message
+  if (event !== 'restore-failed' && event !== 'upgrade-failed' && message != null) {
+    update.processingMessage = getProcessingMessage(message)
   }
 
   await db.workspaceStatus.update(query, {

@@ -80,6 +80,7 @@
     "WorkspaceArchivedDesc": "Przestrzeń robocza została zarchiwizowana z powodu braku aktywności.",
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "Aktualizacja nie powiodła się",
     "RestoreArchivedWorkspace": "Przywróć z archiwum",
     "Hello": "{name}! Dzień dobry,",
     "ProcessingInvite": "Przetwarzanie zaproszenia, proszę czekać...",

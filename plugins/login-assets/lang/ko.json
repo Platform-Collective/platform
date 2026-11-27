@@ -80,6 +80,7 @@
         "WorkspaceArchivedDesc": "사용하지 않아 워크스페이스가 보관되었습니다.",
         "WorkspaceRestoreFailed": "Restore failed",
         "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+        "WorkspaceUpgradeFailed": "업그레이드 실패",
         "RestoreArchivedWorkspace": "보관 해제",
         "Hello": "{name}님, 안녕하세요",
         "ProcessingInvite": "초대를 처리 중입니다. 잠시만 기다려 주세요...",
