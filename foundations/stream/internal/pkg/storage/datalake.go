@@ -374,7 +374,7 @@ func (d *DatalakeStorage) StatFile(ctx context.Context, filename string) (*BlobI
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp)
 
-	if err := d.client.Do(req, resp); err != nil {
+	if err := d.doRequest(ctx, req, resp); err != nil {
 		tracing.RecordError(span, err)
 		logRequestError(logger, err, "request failed", resp)
 		return nil, err
@@ -471,7 +471,7 @@ func (d *DatalakeStorage) MultipartUploadStart(ctx context.Context, objectName, 
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp)
 
-	if err := d.client.Do(req, resp); err != nil {
+	if err := d.doRequest(ctx, req, resp); err != nil {
 		tracing.RecordError(span, err)
 		logRequestError(logger, err, "request failed", resp)
 		return "", err
@@ -518,7 +518,7 @@ func (d *DatalakeStorage) MultipartUploadPart(ctx context.Context, objectName, u
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp)
 
-	if err := d.client.Do(req, resp); err != nil {
+	if err := d.doRequest(ctx, req, resp); err != nil {
 		tracing.RecordError(span, err)
 		logRequestError(logger, err, "request failed", resp)
 		return nil, err
@@ -569,7 +569,7 @@ func (d *DatalakeStorage) MultipartUploadComplete(ctx context.Context, objectNam
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp)
 
-	if err := d.client.Do(req, resp); err != nil {
+	if err := d.doRequest(ctx, req, resp); err != nil {
 		tracing.RecordError(span, err)
 		logRequestError(logger, err, "request failed", resp)
 		return err
@@ -606,7 +606,7 @@ func (d *DatalakeStorage) MultipartUploadCancel(ctx context.Context, objectName,
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp)
 
-	if err := d.client.Do(req, resp); err != nil {
+	if err := d.doRequest(ctx, req, resp); err != nil {
 		tracing.RecordError(span, err)
 		logRequestError(logger, err, "request failed", resp)
 		return err
@@ -644,3 +644,14 @@ func logRequestError(logger *zap.Logger, err error, msg string, res *fasthttp.Re
 var _ Storage = (*DatalakeStorage)(nil)
 var _ MultipartStorage = (*DatalakeStorage)(nil)
 var _ MetaProvider = (*DatalakeStorage)(nil)
+
+// doRequest honors explicit operation deadlines without adding limits to legacy callers.
+func (d *DatalakeStorage) doRequest(ctx context.Context, req *fasthttp.Request, resp *fasthttp.Response) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok {
+		return d.client.DoDeadline(req, resp, deadline)
+	}
+	return d.client.Do(req, resp)
+}
