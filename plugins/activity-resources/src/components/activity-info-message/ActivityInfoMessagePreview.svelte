@@ -14,13 +14,26 @@
 -->
 
 <script lang="ts">
-  import { ActivityInfoMessage, ActivityMessagePreviewType } from '@hcengineering/activity'
+  import {
+    ActivityInfoMessage,
+    ActivityMessagePreviewType,
+    translateActivityInfoMessage
+  } from '@hcengineering/activity'
+  import { HTMLViewer } from '@hcengineering/presentation'
+  import { themeStore } from '@hcengineering/ui'
 
   import BaseMessagePreview from '../activity-message/BaseMessagePreview.svelte'
 
   export let value: ActivityInfoMessage
   export let readonly = false
   export let type: ActivityMessagePreviewType = 'full'
+
+  let content = ''
+  $: translateActivityInfoMessage(value.message, value.props, $themeStore.language, (message) => {
+    content = message
+  })
 </script>
 
-<BaseMessagePreview intlLabel={value.message} message={value} {type} {readonly} />
+<BaseMessagePreview message={value} {type} {readonly}>
+  <HTMLViewer value={content} preview />
+</BaseMessagePreview>

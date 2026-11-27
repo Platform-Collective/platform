@@ -35,6 +35,8 @@ import { Preference } from '@hcengineering/preference'
 import type { AnyComponent, ComponentExtensionId, LabelAndProps } from '@hcengineering/ui'
 import type { Action } from '@hcengineering/view'
 
+export * from './infoMessage'
+
 /**
  * @public
  */

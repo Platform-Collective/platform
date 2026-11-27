@@ -13,9 +13,8 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { ActivityInfoMessage } from '@hcengineering/activity'
+  import { ActivityInfoMessage, translateActivityInfoMessage } from '@hcengineering/activity'
   import { Avatar, SystemAvatar, getPersonByPersonIdCb } from '@hcengineering/contact-resources'
-  import { translateCB } from '@hcengineering/platform'
   import { HTMLViewer } from '@hcengineering/presentation'
   import { Action, themeStore } from '@hcengineering/ui'
 
@@ -44,7 +43,7 @@
 
   let content = ''
 
-  $: translateCB(value.message, value.props, $themeStore.language, (message) => {
+  $: translateActivityInfoMessage(value.message, value.props, $themeStore.language, (message) => {
     content = message
   })
 </script>
