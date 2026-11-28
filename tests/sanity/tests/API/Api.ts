@@ -1,4 +1,5 @@
 import type { WorkspaceInfoWithStatus, WorkspaceLoginInfo } from '@hcengineering/account'
+import type { AccountRole } from '@hcengineering/core'
 import { APIRequestContext } from '@playwright/test'
 import { DevUrl, LocalUrl, PlatformURI, PlatformWorkspaceRegion } from '../utils'
 
@@ -113,6 +114,94 @@ export class ApiEndpoint {
     const headers = this.getDefaultHeaders()
     const response = await this.request.post(url, { data: payload, headers })
     return await response.json()
+  }
+
+  /**
+   * Logs in and selects the workspace: the result carries the workspace token, uuid and transactor endpoint.
+   */
+  async getWorkspaceLoginInfo (
+    email: string,
+    password: string,
+    workspaceUrl: string
+  ): Promise<WorkspaceLoginInfo & { token: string }> {
+    const accountToken = await this.loginAndGetToken(email, password)
+    const response = await this.request.post(this.baseUrl, {
+      data: { method: 'selectWorkspace', params: { workspaceUrl } },
+      headers: this.getDefaultHeaders(accountToken)
+    })
+    const info: WorkspaceLoginInfo | undefined = (await response.json()).result
+    const token = info?.token
+    if (info === undefined || token === undefined) {
+      throw new Error(`Failed to select workspace ${workspaceUrl}`)
+    }
+    return { ...info, token }
+  }
+
+  /**
+   * Logs in as the shared anonymous guest account (the "Continue as a guest" link) and selects the workspace.
+   * Fails when the workspace does not allow anonymous guests.
+   */
+  async getAnonymousWorkspaceLoginInfo (workspaceUrl: string): Promise<WorkspaceLoginInfo & { token: string }> {
+    const loginResponse = await this.request.post(this.baseUrl, {
+      data: { method: 'loginAsGuest', params: {} },
+      headers: this.getDefaultHeaders()
+    })
+    const guestToken: string | undefined = (await loginResponse.json()).result?.token
+    if (guestToken === undefined) {
+      throw new Error('Failed to log in as an anonymous guest')
+    }
+    const response = await this.request.post(this.baseUrl, {
+      data: { method: 'selectWorkspace', params: { workspaceUrl } },
+      headers: this.getDefaultHeaders(guestToken)
+    })
+    const body = await response.json()
+    const info: WorkspaceLoginInfo | undefined = body.result
+    const token = info?.token
+    if (info === undefined || token === undefined) {
+      throw new Error(
+        `Anonymous guest failed to select workspace ${workspaceUrl}: ${JSON.stringify(body.error ?? body)}`
+      )
+    }
+    return { ...info, token }
+  }
+
+  private async getWorkspaceToken (email: string, password: string, workspaceUrl: string): Promise<string> {
+    return (await this.getWorkspaceLoginInfo(email, password, workspaceUrl)).token
+  }
+
+  /**
+   * Creates a single-use invite to the workspace with the given role and returns its id.
+   */
+  async createWorkspaceInvite (
+    email: string,
+    password: string,
+    workspaceUrl: string,
+    role: AccountRole
+  ): Promise<string> {
+    const wsToken = await this.getWorkspaceToken(email, password, workspaceUrl)
+    const response = await this.request.post(this.baseUrl, {
+      data: { method: 'createInvite', params: { exp: -1, emailMask: '', limit: 1, role } },
+      headers: this.getDefaultHeaders(wsToken)
+    })
+    const body = await response.json()
+    if (typeof body.result !== 'string') {
+      throw new Error(`Failed to create invite: ${JSON.stringify(body.error ?? body)}`)
+    }
+    return body.result
+  }
+
+  /**
+   * Joins an existing account to the workspace by invite id.
+   */
+  async joinWorkspace (email: string, password: string, inviteId: string, workspaceUrl: string): Promise<void> {
+    const response = await this.request.post(this.baseUrl, {
+      data: { method: 'join', params: { email, password, inviteId, workspaceUrl } },
+      headers: this.getDefaultHeaders()
+    })
+    const body = await response.json()
+    if (body.error !== undefined) {
+      throw new Error(`Failed to join workspace: ${JSON.stringify(body.error)}`)
+    }
   }
 
   async leaveWorkspace (account: string, username: string, password: string): Promise<any> {
