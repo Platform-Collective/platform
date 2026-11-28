@@ -61,6 +61,8 @@
     "@hcengineering/model-server-chunter": "workspace:^0.7.0",
     "@hcengineering/model-server-task": "workspace:^0.7.0",
     "@hcengineering/model-server-tracker": "workspace:^0.7.0",
+    "@hcengineering/model-server-workflow-rules": "workspace:^0.7.0",
+    "@hcengineering/model-workflow-rules": "workspace:^0.7.0",
     "@hcengineering/model-server-templates": "workspace:^0.7.0",
     "@hcengineering/model-server-tags": "workspace:^0.7.0",
     "@hcengineering/model-server-recruit": "workspace:^0.7.0",
