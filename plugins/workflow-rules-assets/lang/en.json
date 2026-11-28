@@ -1,0 +1,19 @@
+{
+  "string": {
+    "WorkflowRules": "Workflow rules",
+    "ConfigLabel": "Workflow rules",
+    "ConfigDescription": "Cross-project status mirroring for linked tracker issues",
+    "AddRule": "Add rule",
+    "LinkedProject": "Linked project",
+    "LinkKind": "Link kind",
+    "StatusMatrix": "Status matrix",
+    "AllowedLoops": "Allowed loops",
+    "AutoCreate": "Auto-create",
+    "ComponentMap": "Component map",
+    "DefaultComponent": "Default component",
+    "InheritFields": "Inherit fields",
+    "Enabled": "Enabled",
+    "SubIssueLink": "Sub-issue",
+    "ParentIssueLink": "Parent issue"
+  }
+}
