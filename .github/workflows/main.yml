@@ -236,6 +236,8 @@ jobs:
           echo "::warning::Build cache was missing; reinstalling dependencies and rebuilding."
           node common/scripts/install-run-rush.js install
           node common/scripts/install-run-rush.js build
+          # pod-server tests read bundle/model.json, which only the bundle phase produces
+          node common/scripts/install-run-rush.js bundle --only @hcengineering/pod-server
       - name: Login to Docker Hub
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true

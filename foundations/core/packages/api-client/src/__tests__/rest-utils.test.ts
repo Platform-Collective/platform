@@ -36,29 +36,32 @@ describe('withRetry', () => {
   })
 
   it('should use exponential backoff', async () => {
-    const delays: number[] = []
-    const startTimes: number[] = []
-    let lastTime = Date.now()
+    // Fake timers keep the check deterministic (wall-clock delays drift on a loaded
+    // CI runner) while still proving that withRetry waits 100 ms, then 200 ms.
+    jest.useFakeTimers()
+    try {
+      const fn = jest.fn(async () => {
+        throw new Error('fail')
+      })
 
-    const fn = jest.fn(async () => {
-      const now = Date.now()
-      if (startTimes.length > 0) {
-        delays.push(now - lastTime)
-      }
-      startTimes.push(now)
-      lastTime = now
-      throw new Error('fail')
-    })
+      const result = expect(withRetry(fn)).rejects.toThrow('fail')
+      await jest.advanceTimersByTimeAsync(0)
+      expect(fn).toHaveBeenCalledTimes(1)
 
-    await expect(withRetry(fn)).rejects.toThrow('fail')
+      await jest.advanceTimersByTimeAsync(99)
+      expect(fn).toHaveBeenCalledTimes(1)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(fn).toHaveBeenCalledTimes(2)
 
-    expect(fn).toHaveBeenCalledTimes(3)
-    // Delays should be approximately 100ms and 200ms (with some tolerance)
-    expect(delays.length).toBe(2)
-    expect(delays[0]).toBeGreaterThanOrEqual(80)
-    expect(delays[0]).toBeLessThan(150)
-    expect(delays[1]).toBeGreaterThanOrEqual(180)
-    expect(delays[1]).toBeLessThan(250)
+      await jest.advanceTimersByTimeAsync(199)
+      expect(fn).toHaveBeenCalledTimes(2)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(fn).toHaveBeenCalledTimes(3)
+
+      await result
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('should not decrement attempt when ignoreAttemptCheck returns true', async () => {
