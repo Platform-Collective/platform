@@ -209,7 +209,7 @@
           <Component is={presenterMixin.labelPresenter} props={{ context: value, object }} />
         {:else}
           {#if idTitle}
-            {idTitle}
+            <span class="overflow-label clear-mins" title={idTitle}>{idTitle}</span>
           {:else}
             <Label label={hierarchy.getClass(value.objectClass).label} />
           {/if}
