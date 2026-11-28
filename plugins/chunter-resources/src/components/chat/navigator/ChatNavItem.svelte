@@ -15,9 +15,9 @@
 <script lang="ts">
   import notification, { DocNotifyContext, InboxNotification } from '@hcengineering/notification'
   import { getResource } from '@hcengineering/platform'
-  import { getClient } from '@hcengineering/presentation'
+  import { copyTextToClipboard, getClient } from '@hcengineering/presentation'
   import { Action, IconEdit } from '@hcengineering/ui'
-  import { getActions, getObjectLinkId } from '@hcengineering/view-resources'
+  import { getActions, getLink, getObjectLinkId } from '@hcengineering/view-resources'
   import {
     getNotificationsCount,
     InboxNotificationsClientImpl,
@@ -84,6 +84,16 @@
       action: async () => {
         const id = await getObjectLinkId(linkProviders, object._id, object._class, object)
         openChannel(id, object._class, undefined, true)
+      }
+    })
+
+    result.push({
+      icon: chunter.icon.Copy,
+      label: chunter.string.CopyLink,
+      group: 'copy',
+      action: async () => {
+        // Pass the promise so the clipboard item is created within the user gesture (Safari)
+        await copyTextToClipboard(getLink(object))
       }
     })
 

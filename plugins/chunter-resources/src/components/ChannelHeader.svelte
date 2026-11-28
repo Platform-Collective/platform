@@ -14,10 +14,11 @@
 -->
 <script lang="ts">
   import { Class, Doc, Ref } from '@hcengineering/core'
-  import { getDocTitle } from '@hcengineering/view-resources'
-  import { getClient } from '@hcengineering/presentation'
+  import { getDocTitle, getLink } from '@hcengineering/view-resources'
+  import { copyTextToClipboard, getClient } from '@hcengineering/presentation'
   import { Channel } from '@hcengineering/chunter'
   import { ActivityMessagesFilter, WithReferences } from '@hcengineering/activity'
+  import { Button } from '@hcengineering/ui'
   import contact from '@hcengineering/contact'
   import view from '@hcengineering/view'
   import Header from './Header.svelte'
@@ -61,6 +62,13 @@
       description = hasId ? await getDocTitle(client, _id, _class, object) : undefined
     }
   }
+
+  $: isChannel = hierarchy.isDerived(_class, chunter.class.Channel)
+
+  function copyChannelLink(): void {
+    if (object === undefined) return
+    void copyTextToClipboard(getLink(object))
+  }
 </script>
 
 <Header
@@ -95,4 +103,16 @@
       on:select
     />
   {/if}
+  <svelte:fragment slot="actions">
+    {#if isChannel && object}
+      <Button
+        icon={view.icon.CopyLink}
+        iconProps={{ size: 'small' }}
+        kind={'icon'}
+        showTooltip={{ label: chunter.string.CopyLink }}
+        dataId="copy-channel-link"
+        on:click={copyChannelLink}
+      />
+    {/if}
+  </svelte:fragment>
 </Header>
