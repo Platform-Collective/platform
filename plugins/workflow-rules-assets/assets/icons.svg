@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="workflow-rule" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 7h10a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h10"/>
+    <circle cx="4" cy="7" r="1.5" fill="currentColor" stroke="none"/>
+    <circle cx="20" cy="19" r="1.5" fill="currentColor" stroke="none"/>
+  </symbol>
+</svg>
